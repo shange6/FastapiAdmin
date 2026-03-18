@@ -184,3 +184,10 @@ declare global {
   }
 }
 export {};
+
+declare module "vue" {
+  interface GlobalDirectives {
+    vHasPerm: Directive;
+    vHasRole: Directive;
+  }
+}
