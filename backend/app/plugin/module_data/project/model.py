@@ -14,7 +14,7 @@ class DataProjectModel(ModelMixin, UserMixin):
     __table_args__: dict[str, str] = {'comment': '项目信息'}
     __loader_options__: list[str] = ["created_by", "updated_by"]
 
-    code: Mapped[str | None] = mapped_column(String(64), nullable=True, comment='项目编码')
+    code: Mapped[str | None] = mapped_column(String(64), nullable=True, comment='项目代号')
     name: Mapped[str | None] = mapped_column(String(255), nullable=True, comment='项目名称')
     no: Mapped[str | None] = mapped_column(String(64), nullable=True, comment='项目编号')
 

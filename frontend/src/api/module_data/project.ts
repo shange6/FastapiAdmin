@@ -97,6 +97,7 @@ export interface DataProjectPageQuery extends PageQuery {
   code?: string;
   name?: string;
   no?: string;
+  keyword?: string;
   created_time?: string[];
   updated_time?: string[];
 }

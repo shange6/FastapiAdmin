@@ -39,6 +39,15 @@ CREATE TABLE `data_bom` (
   `unit_mass` float DEFAULT NULL COMMENT '单重',
   `total_mass` float DEFAULT NULL COMMENT '总重',
   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  
+  `uuid` varchar(64) NOT NULL DEFAULT (UUID()) COMMENT 'UUID',
+  `status` varchar(10) NOT NULL DEFAULT '0' COMMENT '是否启用(0:启用 1:禁用)',
+  `description` text NULL COMMENT '备注/描述',
+  `created_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `created_id` int NULL COMMENT '创建人ID',
+  `updated_id` int NULL COMMENT '更新人ID',
+
   PRIMARY KEY (`id`),
   -- 优化：索引名匹配完整表名 data_bom
   KEY `ix_data_bom_parent_code` (`parent_code`),  

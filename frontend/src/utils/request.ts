@@ -119,7 +119,9 @@ httpRequest.interceptors.response.use(
       return Promise.reject(new Error(data.msg));
     } else if (data?.code === ResultEnum.ERROR) {
       ElMessage.error(data.msg || "请求错误");
-      return Promise.reject(new Error(data.msg || "请求错误"));
+      const err = new Error(data.msg || "请求错误") as Error & { response?: any };
+      err.response = error.response;
+      return Promise.reject(err);
     } else if (data?.code === ResultEnum.UNAUTHORIZED) {
       ElMessage.error(data.msg || "暂无权限");
       return Promise.reject(new Error(data.msg || "请求错误"));

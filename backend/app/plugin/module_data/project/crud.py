@@ -8,6 +8,8 @@ from .model import DataProjectModel
 from .schema import DataProjectCreateSchema, DataProjectUpdateSchema, DataProjectOutSchema
 
 
+from sqlalchemy import or_, select, func
+
 class DataProjectCRUD(CRUDBase[DataProjectModel, DataProjectCreateSchema, DataProjectUpdateSchema]):
     """项目信息数据层"""
 
@@ -113,6 +115,50 @@ class DataProjectCRUD(CRUDBase[DataProjectModel, DataProjectCreateSchema, DataPr
         """
         order_by_list = order_by or [{'id': 'asc'}]
         search_dict = search or {}
+        
+        # 处理关键字搜索（OR 匹配名称、代号、编号）
+        keyword = search_dict.pop("keyword", None)
+        if keyword:
+            keyword_filter = or_(
+                DataProjectModel.name.like(f"%{keyword}%"),
+                DataProjectModel.code.like(f"%{keyword}%"),
+                DataProjectModel.no.like(f"%{keyword}%")
+            )
+            # 自定义分页查询以应用 OR 条件
+            sql = select(self.model).where(keyword_filter)
+            # 应用其他普通查询条件（如果有的话）
+            conditions = await self._CRUDBase__build_conditions(**search_dict)
+            if conditions:
+                sql = sql.where(*conditions)
+            
+            # 分页、排序、预加载等
+            sql = sql.order_by(*self._CRUDBase__order_by(order_by_list)).offset(offset).limit(limit)
+            for opt in self._CRUDBase__loader_options(preload):
+                sql = sql.options(opt)
+            
+            # 权限过滤
+            sql = await self._CRUDBase__filter_permissions(sql)
+            
+            # 计算总数
+            count_sql = select(func.count(DataProjectModel.id)).where(keyword_filter)
+            if conditions:
+                count_sql = count_sql.where(*conditions)
+            count_sql = await self._CRUDBase__filter_permissions(count_sql)
+            
+            total_result = await self.auth.db.execute(count_sql)
+            total = total_result.scalar() or 0
+            
+            # 执行查询
+            result = await self.auth.db.execute(sql)
+            items = result.scalars().all()
+            
+            return {
+                "items": [DataProjectOutSchema.model_validate(item).model_dump() for item in items],
+                "total": total,
+                "page_no": (offset // limit) + 1,
+                "page_size": limit
+            }
+            
         return await self.page(
             offset=offset,
             limit=limit,

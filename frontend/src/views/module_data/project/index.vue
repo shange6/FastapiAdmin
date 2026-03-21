@@ -4,14 +4,14 @@
     <!-- 内容区域 -->
     <el-card class="data-table">
       <template #header>
-        <div class="card-header">
+        <!-- <div class="card-header">
           <span>
             项目信息列表
             <el-tooltip content="项目信息列表">
               <QuestionFilled class="w-4 h-4 mx-1" />
             </el-tooltip>
           </span>
-        </div>
+        </div> -->
 
         <!-- 搜索区域 -->
         <div v-show="visible" class="search-container">
@@ -23,13 +23,28 @@
             @submit.prevent="handleQuery"
           >
             <el-form-item label="项目编码" prop="code">
-              <el-input v-model="queryFormData.code" placeholder="输入项目编码" clearable style="width: 110px;" />
+              <el-input
+                v-model="queryFormData.code"
+                placeholder="输入项目编码"
+                clearable
+                style="width: 110px"
+              />
             </el-form-item>
             <el-form-item label="项目名称" prop="name">
-              <el-input v-model="queryFormData.name" placeholder="输入项目名称" clearable style="width: 110px;" />
+              <el-input
+                v-model="queryFormData.name"
+                placeholder="输入项目名称"
+                clearable
+                style="width: 110px"
+              />
             </el-form-item>
             <el-form-item label="项目编号" prop="no">
-              <el-input v-model="queryFormData.no" placeholder="输入项目编号" clearable style="width: 110px;" />
+              <el-input
+                v-model="queryFormData.no"
+                placeholder="输入项目编号"
+                clearable
+                style="width: 110px"
+              />
             </el-form-item>
             <!-- 查询、重置、展开/收起按钮 -->
             <el-form-item>
@@ -371,10 +386,8 @@ defineOptions({
 import { ref, reactive, onMounted, watch } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { QuestionFilled, ArrowUp, ArrowDown, Check, CircleClose } from "@element-plus/icons-vue";
-import { formatToDateTime } from "@/utils/dateUtil";
 import { useDictStore } from "@/store";
 import { ResultEnum } from "@/enums/api/result.enum";
-import DatePicker from "@/components/DatePicker/index.vue";
 import type { IContentConfig } from "@/components/CURD/types";
 import ImportModal from "@/components/CURD/ImportModal.vue";
 import ExportModal from "@/components/CURD/ExportModal.vue";
@@ -439,30 +452,6 @@ const curdContentConfig = {
 
 // 详情表单
 const detailFormData = ref<DataProjectTable>({});
-// 日期范围临时变量
-const createdDateRange = ref<[Date, Date] | []>([]);
-// 更新时间范围临时变量
-const updatedDateRange = ref<[Date, Date] | []>([]);
-
-// 处理创建时间范围变化
-function handleCreatedDateRangeChange(range: [Date, Date]) {
-  createdDateRange.value = range;
-  if (range && range.length === 2) {
-    queryFormData.created_time = [formatToDateTime(range[0]), formatToDateTime(range[1])];
-  } else {
-    queryFormData.created_time = undefined;
-  }
-}
-
-// 处理更新时间范围变化
-function handleUpdatedDateRangeChange(range: [Date, Date]) {
-  updatedDateRange.value = range;
-  if (range && range.length === 2) {
-    queryFormData.updated_time = [formatToDateTime(range[0]), formatToDateTime(range[1])];
-  } else {
-    queryFormData.updated_time = undefined;
-  }
-}
 
 // 分页查询参数
 const queryFormData = reactive<DataProjectPageQuery>({
@@ -557,20 +546,10 @@ watch(
   }
 );
 
-// 选择创建人后触发查询
-function handleConfirm() {
-  handleQuery();
-}
-
 // 重置查询
 async function handleResetQuery() {
   queryFormRef.value.resetFields();
   queryFormData.page_no = 1;
-  // 重置日期范围选择器
-  createdDateRange.value = [];
-  updatedDateRange.value = [];
-  queryFormData.created_time = undefined;
-  queryFormData.updated_time = undefined;
   loadingData();
 }
 
