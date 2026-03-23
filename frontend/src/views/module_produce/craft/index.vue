@@ -1,17 +1,17 @@
-<!-- 项目信息 -->
+<!-- 工艺字典 -->
 <template>
   <div class="app-container">
     <!-- 内容区域 -->
     <el-card class="data-table">
       <template #header>
-        <!-- <div class="card-header">
+        <div class="card-header">
           <span>
-            项目信息列表
-            <el-tooltip content="项目信息列表">
+            工艺字典列表
+            <el-tooltip content="工艺字典列表">
               <QuestionFilled class="w-4 h-4 mx-1" />
             </el-tooltip>
           </span>
-        </div> -->
+        </div>
 
         <!-- 搜索区域 -->
         <div v-show="visible" class="search-container">
@@ -22,42 +22,21 @@
             :inline="true"
             @submit.prevent="handleQuery"
           >
-            <el-form-item label="项目编码" prop="code">
-              <el-input
-                v-model="queryFormData.code"
-                placeholder="输入项目编码"
-                clearable
-                style="width: 110px"
-              />
-            </el-form-item>
-            <el-form-item label="项目名称" prop="name">
-              <el-input
-                v-model="queryFormData.name"
-                placeholder="输入项目名称"
-                clearable
-                style="width: 110px"
-              />
-            </el-form-item>
-            <el-form-item label="项目编号" prop="no">
-              <el-input
-                v-model="queryFormData.no"
-                placeholder="输入项目编号"
-                clearable
-                style="width: 110px"
-              />
+            <el-form-item label="工艺名称" prop="name">
+              <el-input v-model="queryFormData.name" placeholder="请输入工艺名称" clearable />
             </el-form-item>
             <!-- 查询、重置、展开/收起按钮 -->
             <el-form-item>
-              <!-- <el-button
-                v-hasPerm="['module_data:project:query']"
+              <el-button
+                v-hasPerm="['module_produce:craft:query']"
                 type="primary"
                 icon="search"
                 @click="handleQuery"
               >
                 查询
-              </el-button> -->
+              </el-button>
               <el-button
-                v-hasPerm="['module_data:project:query']"
+                v-hasPerm="['module_produce:craft:query']"
                 icon="refresh"
                 @click="handleResetQuery"
               >
@@ -65,7 +44,7 @@
               </el-button>
               <!-- 展开/收起 -->
               <template v-if="isExpandable">
-                <el-link
+                <el-link 
                   class="ml-3"
                   type="primary"
                   underline="never"
@@ -93,7 +72,7 @@
           <el-row :gutter="10">
             <el-col :span="1.5">
               <el-button
-                v-hasPerm="['module_data:project:create']"
+                v-hasPerm="['module_produce:craft:create']"
                 type="success"
                 icon="plus"
                 @click="handleOpenDialog('create')"
@@ -103,7 +82,7 @@
             </el-col>
             <el-col :span="1.5">
               <el-button
-                v-hasPerm="['module_data:project:delete']"
+                v-hasPerm="['module_produce:craft:delete']"
                 type="danger"
                 icon="delete"
                 :disabled="selectIds.length === 0"
@@ -113,7 +92,7 @@
               </el-button>
             </el-col>
             <el-col :span="1.5">
-              <el-dropdown v-hasPerm="['module_data:project:batch']" trigger="click">
+              <el-dropdown v-hasPerm="['module_produce:craft:batch']" trigger="click">
                 <el-button type="default" :disabled="selectIds.length === 0" icon="ArrowDown">
                   更多
                 </el-button>
@@ -136,7 +115,7 @@
             <el-col :span="1.5">
               <el-tooltip content="导入">
                 <el-button
-                  v-hasPerm="['module_data:project:import']"
+                  v-hasPerm="['module_produce:craft:import']"
                   type="success"
                   icon="upload"
                   circle
@@ -147,7 +126,7 @@
             <el-col :span="1.5">
               <el-tooltip content="导出">
                 <el-button
-                  v-hasPerm="['module_data:project:export']"
+                  v-hasPerm="['module_produce:craft:export']"
                   type="warning"
                   icon="download"
                   circle
@@ -169,7 +148,7 @@
             <el-col :span="1.5">
               <el-tooltip content="刷新">
                 <el-button
-                  v-hasPerm="['module_data:project:query']"
+                  v-hasPerm="['module_produce:craft:query']"
                   type="primary"
                   icon="refresh"
                   circle
@@ -210,56 +189,40 @@
         <el-table-column
           v-if="tableColumns.find((col) => col.prop === 'selection')?.show"
           type="selection"
-          min-width="40"
+          min-width="55"
           align="center"
         />
-        <!-- <el-table-column
+        <el-table-column
           v-if="tableColumns.find((col) => col.prop === 'index')?.show"
           fixed
           label="序号"
           min-width="60"
+          align="center"
+          header-align="center"
         >
           <template #default="scope">
             {{ (queryFormData.page_no - 1) * queryFormData.page_size + scope.$index + 1 }}
           </template>
-        </el-table-column> -->
-        <el-table-column
-          v-if="tableColumns.find((col) => col.prop === 'code')?.show"
-          label="项目编码"
-          prop="code"
-          min-width="150"
-          show-overflow-tooltip
-          header-align="center"
-          align="center"
-        />
+        </el-table-column>
         <el-table-column
           v-if="tableColumns.find((col) => col.prop === 'name')?.show"
-          label="项目名称"
+          label="工艺名称"
           prop="name"
-          min-width="300"
-          show-overflow-tooltip
-          header-align="center"
+          min-width="140"
           align="center"
-        />
-        <el-table-column
-          v-if="tableColumns.find((col) => col.prop === 'no')?.show"
-          label="项目编号"
-          prop="no"
-          min-width="100"
-          show-overflow-tooltip
           header-align="center"
-          align="center"
+          show-overflow-tooltip
         />
         <el-table-column
           v-if="tableColumns.find((col) => col.prop === 'operation')?.show"
           fixed="right"
           label="操作"
           align="center"
-          min-width="200"
+          min-width="180"
         >
           <template #default="scope">
             <el-button
-              v-hasPerm="['module_data:project:detail']"
+              v-hasPerm="['module_produce:craft:detail']"
               type="info"
               size="small"
               link
@@ -269,7 +232,7 @@
               详情
             </el-button>
             <el-button
-              v-hasPerm="['module_data:project:update']"
+              v-hasPerm="['module_produce:craft:update']"
               type="primary"
               size="small"
               link
@@ -279,7 +242,7 @@
               编辑
             </el-button>
             <el-button
-              v-hasPerm="['module_data:project:delete']"
+              v-hasPerm="['module_produce:craft:delete']"
               type="danger"
               size="small"
               link
@@ -312,17 +275,11 @@
       <!-- 详情 -->
       <template v-if="dialogVisible.type === 'detail'">
         <el-descriptions :column="4" border>
-          <el-descriptions-item label="项目编码" :span="2" :label-width="120">
-            {{ detailFormData.code }}
+          <el-descriptions-item label="工艺ID" :span="2">
+            {{ detailFormData.id }}
           </el-descriptions-item>
-          <el-descriptions-item label="项目名称" :span="2" :label-width="120">
+          <el-descriptions-item label="工艺名称" :span="2">
             {{ detailFormData.name }}
-          </el-descriptions-item>
-          <el-descriptions-item label="项目编号" :span="2" :label-width="120">
-            {{ detailFormData.no }}
-          </el-descriptions-item>
-          <el-descriptions-item label="UUID" :span="2" :label-width="120">
-            {{ detailFormData.uuid }}
           </el-descriptions-item>
           <el-descriptions-item label="状态" :span="2">
             <el-tag :type="detailFormData.status == '0' ? 'success' : 'danger'">
@@ -344,6 +301,9 @@
           <el-descriptions-item label="更新时间" :span="2">
             {{ detailFormData.updated_time }}
           </el-descriptions-item>
+          <!-- <el-descriptions-item label="UUID" :span="2">
+            {{ detailFormData.uuid }}
+          </el-descriptions-item> -->
         </el-descriptions>
       </template>
 
@@ -357,14 +317,8 @@
           label-width="auto"
           label-position="right"
         >
-          <el-form-item label="项目编码" prop="code" :required="false">
-            <el-input v-model="formData.code" placeholder="请输入项目编码" />
-          </el-form-item>
-          <el-form-item label="项目名称" prop="name" :required="false">
-            <el-input v-model="formData.name" placeholder="请输入项目名称" />
-          </el-form-item>
-          <el-form-item label="项目编号" prop="no" :required="false">
-            <el-input v-model="formData.no" placeholder="请输入项目编号" />
+          <el-form-item label="工艺名称" prop="name" :required="false">
+            <el-input v-model="formData.name" placeholder="请输入工艺名称" />
           </el-form-item>
           <el-form-item label="状态" prop="status" :required="true">
             <el-radio-group v-model="formData.status">
@@ -408,59 +362,57 @@
 
 <script setup lang="ts">
 defineOptions({
-  name: "DataProject",
+  name: "ProduceCraft",
   inheritAttrs: false,
 });
 
-import { ref, reactive, onMounted, watch } from "vue";
+import { ref, reactive, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { QuestionFilled, ArrowUp, ArrowDown, Check, CircleClose } from "@element-plus/icons-vue";
+import { formatToDateTime } from "@/utils/dateUtil";
 import { useDictStore } from "@/store";
 import { ResultEnum } from "@/enums/api/result.enum";
+import DatePicker from "@/components/DatePicker/index.vue";
 import type { IContentConfig } from "@/components/CURD/types";
 import ImportModal from "@/components/CURD/ImportModal.vue";
 import ExportModal from "@/components/CURD/ExportModal.vue";
-import DataProjectAPI, {
-  DataProjectPageQuery,
-  DataProjectTable,
-  DataProjectForm,
-} from "@/api/module_data/project";
+import ProduceCraftAPI, {
+  ProduceCraftPageQuery,
+  ProduceCraftTable,
+  ProduceCraftForm,
+} from "@/api/module_produce/craft";
 
 const visible = ref(true);
 const queryFormRef = ref();
 const dataFormRef = ref();
 const total = ref(0);
 const selectIds = ref<number[]>([]);
-const selectionRows = ref<DataProjectTable[]>([]);
+const selectionRows = ref<ProduceCraftTable[]>([]);
 const loading = ref(false);
 const isExpand = ref(false);
 const isExpandable = ref(true);
 
 // 分页表单
-const pageTableData = ref<DataProjectTable[]>([]);
+const pageTableData = ref<ProduceCraftTable[]>([]);
 
 // 表格列配置
 const tableColumns = ref([
   { prop: "selection", label: "选择框", show: true },
   { prop: "index", label: "序号", show: true },
-  { prop: "code", label: "项目编码", show: true },
-  { prop: "name", label: "项目名称", show: true },
-  { prop: "no", label: "项目编号", show: true },
+  { prop: "name", label: "工艺名称", show: true },
   { prop: "operation", label: "操作", show: true },
 ]);
 
 // 导出列（不含选择/序号/操作）
 const exportColumns = [
-  { prop: "code", label: "项目编码" },
-  { prop: "name", label: "项目名称" },
-  { prop: "no", label: "项目编号" },
+  { prop: "name", label: "工艺名称" },
 ];
 
 // 导入/导出配置
 const curdContentConfig = {
-  permPrefix: "module_data:project",
+  permPrefix: "module_produce:craft",
   cols: exportColumns as any,
-  importTemplate: () => DataProjectAPI.downloadTemplateDataProject(),
+  importTemplate: () => ProduceCraftAPI.downloadTemplateProduceCraft(),
   exportsAction: async (params: any) => {
     const query: any = { ...params };
     query.status = "0";
@@ -468,7 +420,7 @@ const curdContentConfig = {
     query.page_size = 9999;
     const all: any[] = [];
     while (true) {
-      const res = await DataProjectAPI.listDataProject(query);
+      const res = await ProduceCraftAPI.listProduceCraft(query);
       const items = res.data?.data?.items || [];
       const total = res.data?.data?.total || 0;
       all.push(...items);
@@ -480,27 +432,49 @@ const curdContentConfig = {
 } as unknown as IContentConfig;
 
 // 详情表单
-const detailFormData = ref<DataProjectTable>({});
+const detailFormData = ref<ProduceCraftTable>({});
+// 日期范围临时变量
+const createdDateRange = ref<[Date, Date] | []>([]);
+// 更新时间范围临时变量
+const updatedDateRange = ref<[Date, Date] | []>([]);
+
+// 处理创建时间范围变化
+function handleCreatedDateRangeChange(range: [Date, Date]) {
+  createdDateRange.value = range;
+  if (range && range.length === 2) {
+    queryFormData.created_time = [formatToDateTime(range[0]), formatToDateTime(range[1])];
+  } else {
+    queryFormData.created_time = undefined;
+  }
+}
+
+// 处理更新时间范围变化
+function handleUpdatedDateRangeChange(range: [Date, Date]) {
+  updatedDateRange.value = range;
+  if (range && range.length === 2) {
+    queryFormData.updated_time = [formatToDateTime(range[0]), formatToDateTime(range[1])];
+  } else {
+    queryFormData.updated_time = undefined;
+  }
+}
 
 // 分页查询参数
-const queryFormData = reactive<DataProjectPageQuery>({
+const queryFormData = reactive<ProduceCraftPageQuery>({
   page_no: 1,
   page_size: 10,
-  code: undefined,
   name: undefined,
-  no: undefined,
 });
 
 // 编辑表单
-const formData = reactive<DataProjectForm>({
-  code: undefined,
+const formData = reactive<ProduceCraftForm>({
+  id: undefined,
   name: undefined,
-  no: undefined,
 });
 
 // 字典仓库与需要加载的字典类型
 const dictStore = useDictStore();
-const dictTypes: any = [];
+const dictTypes: any = [
+];
 
 // 弹窗状态
 const dialogVisible = reactive({
@@ -511,9 +485,8 @@ const dialogVisible = reactive({
 
 // 表单验证规则
 const rules = reactive({
-  code: [{ required: false, message: "请输入项目编码", trigger: "blur" }],
-  name: [{ required: false, message: "请输入项目名称", trigger: "blur" }],
-  no: [{ required: false, message: "请输入项目编号", trigger: "blur" }],
+  id: [{ required: false, message: "请输入工艺ID", trigger: "blur" }],
+  name: [{ required: false, message: "请输入工艺名称", trigger: "blur" }],
 });
 
 // 导入弹窗显示状态
@@ -542,7 +515,7 @@ async function handleRefresh() {
 async function loadingData() {
   loading.value = true;
   try {
-    const response = await DataProjectAPI.listDataProject(queryFormData);
+    const response = await ProduceCraftAPI.listProduceCraft(queryFormData);
     pageTableData.value = response.data.data.items;
     total.value = response.data.data.total;
   } catch (error: any) {
@@ -558,36 +531,27 @@ async function handleQuery() {
   loadingData();
 }
 
-let autoQueryTimer: number | undefined;
-function triggerAutoQuery() {
-  if (autoQueryTimer) {
-    window.clearTimeout(autoQueryTimer);
-  }
-  autoQueryTimer = window.setTimeout(() => {
-    handleQuery();
-  }, 300);
+// 选择创建人后触发查询
+function handleConfirm() {
+  handleQuery();
 }
-
-watch(
-  () => [queryFormData.code, queryFormData.name, queryFormData.no],
-  () => {
-    triggerAutoQuery();
-  }
-);
 
 // 重置查询
 async function handleResetQuery() {
   queryFormRef.value.resetFields();
   queryFormData.page_no = 1;
+  // 重置日期范围选择器
+  createdDateRange.value = [];
+  updatedDateRange.value = [];
+  queryFormData.created_time = undefined;
+  queryFormData.updated_time = undefined;
   loadingData();
 }
 
 // 定义初始表单数据常量
-const initialFormData: DataProjectForm = {
+const initialFormData: ProduceCraftForm = {
   id: undefined,
-  code: undefined,
   name: undefined,
-  no: undefined,
 };
 
 // 重置表单
@@ -616,7 +580,7 @@ async function handleCloseDialog() {
 async function handleOpenDialog(type: "create" | "update" | "detail", id?: number) {
   dialogVisible.type = type;
   if (id) {
-    const response = await DataProjectAPI.detailDataProject(id);
+    const response = await ProduceCraftAPI.detailProduceCraft(id);
     if (type === "detail") {
       dialogVisible.title = "详情";
       Object.assign(detailFormData.value, response.data.data);
@@ -625,8 +589,9 @@ async function handleOpenDialog(type: "create" | "update" | "detail", id?: numbe
       Object.assign(formData, response.data.data);
     }
   } else {
-    dialogVisible.title = "新增DataProject";
-    Object.assign(formData, initialFormData);
+    dialogVisible.title = "新增ProduceCraft";
+    formData.id = undefined;
+    formData.name = undefined;
   }
   dialogVisible.visible = true;
 }
@@ -640,9 +605,9 @@ async function handleSubmit() {
       // 根据弹窗传入的参数(deatil\create\update)判断走什么逻辑
       const submitData = { ...formData };
       const id = formData.id;
-      if (dialogVisible.type === "update" && id) {
+      if (id) {
         try {
-          await DataProjectAPI.updateDataProject(id, { id, ...submitData });
+          await ProduceCraftAPI.updateProduceCraft(id, { id, ...submitData });
           dialogVisible.visible = false;
           resetForm();
           handleCloseDialog();
@@ -654,7 +619,7 @@ async function handleSubmit() {
         }
       } else {
         try {
-          await DataProjectAPI.createDataProject(submitData);
+          await ProduceCraftAPI.createProduceCraft(submitData);
           dialogVisible.visible = false;
           resetForm();
           handleCloseDialog();
@@ -679,7 +644,7 @@ async function handleDelete(ids: number[]) {
     .then(async () => {
       try {
         loading.value = true;
-        await DataProjectAPI.deleteDataProject(ids);
+        await ProduceCraftAPI.deleteProduceCraft(ids);
         handleResetQuery();
       } catch (error: any) {
         console.error(error);
@@ -703,7 +668,7 @@ async function handleMoreClick(status: string) {
       .then(async () => {
         try {
           loading.value = true;
-          await DataProjectAPI.batchDataProject({ ids: selectIds.value, status });
+          await ProduceCraftAPI.batchProduceCraft({ ids: selectIds.value, status });
           handleResetQuery();
         } catch (error: any) {
           console.error(error);
@@ -721,7 +686,7 @@ async function handleMoreClick(status: string) {
 const handleUpload = async (formData: FormData) => {
   try {
     uploadLoading.value = true;
-    const response = await DataProjectAPI.importDataProject(formData);
+    const response = await ProduceCraftAPI.importProduceCraft(formData);
     if (response.data.code === ResultEnum.SUCCESS) {
       ElMessage.success(`${response.data.msg}，${response.data.data}`);
       importDialogVisible.value = false;

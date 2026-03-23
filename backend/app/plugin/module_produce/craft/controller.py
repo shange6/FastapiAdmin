@@ -1,0 +1,237 @@
+# -*- coding: utf-8 -*-
+
+from fastapi import APIRouter, Depends, UploadFile, Body, Path, Query
+from fastapi.responses import StreamingResponse, JSONResponse
+
+from app.common.response import SuccessResponse, StreamResponse
+from app.core.dependencies import AuthPermission
+from app.api.v1.module_system.auth.schema import AuthSchema
+from app.core.base_params import PaginationQueryParam
+from app.utils.common_util import bytes2file_response
+from app.core.logger import log
+from app.core.base_schema import BatchSetAvailable
+
+from .service import ProduceCraftService
+from .schema import ProduceCraftCreateSchema, ProduceCraftUpdateSchema, ProduceCraftQueryParam
+
+ProduceCraftRouter = APIRouter(prefix='/craft', tags=["工艺字典模块"]) 
+
+@ProduceCraftRouter.get(
+    "/detail/{id}",
+    summary="获取工艺字典详情",
+    description="获取工艺字典详情"
+)
+async def get_craft_detail_controller(
+    id: int = Path(..., description="ID"),
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:craft:query"]))
+) -> JSONResponse:
+    """
+    获取工艺字典详情接口
+    
+    参数:
+    - id: int - 数据ID
+    - auth: AuthSchema - 认证信息
+    
+    返回:
+    - JSONResponse - 包含工艺字典详情的JSON响应
+    """
+    result_dict = await ProduceCraftService.detail_craft_service(auth=auth, id=id)
+    log.info(f"获取工艺字典详情成功 {id}")
+    return SuccessResponse(data=result_dict, msg="获取工艺字典详情成功")
+
+@ProduceCraftRouter.get(
+    "/list",
+    summary="查询工艺字典列表",
+    description="查询工艺字典列表"
+)
+async def get_craft_list_controller(
+    page: PaginationQueryParam = Depends(),
+    search: ProduceCraftQueryParam = Depends(),
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:craft:query"]))
+) -> JSONResponse:
+    """
+    查询工艺字典列表接口（数据库分页）
+    
+    参数:
+    - page: PaginationQueryParam - 分页参数
+    - search: ProduceCraftQueryParam - 查询参数
+    - auth: AuthSchema - 认证信息
+    
+    返回:
+    - JSONResponse - 包含工艺字典列表的JSON响应
+    """
+    result_dict = await ProduceCraftService.page_craft_service(
+        auth=auth,
+        page_no=page.page_no if page.page_no is not None else 1,
+        page_size=page.page_size if page.page_size is not None else 10,
+        search=search,
+        order_by=page.order_by
+    )
+    log.info("查询工艺字典列表成功")
+    return SuccessResponse(data=result_dict, msg="查询工艺字典列表成功")
+
+@ProduceCraftRouter.post(
+    "/create",
+    summary="创建工艺字典",
+    description="创建工艺字典"
+)
+async def create_craft_controller(
+    data: ProduceCraftCreateSchema,
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:craft:create"]))
+) -> JSONResponse:
+    """
+    创建工艺字典接口
+    
+    参数:
+    - data: ProduceCraftCreateSchema - 创建数据
+    - auth: AuthSchema - 认证信息
+    
+    返回:
+    - JSONResponse - 包含创建工艺字典结果的JSON响应
+    """
+    result_dict = await ProduceCraftService.create_craft_service(auth=auth, data=data)
+    log.info("创建工艺字典成功")
+    return SuccessResponse(data=result_dict, msg="创建工艺字典成功")
+
+@ProduceCraftRouter.put(
+    "/update/{id}",
+    summary="修改工艺字典",
+    description="修改工艺字典"
+)
+async def update_craft_controller(
+    data: ProduceCraftUpdateSchema,
+    id: int = Path(..., description="ID"),
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:craft:update"]))
+) -> JSONResponse:
+    """
+    修改工艺字典接口
+    
+    参数:
+    - id: int - 数据ID
+    - data: ProduceCraftUpdateSchema - 更新数据
+    - auth: AuthSchema - 认证信息
+    
+    返回:
+    - JSONResponse - 包含修改工艺字典结果的JSON响应
+    """
+    result_dict = await ProduceCraftService.update_craft_service(auth=auth, id=id, data=data)
+    log.info("修改工艺字典成功")
+    return SuccessResponse(data=result_dict, msg="修改工艺字典成功")
+
+@ProduceCraftRouter.delete(
+    "/delete",
+    summary="删除工艺字典",
+    description="删除工艺字典"
+)
+async def delete_craft_controller(
+    ids: list[int] = Body(..., description="ID列表"),
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:craft:delete"]))
+) -> JSONResponse:
+    """
+    删除工艺字典接口
+    
+    参数:
+    - ids: list[int] - 数据ID列表
+    - auth: AuthSchema - 认证信息
+    
+    返回:
+    - JSONResponse - 包含删除工艺字典结果的JSON响应
+    """
+    await ProduceCraftService.delete_craft_service(auth=auth, ids=ids)
+    log.info(f"删除工艺字典成功: {ids}")
+    return SuccessResponse(msg="删除工艺字典成功")
+
+@ProduceCraftRouter.patch(
+    "/available/setting",
+    summary="批量修改工艺字典状态",
+    description="批量修改工艺字典状态"
+)
+async def batch_set_available_craft_controller(
+    data: BatchSetAvailable,
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:craft:patch"]))
+) -> JSONResponse:
+    """
+    批量修改工艺字典状态接口
+    
+    参数:
+    - data: BatchSetAvailable - 批量修改状态数据
+    - auth: AuthSchema - 认证信息
+    
+    返回:
+    - JSONResponse - 包含批量修改工艺字典状态结果的JSON响应
+    """
+    await ProduceCraftService.set_available_craft_service(auth=auth, data=data)
+    log.info(f"批量修改工艺字典状态成功: {data.ids}")
+    return SuccessResponse(msg="批量修改工艺字典状态成功")
+
+@ProduceCraftRouter.post(
+    '/export',
+    summary="导出工艺字典",
+    description="导出工艺字典"
+)
+async def export_craft_list_controller(
+    search: ProduceCraftQueryParam = Depends(),
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:craft:export"]))
+) -> StreamingResponse:
+    """
+    导出工艺字典接口
+    
+    参数:
+    - search: ProduceCraftQueryParam - 查询参数
+    - auth: AuthSchema - 认证信息
+    
+    返回:
+    - StreamingResponse - 包含导出工艺字典数据的流式响应
+    """
+    result_dict_list = await ProduceCraftService.list_craft_service(search=search, auth=auth)
+    export_result = await ProduceCraftService.batch_export_craft_service(obj_list=result_dict_list)
+    log.info('导出工艺字典成功')
+    return StreamResponse(
+        data=bytes2file_response(export_result),
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={'Content-Disposition': 'attachment; filename=produce_craft.xlsx'}
+    )
+
+@ProduceCraftRouter.post(
+    '/import',
+    summary="导入工艺字典",
+    description="导入工艺字典"
+)
+async def import_craft_list_controller(
+    file: UploadFile,
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:craft:import"]))
+) -> JSONResponse:
+    """
+    导入工艺字典接口
+    
+    参数:
+    - file: UploadFile - 上传的Excel文件
+    - auth: AuthSchema - 认证信息
+    
+    返回:
+    - JSONResponse - 包含导入工艺字典结果的JSON响应
+    """
+    batch_import_result = await ProduceCraftService.batch_import_craft_service(file=file, auth=auth, update_support=True)
+    log.info("导入工艺字典成功")
+    return SuccessResponse(data=batch_import_result, msg="导入工艺字典成功")
+
+@ProduceCraftRouter.post(
+    '/download/template',
+    summary="获取工艺字典导入模板",
+    description="获取工艺字典导入模板",
+    dependencies=[Depends(AuthPermission(["module_produce:craft:download"]))]
+)
+async def export_craft_template_controller() -> StreamingResponse:
+    """
+    获取工艺字典导入模板接口
+    
+    返回:
+    - StreamingResponse - 包含工艺字典导入模板的流式响应
+    """
+    import_template_result = await ProduceCraftService.import_template_download_craft_service()
+    log.info('获取工艺字典导入模板成功')
+    return StreamResponse(
+        data=bytes2file_response(import_template_result),
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={'Content-Disposition': 'attachment; filename=produce_craft_template.xlsx'}
+    )

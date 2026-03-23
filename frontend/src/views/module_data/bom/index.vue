@@ -545,9 +545,6 @@
           <el-descriptions-item label="创建时间" :span="2">
             {{ detailFormData.created_time }}
           </el-descriptions-item>
-          <!-- <el-descriptions-item label="备注/描述" :span="2">
-            {{ detailFormData.description }}
-          </el-descriptions-item> -->
           <el-descriptions-item label="更新人" :span="2">
             {{ detailFormData.updated_by?.name }}
           </el-descriptions-item>

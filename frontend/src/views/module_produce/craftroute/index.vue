@@ -1,17 +1,17 @@
-<!-- 项目信息 -->
+<!-- 工艺路线 -->
 <template>
   <div class="app-container">
     <!-- 内容区域 -->
     <el-card class="data-table">
       <template #header>
-        <!-- <div class="card-header">
+        <div class="card-header">
           <span>
-            项目信息列表
-            <el-tooltip content="项目信息列表">
+            工艺路线列表
+            <el-tooltip content="工艺路线列表">
               <QuestionFilled class="w-4 h-4 mx-1" />
             </el-tooltip>
           </span>
-        </div> -->
+        </div>
 
         <!-- 搜索区域 -->
         <div v-show="visible" class="search-container">
@@ -22,42 +22,64 @@
             :inline="true"
             @submit.prevent="handleQuery"
           >
-            <el-form-item label="项目编码" prop="code">
-              <el-input
-                v-model="queryFormData.code"
-                placeholder="输入项目编码"
+            <el-form-item label="工艺路线" prop="route">
+              <el-input v-model="queryFormData.route" placeholder="工艺路线" clearable style="width: 100px"/>
+            </el-form-item>
+            <el-form-item label="排序" prop="sort">
+              <el-input v-model="queryFormData.sort" placeholder="输入排序" clearable style="width: 100px"/>
+            </el-form-item>
+            <el-form-item label="工艺ID" prop="craft_id">
+              <el-input v-model="queryFormData.craft_id" placeholder="输入工艺ID" clearable style="width: 100px"/>
+            </el-form-item>
+            <el-form-item prop="status" label="状态">
+              <el-select
+                v-model="queryFormData.status"
+                placeholder="选择"
+                style="width: 80px"
                 clearable
-                style="width: 110px"
+              >
+                <el-option value="0" label="启用" />
+                <el-option value="1" label="停用" />
+              </el-select>
+            </el-form-item>
+            <el-form-item v-if="isExpand" prop="created_time" label="创建时间">
+              <DatePicker
+                v-model="createdDateRange"
+                @update:model-value="handleCreatedDateRangeChange"
               />
             </el-form-item>
-            <el-form-item label="项目名称" prop="name">
-              <el-input
-                v-model="queryFormData.name"
-                placeholder="输入项目名称"
-                clearable
-                style="width: 110px"
+            <el-form-item v-if="isExpand" prop="updated_time" label="更新时间">
+              <DatePicker
+                v-model="updatedDateRange"
+                @update:model-value="handleUpdatedDateRangeChange"
               />
             </el-form-item>
-            <el-form-item label="项目编号" prop="no">
-              <el-input
-                v-model="queryFormData.no"
-                placeholder="输入项目编号"
-                clearable
-                style="width: 110px"
+            <el-form-item v-if="isExpand" prop="created_id" label="创建人">
+              <UserTableSelect
+                v-model="queryFormData.created_id"
+                @confirm-click="handleConfirm"
+                @clear-click="handleQuery"
+              />
+            </el-form-item>
+            <el-form-item v-if="isExpand" prop="updated_id" label="更新人">
+              <UserTableSelect
+                v-model="queryFormData.updated_id"
+                @confirm-click="handleConfirm"
+                @clear-click="handleQuery"
               />
             </el-form-item>
             <!-- 查询、重置、展开/收起按钮 -->
             <el-form-item>
-              <!-- <el-button
-                v-hasPerm="['module_data:project:query']"
+              <el-button
+                v-hasPerm="['module_produce:craftroute:query']"
                 type="primary"
                 icon="search"
                 @click="handleQuery"
               >
                 查询
-              </el-button> -->
+              </el-button>
               <el-button
-                v-hasPerm="['module_data:project:query']"
+                v-hasPerm="['module_produce:craftroute:query']"
                 icon="refresh"
                 @click="handleResetQuery"
               >
@@ -65,7 +87,7 @@
               </el-button>
               <!-- 展开/收起 -->
               <template v-if="isExpandable">
-                <el-link
+                <el-link 
                   class="ml-3"
                   type="primary"
                   underline="never"
@@ -93,7 +115,7 @@
           <el-row :gutter="10">
             <el-col :span="1.5">
               <el-button
-                v-hasPerm="['module_data:project:create']"
+                v-hasPerm="['module_produce:craftroute:create']"
                 type="success"
                 icon="plus"
                 @click="handleOpenDialog('create')"
@@ -103,7 +125,7 @@
             </el-col>
             <el-col :span="1.5">
               <el-button
-                v-hasPerm="['module_data:project:delete']"
+                v-hasPerm="['module_produce:craftroute:delete']"
                 type="danger"
                 icon="delete"
                 :disabled="selectIds.length === 0"
@@ -113,7 +135,7 @@
               </el-button>
             </el-col>
             <el-col :span="1.5">
-              <el-dropdown v-hasPerm="['module_data:project:batch']" trigger="click">
+              <el-dropdown v-hasPerm="['module_produce:craftroute:batch']" trigger="click">
                 <el-button type="default" :disabled="selectIds.length === 0" icon="ArrowDown">
                   更多
                 </el-button>
@@ -136,7 +158,7 @@
             <el-col :span="1.5">
               <el-tooltip content="导入">
                 <el-button
-                  v-hasPerm="['module_data:project:import']"
+                  v-hasPerm="['module_produce:craftroute:import']"
                   type="success"
                   icon="upload"
                   circle
@@ -147,7 +169,7 @@
             <el-col :span="1.5">
               <el-tooltip content="导出">
                 <el-button
-                  v-hasPerm="['module_data:project:export']"
+                  v-hasPerm="['module_produce:craftroute:export']"
                   type="warning"
                   icon="download"
                   circle
@@ -169,7 +191,7 @@
             <el-col :span="1.5">
               <el-tooltip content="刷新">
                 <el-button
-                  v-hasPerm="['module_data:project:query']"
+                  v-hasPerm="['module_produce:craftroute:query']"
                   type="primary"
                   icon="refresh"
                   circle
@@ -210,56 +232,130 @@
         <el-table-column
           v-if="tableColumns.find((col) => col.prop === 'selection')?.show"
           type="selection"
-          min-width="40"
+          min-width="55"
           align="center"
         />
-        <!-- <el-table-column
+        <el-table-column
           v-if="tableColumns.find((col) => col.prop === 'index')?.show"
           fixed
           label="序号"
           min-width="60"
+          align="center"
+          header-align="center"
         >
           <template #default="scope">
             {{ (queryFormData.page_no - 1) * queryFormData.page_size + scope.$index + 1 }}
           </template>
+        </el-table-column>
+        <el-table-column
+          v-if="tableColumns.find((col) => col.prop === 'route')?.show"
+          label="工艺路线"
+          prop="route"
+          min-width="80"
+          align="center"
+          header-align="center"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          v-if="tableColumns.find((col) => col.prop === 'sort')?.show"
+          label="排序"
+          prop="sort"
+          min-width="80"
+          align="center"
+          header-align="center"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          v-if="tableColumns.find((col) => col.prop === 'craft_id')?.show"
+          label="工艺ID"
+          prop="craft_id"
+          min-width="80"
+          align="center"
+          header-align="center"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          v-if="tableColumns.find((col) => col.prop === 'status')?.show"
+          label="状态"
+          prop="status"
+          min-width="80"
+          align="center"
+          header-align="center"
+          show-overflow-tooltip
+        >
+          <template #default="scope">
+            <el-tag :type="scope.row.status == '0' ? 'success' : 'info'">
+              {{ scope.row.status == "0" ? "启用" : "停用" }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <!-- <el-table-column
+          v-if="tableColumns.find((col) => col.prop === 'description')?.show"
+          label="备注/描述"
+          prop="description"
+          min-width="140"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          v-if="tableColumns.find((col) => col.prop === 'created_time')?.show"
+          label="创建时间"
+          prop="created_time"
+          min-width="140"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          v-if="tableColumns.find((col) => col.prop === 'updated_time')?.show"
+          label="更新时间"
+          prop="updated_time"
+          min-width="140"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          v-if="tableColumns.find((col) => col.prop === 'created_id')?.show"
+          label="创建人ID"
+          prop="created_id"
+          min-width="140"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          v-if="tableColumns.find((col) => col.prop === 'created_id')?.show"
+          label="创建人ID"
+          prop="created_id"
+          min-width="140"
+          show-overflow-tooltip
+        >
+          <template #default="scope">
+            <el-tag>{{ scope.row.created_by?.name }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column
+          v-if="tableColumns.find((col) => col.prop === 'updated_id')?.show"
+          label="更新人ID"
+          prop="updated_id"
+          min-width="140"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          v-if="tableColumns.find((col) => col.prop === 'updated_id')?.show"
+          label="更新人ID"
+          prop="updated_id"
+          min-width="140"
+          show-overflow-tooltip
+        >
+          <template #default="scope">
+            <el-tag>{{ scope.row.updated_by?.name }}</el-tag>
+          </template>
         </el-table-column> -->
-        <el-table-column
-          v-if="tableColumns.find((col) => col.prop === 'code')?.show"
-          label="项目编码"
-          prop="code"
-          min-width="150"
-          show-overflow-tooltip
-          header-align="center"
-          align="center"
-        />
-        <el-table-column
-          v-if="tableColumns.find((col) => col.prop === 'name')?.show"
-          label="项目名称"
-          prop="name"
-          min-width="300"
-          show-overflow-tooltip
-          header-align="center"
-          align="center"
-        />
-        <el-table-column
-          v-if="tableColumns.find((col) => col.prop === 'no')?.show"
-          label="项目编号"
-          prop="no"
-          min-width="100"
-          show-overflow-tooltip
-          header-align="center"
-          align="center"
-        />
         <el-table-column
           v-if="tableColumns.find((col) => col.prop === 'operation')?.show"
           fixed="right"
           label="操作"
           align="center"
-          min-width="200"
+          min-width="100"
         >
           <template #default="scope">
             <el-button
-              v-hasPerm="['module_data:project:detail']"
+              v-hasPerm="['module_produce:craftroute:detail']"
               type="info"
               size="small"
               link
@@ -269,7 +365,7 @@
               详情
             </el-button>
             <el-button
-              v-hasPerm="['module_data:project:update']"
+              v-hasPerm="['module_produce:craftroute:update']"
               type="primary"
               size="small"
               link
@@ -279,7 +375,7 @@
               编辑
             </el-button>
             <el-button
-              v-hasPerm="['module_data:project:delete']"
+              v-hasPerm="['module_produce:craftroute:delete']"
               type="danger"
               size="small"
               link
@@ -312,16 +408,19 @@
       <!-- 详情 -->
       <template v-if="dialogVisible.type === 'detail'">
         <el-descriptions :column="4" border>
-          <el-descriptions-item label="项目编码" :span="2" :label-width="120">
-            {{ detailFormData.code }}
+          <el-descriptions-item label="工艺路线" :span="2">
+            {{ detailFormData.route }}
           </el-descriptions-item>
-          <el-descriptions-item label="项目名称" :span="2" :label-width="120">
-            {{ detailFormData.name }}
+          <el-descriptions-item label="工艺路线ID" :span="2">
+            {{ detailFormData.id }}
           </el-descriptions-item>
-          <el-descriptions-item label="项目编号" :span="2" :label-width="120">
-            {{ detailFormData.no }}
+          <el-descriptions-item label="排序" :span="2">
+            {{ detailFormData.sort }}
           </el-descriptions-item>
-          <el-descriptions-item label="UUID" :span="2" :label-width="120">
+          <el-descriptions-item label="工艺ID" :span="2">
+            {{ detailFormData.craft_id }}
+          </el-descriptions-item>
+          <el-descriptions-item label="UUID全局唯一标识" :span="2">
             {{ detailFormData.uuid }}
           </el-descriptions-item>
           <el-descriptions-item label="状态" :span="2">
@@ -329,20 +428,20 @@
               {{ detailFormData.status == "0" ? "启用" : "停用" }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="描述" :span="2">
+          <el-descriptions-item label="备注/描述" :span="2">
             {{ detailFormData.description }}
-          </el-descriptions-item>
-          <el-descriptions-item label="创建人" :span="2">
-            {{ detailFormData.created_by?.name }}
           </el-descriptions-item>
           <el-descriptions-item label="创建时间" :span="2">
             {{ detailFormData.created_time }}
           </el-descriptions-item>
-          <el-descriptions-item label="更新人" :span="2">
-            {{ detailFormData.updated_by?.name }}
-          </el-descriptions-item>
           <el-descriptions-item label="更新时间" :span="2">
             {{ detailFormData.updated_time }}
+          </el-descriptions-item>
+          <el-descriptions-item label="创建人" :span="2">
+            {{ detailFormData.created_by?.name }}
+          </el-descriptions-item>
+          <el-descriptions-item label="更新人" :span="2">
+            {{ detailFormData.updated_by?.name }}
           </el-descriptions-item>
         </el-descriptions>
       </template>
@@ -357,20 +456,30 @@
           label-width="auto"
           label-position="right"
         >
-          <el-form-item label="项目编码" prop="code" :required="false">
-            <el-input v-model="formData.code" placeholder="请输入项目编码" />
+          <el-form-item label="工艺路线" prop="route" :required="false">
+            <el-input v-model="formData.route" placeholder="请输入工艺路线" />
           </el-form-item>
-          <el-form-item label="项目名称" prop="name" :required="false">
-            <el-input v-model="formData.name" placeholder="请输入项目名称" />
+          <el-form-item label="排序" prop="sort" :required="false">
+            <el-input v-model="formData.sort" placeholder="请输入排序" />
           </el-form-item>
-          <el-form-item label="项目编号" prop="no" :required="false">
-            <el-input v-model="formData.no" placeholder="请输入项目编号" />
+          <el-form-item label="工艺ID" prop="craft_id" :required="false">
+            <el-input v-model="formData.craft_id" placeholder="请输入工艺ID" />
           </el-form-item>
           <el-form-item label="状态" prop="status" :required="true">
             <el-radio-group v-model="formData.status">
               <el-radio value="0">启用</el-radio>
               <el-radio value="1">停用</el-radio>
             </el-radio-group>
+          </el-form-item>
+          <el-form-item label="描述" prop="description">
+            <el-input
+              v-model="formData.description"
+              :rows="4"
+              :maxlength="100"
+              show-word-limit
+              type="textarea"
+              placeholder="请输入描述"
+            />
           </el-form-item>
         </el-form>
       </template>
@@ -408,59 +517,73 @@
 
 <script setup lang="ts">
 defineOptions({
-  name: "DataProject",
+  name: "ProduceCraftRoute",
   inheritAttrs: false,
 });
 
-import { ref, reactive, onMounted, watch } from "vue";
+import { ref, reactive, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { QuestionFilled, ArrowUp, ArrowDown, Check, CircleClose } from "@element-plus/icons-vue";
+import { formatToDateTime } from "@/utils/dateUtil";
 import { useDictStore } from "@/store";
 import { ResultEnum } from "@/enums/api/result.enum";
+import DatePicker from "@/components/DatePicker/index.vue";
 import type { IContentConfig } from "@/components/CURD/types";
 import ImportModal from "@/components/CURD/ImportModal.vue";
 import ExportModal from "@/components/CURD/ExportModal.vue";
-import DataProjectAPI, {
-  DataProjectPageQuery,
-  DataProjectTable,
-  DataProjectForm,
-} from "@/api/module_data/project";
+import ProduceCraftRouteAPI, {
+  ProduceCraftRoutePageQuery,
+  ProduceCraftRouteTable,
+  ProduceCraftRouteForm,
+} from "@/api/module_produce/craftroute";
 
 const visible = ref(true);
 const queryFormRef = ref();
 const dataFormRef = ref();
 const total = ref(0);
 const selectIds = ref<number[]>([]);
-const selectionRows = ref<DataProjectTable[]>([]);
+const selectionRows = ref<ProduceCraftRouteTable[]>([]);
 const loading = ref(false);
 const isExpand = ref(false);
 const isExpandable = ref(true);
 
 // 分页表单
-const pageTableData = ref<DataProjectTable[]>([]);
+const pageTableData = ref<ProduceCraftRouteTable[]>([]);
 
 // 表格列配置
 const tableColumns = ref([
   { prop: "selection", label: "选择框", show: true },
   { prop: "index", label: "序号", show: true },
-  { prop: "code", label: "项目编码", show: true },
-  { prop: "name", label: "项目名称", show: true },
-  { prop: "no", label: "项目编号", show: true },
+  { prop: "route", label: "工艺路线", show: true },
+  { prop: "sort", label: "排序", show: true },
+  { prop: "craft_id", label: "工艺ID", show: true },
+  { prop: "status", label: "是否启用(0:启用 1:禁用)", show: true },
+  { prop: "description", label: "备注/描述", show: true },
+  { prop: "created_time", label: "创建时间", show: true },
+  { prop: "updated_time", label: "更新时间", show: true },
+  { prop: "created_id", label: "创建人ID", show: true },
+  { prop: "updated_id", label: "更新人ID", show: true },
   { prop: "operation", label: "操作", show: true },
 ]);
 
 // 导出列（不含选择/序号/操作）
 const exportColumns = [
-  { prop: "code", label: "项目编码" },
-  { prop: "name", label: "项目名称" },
-  { prop: "no", label: "项目编号" },
+  { prop: "route", label: "工艺路线" },
+  { prop: "sort", label: "排序" },
+  { prop: "craft_id", label: "工艺ID" },
+  { prop: "status", label: "是否启用(0:启用 1:禁用)" },
+  { prop: "description", label: "备注/描述" },
+  { prop: "created_time", label: "创建时间" },
+  { prop: "updated_time", label: "更新时间" },
+  { prop: "created_id", label: "创建人ID" },
+  { prop: "updated_id", label: "更新人ID" },
 ];
 
 // 导入/导出配置
 const curdContentConfig = {
-  permPrefix: "module_data:project",
+  permPrefix: "module_produce:craftroute",
   cols: exportColumns as any,
-  importTemplate: () => DataProjectAPI.downloadTemplateDataProject(),
+  importTemplate: () => ProduceCraftRouteAPI.downloadTemplateProduceCraftRoute(),
   exportsAction: async (params: any) => {
     const query: any = { ...params };
     query.status = "0";
@@ -468,7 +591,7 @@ const curdContentConfig = {
     query.page_size = 9999;
     const all: any[] = [];
     while (true) {
-      const res = await DataProjectAPI.listDataProject(query);
+      const res = await ProduceCraftRouteAPI.listProduceCraftRoute(query);
       const items = res.data?.data?.items || [];
       const total = res.data?.data?.total || 0;
       all.push(...items);
@@ -480,27 +603,60 @@ const curdContentConfig = {
 } as unknown as IContentConfig;
 
 // 详情表单
-const detailFormData = ref<DataProjectTable>({});
+const detailFormData = ref<ProduceCraftRouteTable>({});
+// 日期范围临时变量
+const createdDateRange = ref<[Date, Date] | []>([]);
+// 更新时间范围临时变量
+const updatedDateRange = ref<[Date, Date] | []>([]);
+
+// 处理创建时间范围变化
+function handleCreatedDateRangeChange(range: [Date, Date]) {
+  createdDateRange.value = range;
+  if (range && range.length === 2) {
+    queryFormData.created_time = [formatToDateTime(range[0]), formatToDateTime(range[1])];
+  } else {
+    queryFormData.created_time = undefined;
+  }
+}
+
+// 处理更新时间范围变化
+function handleUpdatedDateRangeChange(range: [Date, Date]) {
+  updatedDateRange.value = range;
+  if (range && range.length === 2) {
+    queryFormData.updated_time = [formatToDateTime(range[0]), formatToDateTime(range[1])];
+  } else {
+    queryFormData.updated_time = undefined;
+  }
+}
 
 // 分页查询参数
-const queryFormData = reactive<DataProjectPageQuery>({
+const queryFormData = reactive<ProduceCraftRoutePageQuery>({
   page_no: 1,
   page_size: 10,
-  code: undefined,
-  name: undefined,
-  no: undefined,
+  route: undefined,
+  sort: undefined,
+  craft_id: undefined,
+  status: undefined,
+  created_time: undefined,
+  updated_time: undefined,
+  created_id: undefined,
+  updated_id: undefined,
 });
 
 // 编辑表单
-const formData = reactive<DataProjectForm>({
-  code: undefined,
-  name: undefined,
-  no: undefined,
+const formData = reactive<ProduceCraftRouteForm>({
+  id: undefined,
+  route: undefined,
+  sort: undefined,
+  craft_id: undefined,
+  status: undefined,
+  description: undefined,
 });
 
 // 字典仓库与需要加载的字典类型
 const dictStore = useDictStore();
-const dictTypes: any = [];
+const dictTypes: any = [
+];
 
 // 弹窗状态
 const dialogVisible = reactive({
@@ -511,9 +667,17 @@ const dialogVisible = reactive({
 
 // 表单验证规则
 const rules = reactive({
-  code: [{ required: false, message: "请输入项目编码", trigger: "blur" }],
-  name: [{ required: false, message: "请输入项目名称", trigger: "blur" }],
-  no: [{ required: false, message: "请输入项目编号", trigger: "blur" }],
+  id: [{ required: false, message: "请输入工艺路线ID", trigger: "blur" }],
+  route: [{ required: false, message: "请输入工艺路线", trigger: "blur" }],
+  sort: [{ required: false, message: "请输入排序", trigger: "blur" }],
+  craft_id: [{ required: false, message: "请输入工艺ID", trigger: "blur" }],
+  uuid: [{ required: false, message: "请输入UUID全局唯一标识", trigger: "blur" }],
+  status: [{ required: false, message: "请输入是否启用(0:启用 1:禁用)", trigger: "blur" }],
+  description: [{ required: true, message: "请输入备注/描述", trigger: "blur" }],
+  created_time: [{ required: false, message: "请输入创建时间", trigger: "blur" }],
+  updated_time: [{ required: false, message: "请输入更新时间", trigger: "blur" }],
+  created_id: [{ required: true, message: "请输入创建人ID", trigger: "blur" }],
+  updated_id: [{ required: true, message: "请输入更新人ID", trigger: "blur" }],
 });
 
 // 导入弹窗显示状态
@@ -542,7 +706,7 @@ async function handleRefresh() {
 async function loadingData() {
   loading.value = true;
   try {
-    const response = await DataProjectAPI.listDataProject(queryFormData);
+    const response = await ProduceCraftRouteAPI.listProduceCraftRoute(queryFormData);
     pageTableData.value = response.data.data.items;
     total.value = response.data.data.total;
   } catch (error: any) {
@@ -558,36 +722,31 @@ async function handleQuery() {
   loadingData();
 }
 
-let autoQueryTimer: number | undefined;
-function triggerAutoQuery() {
-  if (autoQueryTimer) {
-    window.clearTimeout(autoQueryTimer);
-  }
-  autoQueryTimer = window.setTimeout(() => {
-    handleQuery();
-  }, 300);
+// 选择创建人后触发查询
+function handleConfirm() {
+  handleQuery();
 }
-
-watch(
-  () => [queryFormData.code, queryFormData.name, queryFormData.no],
-  () => {
-    triggerAutoQuery();
-  }
-);
 
 // 重置查询
 async function handleResetQuery() {
   queryFormRef.value.resetFields();
   queryFormData.page_no = 1;
+  // 重置日期范围选择器
+  createdDateRange.value = [];
+  updatedDateRange.value = [];
+  queryFormData.created_time = undefined;
+  queryFormData.updated_time = undefined;
   loadingData();
 }
 
 // 定义初始表单数据常量
-const initialFormData: DataProjectForm = {
+const initialFormData: ProduceCraftRouteForm = {
   id: undefined,
-  code: undefined,
-  name: undefined,
-  no: undefined,
+  route: undefined,
+  sort: undefined,
+  craft_id: undefined,
+  status: undefined,
+  description: undefined,
 };
 
 // 重置表单
@@ -616,7 +775,7 @@ async function handleCloseDialog() {
 async function handleOpenDialog(type: "create" | "update" | "detail", id?: number) {
   dialogVisible.type = type;
   if (id) {
-    const response = await DataProjectAPI.detailDataProject(id);
+    const response = await ProduceCraftRouteAPI.detailProduceCraftRoute(id);
     if (type === "detail") {
       dialogVisible.title = "详情";
       Object.assign(detailFormData.value, response.data.data);
@@ -625,8 +784,13 @@ async function handleOpenDialog(type: "create" | "update" | "detail", id?: numbe
       Object.assign(formData, response.data.data);
     }
   } else {
-    dialogVisible.title = "新增DataProject";
-    Object.assign(formData, initialFormData);
+    dialogVisible.title = "新增ProduceCraftRoute";
+    formData.id = undefined;
+    formData.route = undefined;
+    formData.sort = undefined;
+    formData.craft_id = undefined;
+    formData.status = undefined;
+    formData.description = undefined;
   }
   dialogVisible.visible = true;
 }
@@ -640,9 +804,9 @@ async function handleSubmit() {
       // 根据弹窗传入的参数(deatil\create\update)判断走什么逻辑
       const submitData = { ...formData };
       const id = formData.id;
-      if (dialogVisible.type === "update" && id) {
+      if (id) {
         try {
-          await DataProjectAPI.updateDataProject(id, { id, ...submitData });
+          await ProduceCraftRouteAPI.updateProduceCraftRoute(id, { id, ...submitData });
           dialogVisible.visible = false;
           resetForm();
           handleCloseDialog();
@@ -654,7 +818,7 @@ async function handleSubmit() {
         }
       } else {
         try {
-          await DataProjectAPI.createDataProject(submitData);
+          await ProduceCraftRouteAPI.createProduceCraftRoute(submitData);
           dialogVisible.visible = false;
           resetForm();
           handleCloseDialog();
@@ -679,7 +843,7 @@ async function handleDelete(ids: number[]) {
     .then(async () => {
       try {
         loading.value = true;
-        await DataProjectAPI.deleteDataProject(ids);
+        await ProduceCraftRouteAPI.deleteProduceCraftRoute(ids);
         handleResetQuery();
       } catch (error: any) {
         console.error(error);
@@ -703,7 +867,7 @@ async function handleMoreClick(status: string) {
       .then(async () => {
         try {
           loading.value = true;
-          await DataProjectAPI.batchDataProject({ ids: selectIds.value, status });
+          await ProduceCraftRouteAPI.batchProduceCraftRoute({ ids: selectIds.value, status });
           handleResetQuery();
         } catch (error: any) {
           console.error(error);
@@ -721,7 +885,7 @@ async function handleMoreClick(status: string) {
 const handleUpload = async (formData: FormData) => {
   try {
     uploadLoading.value = true;
-    const response = await DataProjectAPI.importDataProject(formData);
+    const response = await ProduceCraftRouteAPI.importProduceCraftRoute(formData);
     if (response.data.code === ResultEnum.SUCCESS) {
       ElMessage.success(`${response.data.msg}，${response.data.data}`);
       importDialogVisible.value = false;
