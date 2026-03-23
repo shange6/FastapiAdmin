@@ -23,7 +23,7 @@
             @submit.prevent="handleQuery"
           >
             <el-form-item label="工艺名称" prop="name">
-              <el-input v-model="queryFormData.name" placeholder="请输入工艺名称" clearable />
+              <el-input v-model="queryFormData.name" placeholder="请输入工艺名称" clearable style="width: 120px" />
             </el-form-item>
             <!-- 查询、重置、展开/收起按钮 -->
             <el-form-item>
@@ -43,7 +43,7 @@
                 重置
               </el-button>
               <!-- 展开/收起 -->
-              <template v-if="isExpandable">
+              <!-- <template v-if="isExpandable">
                 <el-link 
                   class="ml-3"
                   type="primary"
@@ -60,14 +60,14 @@
                     </template>
                   </el-icon>
                 </el-link>
-              </template>
+              </template> -->
             </el-form-item>
           </el-form>
         </div>
       </template>
 
       <!-- 功能区域 -->
-      <div class="data-table__toolbar">
+      <!-- <div class="data-table__toolbar">
         <div class="data-table__toolbar--left">
           <el-row :gutter="10">
             <el-col :span="1.5">
@@ -170,7 +170,7 @@
             </el-col>
           </el-row>
         </div>
-      </div>
+      </div> -->
 
       <!-- 表格区域：系统配置列表 -->
       <el-table
@@ -212,8 +212,22 @@
           align="center"
           header-align="center"
           show-overflow-tooltip
-        />
-        <el-table-column
+        /> 
+        <el-table-column          
+          label="状态"
+          prop="status"
+          min-width="55"
+          align="center"
+          header-align="center"
+          show-overflow-tooltip
+        >
+          <template #default="scope">
+            <el-tag :type="scope.row.status == '0' ? 'success' : 'info'">
+              {{ scope.row.status == "0" ? "启用" : "停用" }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <!-- <el-table-column
           v-if="tableColumns.find((col) => col.prop === 'operation')?.show"
           fixed="right"
           label="操作"
@@ -252,7 +266,7 @@
               删除
             </el-button>
           </template>
-        </el-table-column>
+        </el-table-column> -->
       </el-table>
 
       <!-- 分页区域 -->

@@ -263,3 +263,14 @@ INSERT INTO produce_craft_route (route, sort, craft_id) VALUES (48,1,5);
 
 -- 49: 装配 → 喷漆
 INSERT INTO produce_craft_route (route, sort, craft_id) VALUES (49,1,5),(49,2,4);
+
+
+-- 工艺路线图的视图创建代码
+CREATE VIEW v_produce_craft_route AS
+SELECT 
+    pcr.route AS route_code,
+    GROUP_CONCAT(pc.name ORDER BY pcr.sort SEPARATOR ' → ') AS route_name
+FROM produce_craft_route pcr
+LEFT JOIN produce_craft pc ON pcr.craft_id = pc.id
+GROUP BY pcr.route
+ORDER BY pcr.route;

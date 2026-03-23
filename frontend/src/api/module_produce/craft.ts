@@ -12,6 +12,14 @@ const ProduceCraftAPI = {
     });
   },
 
+  // 获取全部工艺字典（不分页）
+  getAllProduceCraft() {
+    return request<ApiResponse<ProduceCraftTable[]>>({
+      url: `${API_PATH}/list/all`,
+      method: "get",
+    });
+  },
+
   // 详情查询
   detailProduceCraft(id: number) {
     return request<ApiResponse<ProduceCraftTable>>({

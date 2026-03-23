@@ -51,12 +51,12 @@ async def get_craft_list_controller(
 ) -> JSONResponse:
     """
     查询工艺字典列表接口（数据库分页）
-    
+
     参数:
     - page: PaginationQueryParam - 分页参数
     - search: ProduceCraftQueryParam - 查询参数
     - auth: AuthSchema - 认证信息
-    
+
     返回:
     - JSONResponse - 包含工艺字典列表的JSON响应
     """
@@ -69,6 +69,27 @@ async def get_craft_list_controller(
     )
     log.info("查询工艺字典列表成功")
     return SuccessResponse(data=result_dict, msg="查询工艺字典列表成功")
+
+@ProduceCraftRouter.get(
+    "/list/all",
+    summary="获取全部工艺字典",
+    description="获取全部工艺字典，不分页，用于下拉选项等场景"
+)
+async def get_craft_all_controller(
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:craft:query"]))
+) -> JSONResponse:
+    """
+    获取全部工艺字典接口（不分页）
+
+    参数:
+    - auth: AuthSchema - 认证信息
+
+    返回:
+    - JSONResponse - 包含全部工艺字典的JSON响应
+    """
+    result_list = await ProduceCraftService.list_craft_service(auth=auth)
+    log.info(f"获取全部工艺字典成功，共 {len(result_list)} 条")
+    return SuccessResponse(data=result_list, msg="获取全部工艺字典成功")
 
 @ProduceCraftRouter.post(
     "/create",

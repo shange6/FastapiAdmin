@@ -12,6 +12,23 @@ const ProduceCraftRouteAPI = {
     });
   },
 
+  // 获取全部工艺路线（不分页）
+  getAllProduceCraftRoute() {
+    return request<ApiResponse<ProduceCraftRouteTable[]>>({
+      url: `${API_PATH}/list/all`,
+      method: "get",
+    });
+  },
+
+  // 查询工艺路线视图列表（聚合后的数据）
+  getCraftRouteViewList(query: { route_name?: string }) {
+    return request<ApiResponse<CraftRouteView[]>>({
+      url: `${API_PATH}/view/list`,
+      method: "get",
+      params: query,
+    });
+  },
+
   // 详情查询
   detailProduceCraftRoute(id: number) {
     return request<ApiResponse<ProduceCraftRouteTable>>({
@@ -94,7 +111,7 @@ export default ProduceCraftRouteAPI;
 
 // 列表查询参数
 export interface ProduceCraftRoutePageQuery extends PageQuery {
-  route?: string;
+  route?: number;
   sort?: string;
   craft_id?: string;
   status?: string;
@@ -106,7 +123,8 @@ export interface ProduceCraftRoutePageQuery extends PageQuery {
 
 // 列表展示项
 export interface ProduceCraftRouteTable extends BaseType {
-  route?: string;
+  route?: number;
+  craft_names?: string;
   sort?: string;
   craft_id?: string;
   created_id?: string;
@@ -115,9 +133,15 @@ export interface ProduceCraftRouteTable extends BaseType {
   updated_by?: CommonType;
 }
 
+// 工艺路线视图
+export interface CraftRouteView {
+  route_code: number;
+  route_name: string;
+}
+
 // 新增/修改/详情表单参数
 export interface ProduceCraftRouteForm extends BaseFormType {
-  route?: string;
+  route?: number;
   sort?: string;
   craft_id?: string;
 }

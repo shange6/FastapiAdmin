@@ -8,6 +8,25 @@ from app.core.validator import DateTimeStr
 from app.common.enums import QueueEnum
 from app.core.base_schema import BaseSchema, UserBySchema
 
+
+class CraftRouteViewOutSchema(BaseModel):
+    """工艺路线视图输出模型"""
+    model_config = ConfigDict(from_attributes=True)
+
+    route_code: int = Field(..., description='工艺路线代号')
+    route_name: str = Field(..., description='工艺路线名称')
+
+
+class CraftRouteViewQuerySchema:
+    """工艺路线视图查询参数"""
+
+    def __init__(
+        self,
+        route_code: int | None = Query(None, description="工艺路线代号"),
+        route_name: str | None = Query(None, description="工艺路线名称(模糊查询)"),
+    ) -> None:
+        self.route_name = route_name
+
 class ProduceCraftRouteCreateSchema(BaseModel):
     """
     工艺路线新增模型

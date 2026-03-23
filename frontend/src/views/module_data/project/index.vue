@@ -236,7 +236,7 @@
           v-if="tableColumns.find((col) => col.prop === 'name')?.show"
           label="项目名称"
           prop="name"
-          min-width="300"
+          min-width="200"
           show-overflow-tooltip
           header-align="center"
           align="center"
@@ -250,6 +250,20 @@
           header-align="center"
           align="center"
         />
+         <el-table-column
+          label="状态"
+          prop="status"
+          min-width="55"
+          align="center"
+          header-align="center"
+          show-overflow-tooltip
+        >
+          <template #default="scope">
+            <el-tag :type="scope.row.status == '0' ? 'success' : 'info'">
+              {{ scope.row.status == "0" ? "启用" : "停用" }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column
           v-if="tableColumns.find((col) => col.prop === 'operation')?.show"
           fixed="right"

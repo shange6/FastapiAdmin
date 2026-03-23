@@ -22,10 +22,10 @@
             :inline="true"
             @submit.prevent="handleQuery"
           >
-            <el-form-item label="工艺路线" prop="route">
-              <el-input v-model="queryFormData.route" placeholder="工艺路线" clearable style="width: 100px"/>
+            <el-form-item label="工艺路线名称" prop="route_name">
+              <el-input v-model="queryFormData.route_name" placeholder="工艺路线名称" clearable style="width: 120px"/>
             </el-form-item>
-            <el-form-item label="排序" prop="sort">
+            <!-- <el-form-item label="排序" prop="sort">
               <el-input v-model="queryFormData.sort" placeholder="输入排序" clearable style="width: 100px"/>
             </el-form-item>
             <el-form-item label="工艺ID" prop="craft_id">
@@ -67,7 +67,7 @@
                 @confirm-click="handleConfirm"
                 @clear-click="handleQuery"
               />
-            </el-form-item>
+            </el-form-item> -->
             <!-- 查询、重置、展开/收起按钮 -->
             <el-form-item>
               <el-button
@@ -110,7 +110,7 @@
       </template>
 
       <!-- 功能区域 -->
-      <div class="data-table__toolbar">
+      <!-- <div class="data-table__toolbar">
         <div class="data-table__toolbar--left">
           <el-row :gutter="10">
             <el-col :span="1.5">
@@ -213,7 +213,7 @@
             </el-col>
           </el-row>
         </div>
-      </div>
+      </div> -->
 
       <!-- 表格区域：系统配置列表 -->
       <el-table
@@ -235,7 +235,7 @@
           min-width="55"
           align="center"
         />
-        <el-table-column
+        <!-- <el-table-column
           v-if="tableColumns.find((col) => col.prop === 'index')?.show"
           fixed
           label="序号"
@@ -246,46 +246,44 @@
           <template #default="scope">
             {{ (queryFormData.page_no - 1) * queryFormData.page_size + scope.$index + 1 }}
           </template>
-        </el-table-column>
-        <el-table-column
+        </el-table-column> -->
+        <!-- <el-table-column
           v-if="tableColumns.find((col) => col.prop === 'route')?.show"
-          label="工艺路线"
+          label="工艺路线代号"
           prop="route"
           min-width="80"
           align="center"
           header-align="center"
           show-overflow-tooltip
-        />
+        /> -->
         <el-table-column
-          v-if="tableColumns.find((col) => col.prop === 'sort')?.show"
-          label="排序"
-          prop="sort"
+          v-if="tableColumns.find((col) => col.prop === 'route_code')?.show"
+          label="工艺路线代号"
+          prop="route_code"
           min-width="80"
           align="center"
           header-align="center"
           show-overflow-tooltip
         />
         <el-table-column
-          v-if="tableColumns.find((col) => col.prop === 'craft_id')?.show"
-          label="工艺ID"
-          prop="craft_id"
-          min-width="80"
-          align="center"
+          v-if="tableColumns.find((col) => col.prop === 'route_name')?.show"
+          label="工艺路线名称"
+          prop="route_name"
+          min-width="300"
           header-align="center"
           show-overflow-tooltip
         />
-        <el-table-column
-          v-if="tableColumns.find((col) => col.prop === 'status')?.show"
+         <el-table-column
           label="状态"
           prop="status"
-          min-width="80"
+          min-width="55"
           align="center"
           header-align="center"
           show-overflow-tooltip
         >
           <template #default="scope">
-            <el-tag :type="scope.row.status == '0' ? 'success' : 'info'">
-              {{ scope.row.status == "0" ? "启用" : "停用" }}
+            <el-tag :type="'success'">
+              {{ "启用" }}
             </el-tag>
           </template>
         </el-table-column>
@@ -346,7 +344,7 @@
             <el-tag>{{ scope.row.updated_by?.name }}</el-tag>
           </template>
         </el-table-column> -->
-        <el-table-column
+        <!-- <el-table-column
           v-if="tableColumns.find((col) => col.prop === 'operation')?.show"
           fixed="right"
           label="操作"
@@ -360,9 +358,7 @@
               size="small"
               link
               icon="document"
-              @click="handleOpenDialog('detail', scope.row.id)"
-            >
-              详情
+              @click="handleOpenDialog('detail', scope.row)"
             </el-button>
             <el-button
               v-hasPerm="['module_produce:craftroute:update']"
@@ -370,7 +366,7 @@
               size="small"
               link
               icon="edit"
-              @click="handleOpenDialog('update', scope.row.id)"
+              @click="handleOpenDialog('update', scope.row)"
             >
               编辑
             </el-button>
@@ -385,7 +381,7 @@
               删除
             </el-button>
           </template>
-        </el-table-column>
+        </el-table-column> -->
       </el-table>
 
       <!-- 分页区域 -->
@@ -400,54 +396,25 @@
     </el-card>
 
     <!-- 弹窗区域 -->
-    <el-dialog
+    <!-- <el-dialog
       v-model="dialogVisible.visible"
       :title="dialogVisible.title"
       @close="handleCloseDialog"
-    >
+    > -->
       <!-- 详情 -->
-      <template v-if="dialogVisible.type === 'detail'">
-        <el-descriptions :column="4" border>
-          <el-descriptions-item label="工艺路线" :span="2">
-            {{ detailFormData.route }}
+      <!-- <template v-if="dialogVisible.type === 'detail'">
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="工艺路线代号" :span="1">
+            {{ detailFormData.route_code }}
           </el-descriptions-item>
-          <el-descriptions-item label="工艺路线ID" :span="2">
-            {{ detailFormData.id }}
-          </el-descriptions-item>
-          <el-descriptions-item label="排序" :span="2">
-            {{ detailFormData.sort }}
-          </el-descriptions-item>
-          <el-descriptions-item label="工艺ID" :span="2">
-            {{ detailFormData.craft_id }}
-          </el-descriptions-item>
-          <el-descriptions-item label="UUID全局唯一标识" :span="2">
-            {{ detailFormData.uuid }}
-          </el-descriptions-item>
-          <el-descriptions-item label="状态" :span="2">
-            <el-tag :type="detailFormData.status == '0' ? 'success' : 'danger'">
-              {{ detailFormData.status == "0" ? "启用" : "停用" }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="备注/描述" :span="2">
-            {{ detailFormData.description }}
-          </el-descriptions-item>
-          <el-descriptions-item label="创建时间" :span="2">
-            {{ detailFormData.created_time }}
-          </el-descriptions-item>
-          <el-descriptions-item label="更新时间" :span="2">
-            {{ detailFormData.updated_time }}
-          </el-descriptions-item>
-          <el-descriptions-item label="创建人" :span="2">
-            {{ detailFormData.created_by?.name }}
-          </el-descriptions-item>
-          <el-descriptions-item label="更新人" :span="2">
-            {{ detailFormData.updated_by?.name }}
+          <el-descriptions-item label="工艺路线名称" :span="1">
+            {{ detailFormData.route_name }}
           </el-descriptions-item>
         </el-descriptions>
-      </template>
+      </template> -->
 
       <!-- 新增、编辑表单 -->
-      <template v-else>
+      <!-- <template v-else>
         <el-form
           ref="dataFormRef"
           :model="formData"
@@ -482,27 +449,26 @@
             />
           </el-form-item>
         </el-form>
-      </template>
+      </template> -->
 
-      <template #footer>
+      <!-- <template #footer>
         <div class="dialog-footer">
-          <!-- 详情弹窗不需要确定按钮的提交逻辑 -->
           <el-button @click="handleCloseDialog">取消</el-button>
           <el-button v-if="dialogVisible.type !== 'detail'" type="primary" @click="handleSubmit">
             确定
           </el-button>
           <el-button v-else type="primary" @click="handleCloseDialog">确定</el-button>
         </div>
-      </template>
-    </el-dialog>
+      </template> -->
+    <!-- </el-dialog> -->
 
     <!-- 导入弹窗 -->
-    <ImportModal
+    <!-- <ImportModal
       v-model="importDialogVisible"
       :content-config="curdContentConfig"
       :loading="uploadLoading"
       @upload="handleUpload"
-    />
+    /> -->
 
     <!-- 导出弹窗 -->
     <ExportModal
@@ -535,6 +501,7 @@ import ProduceCraftRouteAPI, {
   ProduceCraftRoutePageQuery,
   ProduceCraftRouteTable,
   ProduceCraftRouteForm,
+  CraftRouteView,
 } from "@/api/module_produce/craftroute";
 
 const visible = ref(true);
@@ -548,35 +515,20 @@ const isExpand = ref(false);
 const isExpandable = ref(true);
 
 // 分页表单
-const pageTableData = ref<ProduceCraftRouteTable[]>([]);
+const pageTableData = ref<CraftRouteView[]>([]);
 
 // 表格列配置
 const tableColumns = ref([
   { prop: "selection", label: "选择框", show: true },
   { prop: "index", label: "序号", show: true },
-  { prop: "route", label: "工艺路线", show: true },
-  { prop: "sort", label: "排序", show: true },
-  { prop: "craft_id", label: "工艺ID", show: true },
-  { prop: "status", label: "是否启用(0:启用 1:禁用)", show: true },
-  { prop: "description", label: "备注/描述", show: true },
-  { prop: "created_time", label: "创建时间", show: true },
-  { prop: "updated_time", label: "更新时间", show: true },
-  { prop: "created_id", label: "创建人ID", show: true },
-  { prop: "updated_id", label: "更新人ID", show: true },
-  { prop: "operation", label: "操作", show: true },
+  { prop: "route_code", label: "工艺路线代号", show: true },
+  { prop: "route_name", label: "工艺路线名称", show: true },
 ]);
 
 // 导出列（不含选择/序号/操作）
 const exportColumns = [
-  { prop: "route", label: "工艺路线" },
-  { prop: "sort", label: "排序" },
-  { prop: "craft_id", label: "工艺ID" },
-  { prop: "status", label: "是否启用(0:启用 1:禁用)" },
-  { prop: "description", label: "备注/描述" },
-  { prop: "created_time", label: "创建时间" },
-  { prop: "updated_time", label: "更新时间" },
-  { prop: "created_id", label: "创建人ID" },
-  { prop: "updated_id", label: "更新人ID" },
+  { prop: "route_code", label: "工艺路线代号" },
+  { prop: "route_name", label: "工艺路线名称" },
 ];
 
 // 导入/导出配置
@@ -610,43 +562,36 @@ const createdDateRange = ref<[Date, Date] | []>([]);
 const updatedDateRange = ref<[Date, Date] | []>([]);
 
 // 处理创建时间范围变化
-function handleCreatedDateRangeChange(range: [Date, Date]) {
-  createdDateRange.value = range;
-  if (range && range.length === 2) {
-    queryFormData.created_time = [formatToDateTime(range[0]), formatToDateTime(range[1])];
-  } else {
-    queryFormData.created_time = undefined;
-  }
-}
+// function handleCreatedDateRangeChange(range: [Date, Date]) {
+//   createdDateRange.value = range;
+//   if (range && range.length === 2) {
+//     queryFormData.created_time = [formatToDateTime(range[0]), formatToDateTime(range[1])];
+//   } else {
+//     queryFormData.created_time = undefined;
+//   }
+// }
 
 // 处理更新时间范围变化
-function handleUpdatedDateRangeChange(range: [Date, Date]) {
-  updatedDateRange.value = range;
-  if (range && range.length === 2) {
-    queryFormData.updated_time = [formatToDateTime(range[0]), formatToDateTime(range[1])];
-  } else {
-    queryFormData.updated_time = undefined;
-  }
-}
+// function handleUpdatedDateRangeChange(range: [Date, Date]) {
+//   updatedDateRange.value = range;
+//   if (range && range.length === 2) {
+//     queryFormData.updated_time = [formatToDateTime(range[0]), formatToDateTime(range[1])];
+//   } else {
+//     queryFormData.updated_time = undefined;
+//   }
+// }
 
 // 分页查询参数
-const queryFormData = reactive<ProduceCraftRoutePageQuery>({
+const queryFormData = reactive({
   page_no: 1,
   page_size: 10,
-  route: undefined,
-  sort: undefined,
-  craft_id: undefined,
-  status: undefined,
-  created_time: undefined,
-  updated_time: undefined,
-  created_id: undefined,
-  updated_id: undefined,
+  route_name: undefined as string | undefined,
 });
 
 // 编辑表单
 const formData = reactive<ProduceCraftRouteForm>({
   id: undefined,
-  route: undefined,
+  route: undefined as number | undefined,
   sort: undefined,
   craft_id: undefined,
   status: undefined,
@@ -706,9 +651,14 @@ async function handleRefresh() {
 async function loadingData() {
   loading.value = true;
   try {
-    const response = await ProduceCraftRouteAPI.listProduceCraftRoute(queryFormData);
-    pageTableData.value = response.data.data.items;
-    total.value = response.data.data.total;
+    const response = await ProduceCraftRouteAPI.getCraftRouteViewList({
+      route_name: queryFormData.route_name || undefined,
+    });
+    const allData = response.data.data || [];
+    const start = (queryFormData.page_no - 1) * queryFormData.page_size;
+    const end = start + queryFormData.page_size;
+    pageTableData.value = allData.slice(start, end);
+    total.value = allData.length;
   } catch (error: any) {
     console.error(error);
   } finally {
@@ -734,15 +684,15 @@ async function handleResetQuery() {
   // 重置日期范围选择器
   createdDateRange.value = [];
   updatedDateRange.value = [];
-  queryFormData.created_time = undefined;
-  queryFormData.updated_time = undefined;
+  // queryFormData.created_time = undefined;
+  // queryFormData.updated_time = undefined;
   loadingData();
 }
 
 // 定义初始表单数据常量
 const initialFormData: ProduceCraftRouteForm = {
   id: undefined,
-  route: undefined,
+  route: undefined as number | undefined,
   sort: undefined,
   craft_id: undefined,
   status: undefined,
@@ -772,17 +722,14 @@ async function handleCloseDialog() {
 }
 
 // 打开弹窗
-async function handleOpenDialog(type: "create" | "update" | "detail", id?: number) {
+async function handleOpenDialog(type: "create" | "update" | "detail", row?: any) {
   dialogVisible.type = type;
-  if (id) {
-    const response = await ProduceCraftRouteAPI.detailProduceCraftRoute(id);
-    if (type === "detail") {
-      dialogVisible.title = "详情";
-      Object.assign(detailFormData.value, response.data.data);
-    } else if (type === "update") {
-      dialogVisible.title = "修改";
-      Object.assign(formData, response.data.data);
-    }
+  if (type === "detail" && row) {
+    dialogVisible.title = "详情";
+    Object.assign(detailFormData.value, row);
+  } else if (type === "update" && row) {
+    dialogVisible.title = "修改";
+    Object.assign(formData, row);
   } else {
     dialogVisible.title = "新增ProduceCraftRoute";
     formData.id = undefined;

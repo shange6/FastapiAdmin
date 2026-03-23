@@ -12,7 +12,7 @@ from app.core.logger import log
 from app.core.base_schema import BatchSetAvailable
 
 from .service import ProduceCraftRouteService
-from .schema import ProduceCraftRouteCreateSchema, ProduceCraftRouteUpdateSchema, ProduceCraftRouteQueryParam
+from .schema import ProduceCraftRouteCreateSchema, ProduceCraftRouteUpdateSchema, ProduceCraftRouteQueryParam, CraftRouteViewQuerySchema
 
 ProduceCraftRouteRouter = APIRouter(prefix='/craftroute', tags=["工艺路线模块"]) 
 
@@ -69,6 +69,50 @@ async def get_craftroute_list_controller(
     )
     log.info("查询工艺路线列表成功")
     return SuccessResponse(data=result_dict, msg="查询工艺路线列表成功")
+
+@ProduceCraftRouteRouter.get(
+    "/list/all",
+    summary="获取全部工艺路线",
+    description="获取全部工艺路线，不分页，用于下拉选项等场景"
+)
+async def get_craftroute_all_controller(
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:craftroute:query"]))
+) -> JSONResponse:
+    """
+    获取全部工艺路线接口（不分页）
+
+    参数:
+    - auth: AuthSchema - 认证信息
+
+    返回:
+    - JSONResponse - 包含全部工艺路线的JSON响应
+    """
+    result_list = await ProduceCraftRouteService.list_craftroute_service(auth=auth)
+    log.info(f"获取全部工艺路线成功，共 {len(result_list)} 条")
+    return SuccessResponse(data=result_list, msg="获取全部工艺路线成功")
+
+@ProduceCraftRouteRouter.get(
+    "/view/list",
+    summary="查询工艺路线视图列表",
+    description="查询工艺路线视图列表，用于页面展示"
+)
+async def get_craftroute_view_list_controller(
+    search: CraftRouteViewQuerySchema = Depends(),
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:craftroute:query"]))
+) -> JSONResponse:
+    """
+    查询工艺路线视图列表接口
+
+    参数:
+    - search: CraftRouteViewQuerySchema - 查询参数
+    - auth: AuthSchema - 认证信息
+
+    返回:
+    - JSONResponse - 包含工艺路线视图列表的JSON响应
+    """
+    result_list = await ProduceCraftRouteService.list_craft_route_view_service(auth=auth, search=search)
+    log.info(f"查询工艺路线视图列表成功，共 {len(result_list)} 条")
+    return SuccessResponse(data=result_list, msg="查询工艺路线视图列表成功")
 
 @ProduceCraftRouteRouter.post(
     "/create",

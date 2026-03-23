@@ -3,19 +3,23 @@
 import io
 import pandas as pd
 from fastapi import UploadFile
+from sqlalchemy import select, func, text
 
 from app.api.v1.module_system.auth.schema import AuthSchema
 from app.core.base_schema import BatchSetAvailable
 from app.core.exceptions import CustomException
 from app.core.logger import log
 from app.utils.excel_util import ExcelUtil
+from app.core.database import async_db_session
 
 from .crud import ProduceCraftRouteCRUD
 from .schema import (
     ProduceCraftRouteCreateSchema,
     ProduceCraftRouteUpdateSchema,
     ProduceCraftRouteOutSchema,
-    ProduceCraftRouteQueryParam
+    ProduceCraftRouteQueryParam,
+    CraftRouteViewOutSchema,
+    CraftRouteViewQuerySchema,
 )
 
 
@@ -45,18 +49,44 @@ class ProduceCraftRouteService:
     async def list_craftroute_service(cls, auth: AuthSchema, search: ProduceCraftRouteQueryParam | None = None, order_by: list[dict] | None = None) -> list[dict]:
         """
         列表查询
-        
+
         参数:
         - auth: AuthSchema - 认证信息
         - search: ProduceCraftRouteQueryParam | None - 查询参数
         - order_by: list[dict] | None - 排序参数
-        
+
         返回:
         - list[dict] - 数据列表
         """
         search_dict = search.__dict__ if search else None
         obj_list = await ProduceCraftRouteCRUD(auth).list_craftroute_crud(search=search_dict, order_by=order_by)
         return [ProduceCraftRouteOutSchema.model_validate(obj).model_dump() for obj in obj_list]
+
+    @classmethod
+    async def list_craft_route_view_service(cls, auth: AuthSchema, search: CraftRouteViewQuerySchema | None = None, order_by: list[dict] | None = None) -> list[dict]:
+        """
+        查询工艺路线视图（聚合后的数据）
+
+        参数:
+        - auth: AuthSchema - 认证信息
+        - search: CraftRouteViewQuerySchema | None - 查询参数
+        - order_by: list[dict] | None - 排序参数
+
+        返回:
+        - list[dict] - 工艺路线视图列表
+        """
+        async with async_db_session() as session:
+            sql = text("SELECT route_code, route_name FROM v_produce_craft_route")
+
+            if search and search.route_name:
+                like_value = f"%{search.route_name}%"
+                sql = text(f"SELECT route_code, route_name FROM v_produce_craft_route WHERE route_name LIKE :route_name")
+                result = await session.execute(sql, {"route_name": like_value})
+            else:
+                result = await session.execute(sql)
+
+            rows = result.fetchall()
+            return [{"route_code": row[0], "route_name": row[1]} for row in rows]
 
     @classmethod
     async def page_craftroute_service(cls, auth: AuthSchema, page_no: int, page_size: int, search: ProduceCraftRouteQueryParam | None = None, order_by: list[dict] | None = None) -> dict:
