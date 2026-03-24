@@ -59,6 +59,21 @@ class DataBomService:
         return [DataBomOutSchema.model_validate(obj).model_dump() for obj in obj_list]
 
     @classmethod
+    async def list_bom_no_procure_service(cls, auth: AuthSchema) -> list[dict]:
+        """
+        查询不需要采购的BOM清单列表
+
+        参数:
+        - auth: AuthSchema - 认证信息
+
+        返回:
+        - list[dict] - 数据列表（仅procure为False的记录）
+        """
+        search_dict = {"procure": False}
+        obj_list = await DataBomCRUD(auth).list_bom_crud(search=search_dict, order_by=[{"id": "asc"}])
+        return [DataBomOutSchema.model_validate(obj).model_dump() for obj in obj_list]
+
+    @classmethod
     async def page_bom_service(cls, auth: AuthSchema, page_no: int, page_size: int, search: DataBomQueryParam | None = None, order_by: list[dict] | None = None) -> dict:
         """
         分页查询（数据库分页）

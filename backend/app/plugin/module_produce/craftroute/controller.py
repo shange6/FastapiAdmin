@@ -87,7 +87,7 @@ async def get_craftroute_all_controller(
     返回:
     - JSONResponse - 包含全部工艺路线的JSON响应
     """
-    result_list = await ProduceCraftRouteService.list_craftroute_service(auth=auth)
+    result_list = await ProduceCraftRouteService.list_all_craft_route_service(auth=auth)
     log.info(f"获取全部工艺路线成功，共 {len(result_list)} 条")
     return SuccessResponse(data=result_list, msg="获取全部工艺路线成功")
 

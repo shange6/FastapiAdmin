@@ -268,9 +268,22 @@ INSERT INTO produce_craft_route (route, sort, craft_id) VALUES (49,1,5),(49,2,4)
 -- 工艺路线图的视图创建代码
 CREATE VIEW v_produce_craft_route AS
 SELECT 
-    pcr.route AS route_code,
-    GROUP_CONCAT(pc.name ORDER BY pcr.sort SEPARATOR ' → ') AS route_name
+    pcr.route AS route,
+    GROUP_CONCAT(pc.name ORDER BY pcr.sort SEPARATOR ' → ') AS name
 FROM produce_craft_route pcr
 LEFT JOIN produce_craft pc ON pcr.craft_id = pc.id
 GROUP BY pcr.route
 ORDER BY pcr.route;
+
+-- 把视图固化为表格
+CREATE TABLE produce_route_name AS SELECT * FROM v_produce_craft_route;
+
+
+CREATE TABLE `produce_bom_route` (
+  `bom_id` int NOT NULL COMMENT 'BOMID',
+  `route` int NOT NULL COMMENT '工艺路线',
+  PRIMARY KEY (`bom_id`) USING BTREE,
+  KEY `idx_route` (`route`),
+  CONSTRAINT `fk_data_bom_id` FOREIGN KEY (`bom_id`) REFERENCES `data_bom` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_produce_route_name_route` FOREIGN KEY (`route`) REFERENCES `produce_route_name` (`route`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='BOM路线关联表';

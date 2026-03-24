@@ -63,6 +63,23 @@ class ProduceCraftRouteService:
         return [ProduceCraftRouteOutSchema.model_validate(obj).model_dump() for obj in obj_list]
 
     @classmethod
+    async def list_all_craft_route_service(cls, auth: AuthSchema) -> list[dict]:
+        """
+        查询全部工艺路线（从produce_route_name表）
+
+        参数:
+        - auth: AuthSchema - 认证信息
+
+        返回:
+        - list[dict] - 工艺路线列表
+        """
+        async with async_db_session() as session:
+            sql = text("SELECT `route`, `name` FROM produce_route_name ORDER BY `route` ASC")
+            result = await session.execute(sql)
+            rows = result.fetchall()
+            return [{"route_code": row[0], "route_name": row[1]} for row in rows]
+
+    @classmethod
     async def list_craft_route_view_service(cls, auth: AuthSchema, search: CraftRouteViewQuerySchema | None = None, order_by: list[dict] | None = None) -> list[dict]:
         """
         查询工艺路线视图（聚合后的数据）
@@ -76,12 +93,12 @@ class ProduceCraftRouteService:
         - list[dict] - 工艺路线视图列表
         """
         async with async_db_session() as session:
-            sql = text("SELECT route_code, route_name FROM v_produce_craft_route")
+            sql = text("SELECT `route`, `name` FROM produce_route_name")
 
             if search and search.route_name:
                 like_value = f"%{search.route_name}%"
-                sql = text(f"SELECT route_code, route_name FROM v_produce_craft_route WHERE route_name LIKE :route_name")
-                result = await session.execute(sql, {"route_name": like_value})
+                sql = text(f"SELECT `route`, `name` FROM produce_route_name WHERE `name` LIKE :name")
+                result = await session.execute(sql, {"name": like_value})
             else:
                 result = await session.execute(sql)
 

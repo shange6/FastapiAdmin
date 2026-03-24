@@ -12,6 +12,14 @@ const DataBomAPI = {
     });
   },
 
+  // 查询不需要采购的BOM列表
+  listDataBomNoProcure() {
+    return request<ApiResponse<DataBomTable[]>>({
+      url: `${API_PATH}/list/no-procure`,
+      method: "get",
+    });
+  },
+
   // 详情查询
   detailDataBom(id: number) {
     return request<ApiResponse<DataBomTable>>({

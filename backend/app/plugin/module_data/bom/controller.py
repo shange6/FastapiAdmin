@@ -65,6 +65,27 @@ async def get_bom_list_controller(
     log.info("查询BOM清单列表成功")
     return SuccessResponse(data=result_list, msg="查询BOM清单列表成功")
 
+@DataBomRouter.get(
+    "/list/no-procure",
+    summary="查询不需要采购的BOM清单列表",
+    description="查询不需要采购的BOM清单列表"
+)
+async def get_bom_list_no_procure_controller(
+    auth: AuthSchema = Depends(AuthPermission(["module_data:bom:query"]))
+) -> JSONResponse:
+    """
+    查询不需要采购的BOM清单列表接口
+
+    参数:
+    - auth: AuthSchema - 认证信息
+
+    返回:
+    - JSONResponse - 包含不需要采购的BOM清单列表的JSON响应
+    """
+    result_list = await DataBomService.list_bom_no_procure_service(auth=auth)
+    log.info("查询不需要采购的BOM清单列表成功")
+    return SuccessResponse(data=result_list, msg="查询不需要采购的BOM清单列表成功")
+
 @DataBomRouter.post(
     "/create",
     summary="创建BOM清单",

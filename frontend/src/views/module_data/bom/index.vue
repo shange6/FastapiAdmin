@@ -1225,7 +1225,6 @@ const handleUpload = async (formData: FormData) => {
     uploadLoading.value = true;
     const response = await DataBomAPI.importDataBom(formData);
     if (response.data.code === ResultEnum.SUCCESS) {
-      ElMessage.success(`${response.data.msg}，${response.data.data}`);
       importDialogVisible.value = false;
       await handleResetQuery();
     }
