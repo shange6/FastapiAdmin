@@ -39,20 +39,10 @@
               >
                 重置
               </el-button>
-              <el-button
-                type="info"
-                plain
-                icon="Expand"
-                @click="toggleAllExpansion(true)"
-              >
+              <el-button type="info" plain icon="Expand" @click="toggleAllExpansion(true)">
                 全部展开
               </el-button>
-              <el-button
-                type="info"
-                plain
-                icon="Fold"
-                @click="toggleAllExpansion(false)"
-              >
+              <el-button type="info" plain icon="Fold" @click="toggleAllExpansion(false)">
                 全部收起
               </el-button>
               <el-button
@@ -63,11 +53,7 @@
               >
                 批量保存
               </el-button>
-              <el-button
-                type="primary"
-                icon="Collection"
-                @click="handleOpenProjectDrawer"
-              >
+              <el-button type="primary" icon="Collection" @click="handleOpenProjectDrawer">
                 选择项目
               </el-button>
             </el-form-item>
@@ -217,7 +203,7 @@
           v-if="tableColumns.find((col) => col.prop === 'code')?.show"
           label="代号"
           prop="code"
-          min-width="200"
+          min-width="220"
           header-align="center"
           show-overflow-tooltip
         />
@@ -242,7 +228,7 @@
           v-if="tableColumns.find((col) => col.prop === 'material')?.show"
           label="材质"
           prop="material"
-          min-width="100"
+          min-width="80"
           header-align="center"
           show-overflow-tooltip
         />
@@ -268,7 +254,7 @@
           v-if="tableColumns.find((col) => col.prop === 'remark')?.show"
           label="备注"
           prop="remark"
-          min-width="100"
+          min-width="80"
           header-align="center"
           show-overflow-tooltip
         />
@@ -276,7 +262,7 @@
           v-if="tableColumns.find((col) => col.prop === 'craft_route')?.show"
           label="工艺路线"
           prop="craft_route"
-          min-width="280"
+          min-width="300"
           align="center"
           header-align="center"
         >
@@ -313,12 +299,7 @@
     </el-card>
 
     <!-- 项目选择抽屉 -->
-    <el-drawer
-      v-model="projectDrawerVisible"
-      title="选择项目"
-      direction="rtl"
-      size="40%"
-    >
+    <el-drawer v-model="projectDrawerVisible" title="选择项目" direction="rtl" size="40%">
       <div class="project-drawer-content">
         <el-input
           v-model="projectSearch"
@@ -336,11 +317,32 @@
           height="calc(100vh - 220px)"
           style="width: 100%"
           highlight-current-row
-          @row-click="handleSelectProject"
+
+          @cell-mouse-enter="handleProjectRowMouseEnter"
+          @cell-mouse-leave="handleProjectRowMouseLeave"
         >
-          <el-table-column prop="code" label="项目代号" width="150" align="center" header-align="center" show-overflow-tooltip />
-          <el-table-column prop="name" label="项目名称" header-align="center" show-overflow-tooltip />
-          <el-table-column prop="no" label="合同编号" width="150" align="center" header-align="center" show-overflow-tooltip />
+          <el-table-column
+            prop="code"
+            label="项目代号"
+            width="150"
+            align="center"
+            header-align="center"
+            show-overflow-tooltip
+          />
+          <el-table-column
+            prop="name"
+            label="项目名称"
+            header-align="center"
+            show-overflow-tooltip
+          />
+          <el-table-column
+            prop="no"
+            label="合同编号"
+            width="150"
+            align="center"
+            header-align="center"
+            show-overflow-tooltip
+          />
         </el-table>
         <div class="mt-4 flex justify-end">
           <pagination
@@ -349,6 +351,44 @@
             v-model:limit="projectQuery.page_size"
             @pagination="fetchProjects"
           />
+        </div>
+
+        <div
+          v-show="projectHover.visible"
+          class="project-hover-panel"
+          @mouseenter="projectHover.locked = true"
+          @mouseleave="handleProjectHoverPanelLeave"
+        >
+          <el-skeleton v-if="projectHover.loading" :rows="6" animated />
+          <el-empty v-else-if="projectHover.children.length === 0" description="无数据" />
+          <el-table
+            v-else
+            :data="projectHover.children"
+            border
+            stripe
+            height="360"
+            style="width: 100%"
+            highlight-current-row
+            @row-click="handleHoverBomRowClick"
+          >
+            <el-table-column
+              prop="code"
+              label="代号"
+              width="140"
+              header-align="center"
+              align="center"
+              show-overflow-tooltip
+            />
+            <el-table-column prop="spec" label="名称" width="200" header-align="center" show-overflow-tooltip />
+            <el-table-column
+              prop="remark"
+              label="备注"
+              width="100"
+              header-align="center"
+              align="center"
+              show-overflow-tooltip
+            />
+          </el-table>
         </div>
       </div>
     </el-drawer>
@@ -430,7 +470,17 @@ defineOptions({
 import { ref, reactive, onMounted } from "vue";
 import { useDebounceFn } from "@vueuse/core";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { QuestionFilled, ArrowUp, ArrowDown, Check, CircleClose, FolderChecked, Expand, Fold, Collection } from "@element-plus/icons-vue";
+import {
+  QuestionFilled,
+  ArrowUp,
+  ArrowDown,
+  Check,
+  CircleClose,
+  FolderChecked,
+  Expand,
+  Fold,
+  Collection,
+} from "@element-plus/icons-vue";
 import { formatToDateTime } from "@/utils/dateUtil";
 import { useDictStore } from "@/store";
 import { ResultEnum } from "@/enums/api/result.enum";
@@ -475,6 +525,16 @@ const projectQuery = reactive({
   page_no: 1,
   page_size: 20,
 });
+
+const projectHover = reactive({
+  visible: false,
+  locked: false,
+  project: null as DataProjectTable | null,
+  children: [] as DataBomTable[],
+  loading: false,
+});
+
+const projectChildrenCache = reactive<Record<string, DataBomTable[]>>({});
 
 // 表格列配置
 const tableColumns = ref([
@@ -544,7 +604,8 @@ function handleUpdatedDateRangeChange(range: [Date, Date]) {
 }
 
 // 分页查询参数
-const queryFormData = reactive<ProduceBomRoutePageQuery>({
+type QueryFormData = ProduceBomRoutePageQuery & { parent_code?: string };
+const queryFormData = reactive<QueryFormData>({
   page_no: 1,
   page_size: 10,
 });
@@ -557,8 +618,7 @@ const formData = reactive<ProduceBomRouteForm>({
 
 // 字典仓库与需要加载的字典类型
 const dictStore = useDictStore();
-const dictTypes: any = [
-];
+const dictTypes: any = [];
 
 // 弹窗状态
 const dialogVisible = reactive({
@@ -599,6 +659,7 @@ async function handleRefresh() {
 // 全量缓存
 const allBoms = ref<DataBomTable[]>([]);
 const allBomRoutes = ref<any[]>([]);
+const selectedRootBomCode = ref<string | undefined>(undefined);
 
 function syncCraftRouteToTree(nodes: any[]) {
   if (!nodes) return;
@@ -613,25 +674,58 @@ function syncCraftRouteToTree(nodes: any[]) {
   });
 }
 
+async function ensureAllBomRoutesLoaded() {
+  if (allBomRoutes.value.length > 0) return;
+  const routeRes = await ProduceBomRouteAPI.getAllProduceBomRoute();
+  allBomRoutes.value = routeRes.data.data || [];
+}
+
+function collectSubtreeByRootCode(list: any[], rootCode: string) {
+  const childrenByParentCode: Record<string, any[]> = {};
+  list.forEach((item: any) => {
+    const key = item.parent_code || "";
+    if (!childrenByParentCode[key]) childrenByParentCode[key] = [];
+    childrenByParentCode[key].push(item);
+  });
+
+  const results: any[] = [];
+  const visited = new Set<any>();
+  const roots = list.filter((item: any) => item.code === rootCode);
+  const queue: any[] = [...roots];
+
+  while (queue.length > 0) {
+    const node = queue.shift();
+    const visitKey = node?.id ?? `${node?.code}|${node?.parent_code}|${node?.borrow ?? ""}`;
+    if (visited.has(visitKey)) continue;
+    visited.add(visitKey);
+    results.push(node);
+    const children = childrenByParentCode[node.code] || [];
+    children.forEach((child: any) => queue.push(child));
+  }
+  return results;
+}
+
 async function loadingData() {
+  if (!selectedRootBomCode.value) {
+    pageTableData.value = [];
+    total.value = 0;
+    return;
+  }
+
   ElMessage.info("正在更新数据... ...请稍后");
   loading.value = true;
   try {
-    if (allBoms.value.length === 0) {
-      const [bomRes, routeRes] = await Promise.all([
-        DataBomAPI.listDataBomNoProcure(),
-        ProduceBomRouteAPI.getAllProduceBomRoute(),
-      ]);
-      allBoms.value = bomRes.data.data || [];
-      allBomRoutes.value = routeRes.data.data || [];
-      allBoms.value.forEach((bom: any) => {
-        const routeRecord = allBomRoutes.value.find((r: any) => r.bom_id === bom.id);
-        if (routeRecord) {
-          bom.craft_route = routeRecord.route;
-        }
-      });
-    }
-    const { tree } = convertToTree(allBoms.value);
+    await Promise.all([ensureAllBomsLoadedForProjectHover(), ensureAllBomRoutesLoaded()]);
+
+    allBoms.value.forEach((bom: any) => {
+      const routeRecord = allBomRoutes.value.find((r: any) => r.bom_id === bom.id);
+      if (routeRecord) {
+        bom.craft_route = routeRecord.route;
+      }
+    });
+
+    const subtree = collectSubtreeByRootCode(allBoms.value as any[], selectedRootBomCode.value);
+    const { tree } = convertToTree(subtree, undefined, selectedRootBomCode.value);
     syncCraftRouteToTree(tree);
     pageTableData.value = tree;
     total.value = tree.length;
@@ -710,6 +804,70 @@ async function fetchProjects() {
   }
 }
 
+async function ensureAllBomsLoadedForProjectHover() {
+  if (allBoms.value.length > 0) return;
+  const res = await DataBomAPI.listDataBomNoProcure();
+  allBoms.value = res.data.data || [];
+}
+
+async function loadProjectFirstLevelChildren(projectCode: string) {
+  if (!projectCode) {
+    projectHover.children = [];
+    return;
+  }
+
+  const cached = projectChildrenCache[projectCode];
+  if (cached) {
+    projectHover.children = cached;
+    return;
+  }
+
+  projectHover.loading = true;
+  try {
+    await ensureAllBomsLoadedForProjectHover();
+    const children = (allBoms.value as any[]).filter((bom: any) => bom.parent_code === projectCode);
+    projectChildrenCache[projectCode] = children;
+    projectHover.children = children;
+  } finally {
+    projectHover.loading = false;
+  }
+}
+
+let projectHoverHideTimer: any = null;
+
+function handleProjectRowMouseEnter(row: DataProjectTable) {
+  if (projectHoverHideTimer) {
+    clearTimeout(projectHoverHideTimer);
+    projectHoverHideTimer = null;
+  }
+  projectHover.project = row;
+  projectHover.visible = true;
+  projectHover.locked = false;
+  loadProjectFirstLevelChildren(row.code as any);
+}
+
+function handleProjectRowMouseLeave() {
+  if (projectHoverHideTimer) clearTimeout(projectHoverHideTimer);
+  projectHoverHideTimer = setTimeout(() => {
+    if (!projectHover.locked) projectHover.visible = false;
+  }, 120);
+}
+
+function handleProjectHoverPanelLeave() {
+  projectHover.locked = false;
+  projectHover.visible = false;
+}
+
+function handleHoverBomRowClick(row: DataBomTable) {
+  if (!row?.code) return;
+  selectedRootBomCode.value = row.code as any;
+  queryFormData.parent_code = row.parent_code as any;
+  projectDrawerVisible.value = false;
+  projectHover.visible = false;
+  projectHover.locked = false;
+  loadingData();
+}
+
 // 打开项目选择抽屉
 async function handleOpenProjectDrawer() {
   projectDrawerVisible.value = true;
@@ -750,53 +908,42 @@ async function loadCraftRouteOptions() {
   }
 }
 
-// 递归更新所有后代节点的工艺路线
-function updateChildrenCraftRoute(children: any[], craftRoute: any) {
-  if (!children) return;
-  children.forEach((node: any) => {
-    node.craft_route = craftRoute;
-    if (node.children && node.children.length > 0) {
-      updateChildrenCraftRoute(node.children, craftRoute);
-    }
-  });
-}
-
-// 递归更新树形节点中的工艺路线（只波及子节点，不波及同级节点）
-function updateTreeNodeCraftRoute(nodes: any[], parentCode: string, craftRoute: any) {
-  if (!nodes) return;
-  nodes.forEach((node: any) => {
-    if (node.code === parentCode) {
+function updateTreeCraftRouteById(nodes: any[], bomId: number, craftRoute: any): boolean {
+  for (const node of nodes || []) {
+    if (node.id === bomId) {
       node.craft_route = craftRoute;
-      if (node.children && node.children.length > 0) {
-        updateChildrenCraftRoute(node.children, craftRoute);
-      }
-    } else {
-      if (node.children && node.children.length > 0) {
-        updateTreeNodeCraftRoute(node.children, parentCode, craftRoute);
-      }
+      return true;
     }
-  });
-}
-
-// 检查节点是否有子节点
-function hasChildren(node: any): boolean {
-  return !!(node.children && node.children.length > 0);
+    if (node.children && node.children.length > 0) {
+      const updated = updateTreeCraftRouteById(node.children, bomId, craftRoute);
+      if (updated) return true;
+    }
+  }
+  return false;
 }
 
 // 工艺路线变更处理（仅更新表格数据，不保存数据库）
 function handleCraftRouteChange(row: any) {
+  const craftRoute = row.craft_route;
   const bom = (allBoms.value as any[]).find((item: any) => item.id === row.id);
   if (bom) {
-    bom.craft_route = row.craft_route;
+    bom.craft_route = craftRoute;
   }
-  if (row.code && hasChildren(row)) {
-    (allBoms.value as any[]).forEach((item: any) => {
-      if (item.parent_code === row.code) {
-        item.craft_route = row.craft_route;
-      }
-    });
-    updateTreeNodeCraftRoute(pageTableData.value as any[], row.code, row.craft_route);
+  if (row.id) {
+    updateTreeCraftRouteById(pageTableData.value as any[], row.id, craftRoute);
   }
+
+  if (!row.id || !selectIds.value.includes(row.id)) return;
+
+  (selectionRows.value as any[]).forEach((selectedRow: any) => {
+    if (!selectedRow?.id || selectedRow.id === row.id) return;
+    selectedRow.craft_route = craftRoute;
+    const selectedBom = (allBoms.value as any[]).find((item: any) => item.id === selectedRow.id);
+    if (selectedBom) {
+      selectedBom.craft_route = craftRoute;
+    }
+    updateTreeCraftRouteById(pageTableData.value as any[], selectedRow.id, craftRoute);
+  });
 }
 
 // 批量保存工艺路线到数据库
@@ -806,7 +953,9 @@ async function handleBatchSaveCraftRoute() {
       ElMessage.warning("请先选择记录");
       return;
     }
-    const changedRows = (selectionRows.value as any[]).filter((item: any) => item.craft_route !== undefined && item.craft_route !== null);
+    const changedRows = (selectionRows.value as any[]).filter(
+      (item: any) => item.craft_route !== undefined && item.craft_route !== null
+    );
     if (changedRows.length === 0) {
       ElMessage.warning("请先选择工艺路线");
       return;
@@ -965,8 +1114,31 @@ onMounted(async () => {
     await dictStore.getDict(dictTypes);
   }
   await loadCraftRouteOptions();
-  loadingData();
+  pageTableData.value = [];
 });
 </script>
 
-<style lang="scss" scoped></style>
+<style lang="scss" scoped>
+.project-drawer-content {
+  position: relative;
+}
+
+.project-hover-panel {
+  position: fixed;
+  top: 110px;
+  right: calc(40% + 16px);
+  width: 460px;
+  max-width: calc(60% - 32px);
+  padding: 10px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 10px;
+  background: var(--el-bg-color);
+  box-shadow: var(--el-box-shadow-light);
+  z-index: 9999;
+  pointer-events: auto;
+}
+
+.project-hover-panel :deep(.el-table__inner-wrapper) {
+  border-radius: 8px;
+}
+</style>

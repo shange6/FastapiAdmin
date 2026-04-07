@@ -55,7 +55,7 @@ class ProduceCraftService:
         - list[dict] - 数据列表
         """
         search_dict = search.__dict__ if search else None
-        obj_list = await ProduceCraftCRUD(auth).list_craft_crud(search=search_dict, order_by=order_by)
+        obj_list = await ProduceCraftCRUD(auth).list_craft_crud(search=search_dict, order_by=[{'id': 'asc'}])
         return [ProduceCraftOutSchema.model_validate(obj).model_dump() for obj in obj_list]
 
     @classmethod
@@ -74,7 +74,7 @@ class ProduceCraftService:
         - dict - 分页查询结果
         """
         search_dict = search.__dict__ if search else {}
-        order_by_list = order_by or [{'id': 'asc'}]
+        order_by_list = [{'id': 'asc'}]
         offset = (page_no - 1) * page_size
         result = await ProduceCraftCRUD(auth).page_craft_crud(
             offset=offset,
@@ -154,7 +154,7 @@ class ProduceCraftService:
         返回:
         - None
         """
-        await ProduceCraftCRUD(auth).set_available_craft_crud(ids=data.ids, status=data.status)
+        raise CustomException(msg="该表已移除状态字段，不支持批量修改状态")
     
     @classmethod
     async def batch_export_craft_service(cls, obj_list: list[dict]) -> bytes:
@@ -171,19 +171,7 @@ class ProduceCraftService:
             'id': '工艺ID',
             'name': '工艺名称',
         }
-        # 复制数据并转换状态
-        data = obj_list.copy()
-        for item in data:
-            # 处理状态
-            item["status"] = "启用" if item.get("status") == "0" else "停用"
-            # 处理创建者
-            creator_info = item.get("created_id")
-            if isinstance(creator_info, dict):
-                item["created_id"] = creator_info.get("name", "未知")
-            else:
-                item["created_id"] = "未知"
-
-        return ExcelUtil.export_list2excel(list_data=data, mapping_dict=mapping_dict)
+        return ExcelUtil.export_list2excel(list_data=obj_list, mapping_dict=mapping_dict)
 
     @classmethod
     async def batch_import_craft_service(cls, auth: AuthSchema, file: UploadFile, update_support: bool = False) -> str:
@@ -199,7 +187,6 @@ class ProduceCraftService:
         - str - 导入结果信息
         """
         header_dict = {
-            '工艺ID': 'id',
             '工艺名称': 'name',
         }
 
@@ -230,7 +217,6 @@ class ProduceCraftService:
                 count += 1
                 try:
                     data = {
-                        "id": row['id'],
                         "name": row['name'],
                     }
                     # 使用CreateSchema做校验后入库

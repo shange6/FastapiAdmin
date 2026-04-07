@@ -250,7 +250,7 @@
           header-align="center"
           align="center"
         />
-         <el-table-column
+        <el-table-column
           label="状态"
           prop="status"
           min-width="55"

@@ -125,20 +125,10 @@
               >
                 重置
               </el-button>
-              <el-button
-                type="info"
-                plain
-                icon="Expand"
-                @click="toggleAllExpansion(true)"
-              >
+              <el-button type="info" plain icon="Expand" @click="toggleAllExpansion(true)">
                 全部展开
               </el-button>
-              <el-button
-                type="info"
-                plain
-                icon="Fold"
-                @click="toggleAllExpansion(false)"
-              >
+              <el-button type="info" plain icon="Fold" @click="toggleAllExpansion(false)">
                 全部收起
               </el-button>
               <!-- 展开/收起 -->
@@ -299,30 +289,34 @@
       </div> -->
 
       <!-- 导入结果展示抽屉 -->
-      <el-drawer
-        v-model="logDrawerVisible"
-        title="文件解析日志"
-        direction="rtl"
-        size="50%"
-      >
-        <div  style="margin-bottom: 20px;">
+      <el-drawer v-model="logDrawerVisible" title="文件解析日志" direction="rtl" size="50%">
+        <div style="margin-bottom: 20px">
           <el-descriptions title="项目信息" :column="4" border>
-            <el-descriptions-item label="合同号" :span="1">{{ tableSourceData.project_no }}</el-descriptions-item>
-            <el-descriptions-item label="项目代号" :span="3">{{ tableSourceData.project_code }}</el-descriptions-item>
-            <el-descriptions-item label="文件个数" :span="1">{{ tableSourceData.file_count }}</el-descriptions-item>
-            <el-descriptions-item label="项目名称" :span="3">{{ tableSourceData.project_name }}</el-descriptions-item>
+            <el-descriptions-item label="合同号" :span="1">
+              {{ tableSourceData.project_no }}
+            </el-descriptions-item>
+            <el-descriptions-item label="项目代号" :span="3">
+              {{ tableSourceData.project_code }}
+            </el-descriptions-item>
+            <el-descriptions-item label="文件个数" :span="1">
+              {{ tableSourceData.file_count }}
+            </el-descriptions-item>
+            <el-descriptions-item label="项目名称" :span="3">
+              {{ tableSourceData.project_name }}
+            </el-descriptions-item>
           </el-descriptions>
         </div>
-        
-        <div class="log-title" style="font-weight: bold; margin-bottom: 10px; font-size: 16px;">解析详情：</div>
+
+        <div class="log-title" style="font-weight: bold; margin-bottom: 10px; font-size: 16px">
+          解析详情：
+        </div>
         <div
           v-for="(text, index) in tableSourceData?.info"
           :key="index"
           class="text-line"
-          style="font-size: 15px; margin-bottom: 8px; padding: 4px; border-bottom: 1px solid #eee;"
+          style="font-size: 15px; margin-bottom: 8px; padding: 4px; border-bottom: 1px solid #eee"
           v-html="text"
-        >
-        </div>
+        ></div>
       </el-drawer>
 
       <!-- 表格区域：系统配置列表 -->
@@ -590,16 +584,16 @@
             {{ detailFormData.remark }}
           </el-descriptions-item>
           <el-descriptions-item label="是否借用" :span="2">
-            {{ detailFormData.borrow ? '是' : '否' }}
+            {{ detailFormData.borrow ? "是" : "否" }}
           </el-descriptions-item>
           <el-descriptions-item label="是否外购" :span="2">
-            {{ detailFormData.procure ? '是' : '否' }}
+            {{ detailFormData.procure ? "是" : "否" }}
           </el-descriptions-item>
           <el-descriptions-item label="是否无图" :span="2">
-            {{ detailFormData.noimage ? '是' : '否' }}
+            {{ detailFormData.noimage ? "是" : "否" }}
           </el-descriptions-item>
           <el-descriptions-item label="是否附图" :span="2">
-            {{ detailFormData.figure ? '是' : '否' }}
+            {{ detailFormData.figure ? "是" : "否" }}
           </el-descriptions-item>
           <el-descriptions-item label="创建人" :span="2">
             {{ detailFormData.created_by?.name }}
@@ -753,7 +747,15 @@ defineOptions({
 import { ref, reactive, onMounted, watch } from "vue";
 import { useDebounceFn } from "@vueuse/core";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { QuestionFilled, ArrowUp, ArrowDown, Check, CircleClose, Expand, Fold } from "@element-plus/icons-vue";
+import {
+  QuestionFilled,
+  ArrowUp,
+  ArrowDown,
+  Check,
+  CircleClose,
+  Expand,
+  Fold,
+} from "@element-plus/icons-vue";
 import { formatToDateTime } from "@/utils/dateUtil";
 import { useDictStore } from "@/store";
 import { ResultEnum } from "@/enums/api/result.enum";
@@ -993,14 +995,18 @@ async function handleUploadConfirm() {
 
     const res = await FileAPI.uploadFile(formData);
     // console.log(res)
-    
+
     if (res.data.success) {
       const resultData = res.data.data;
       // 把boms传递给boms表格显示
       const rawBoms = resultData.boms || [];
       allParsedBoms.value = rawBoms; // 保存扁平原始数据，用于本地搜索
-      
-      const { tree, errors } = convertToTree(rawBoms, resultData.project_code, resultData.first_code);
+
+      const { tree, errors } = convertToTree(
+        rawBoms,
+        resultData.project_code,
+        resultData.first_code
+      );
       pageTableData.value = tree;
 
       // 把项目信息和log传给文件解析日志显示
@@ -1009,10 +1015,10 @@ async function handleUploadConfirm() {
       tableSourceData.value.project_no = resultData.project_no || "";
       tableSourceData.value.first_code = resultData.first_code || "";
       tableSourceData.value.file_count = resultData.file_count || 0;
-      
+
       let logs: string[] = [];
       if (resultData.log && Array.isArray(resultData.log)) {
-        logs = resultData.log.map((item: any) => {          
+        logs = resultData.log.map((item: any) => {
           return `[${item.status}] <span style="color: red">${item.msg}</span> 
             ${` (${item.bom?.code}, ${item.bom?.spec}, ${item.bom?.remark})`}`;
         });
@@ -1020,11 +1026,11 @@ async function handleUploadConfirm() {
 
       // 合并后端日志和前端结构校验错误
       tableSourceData.value.info = [...logs, ...errors];
-      
+
       if (tableSourceData.value.info.length === 0) {
         tableSourceData.value.info = ["解析完成，无日志记录"];
       }
-      logDrawerVisible.value = true;  // 显示文件解析日志窗口
+      logDrawerVisible.value = true; // 显示文件解析日志窗口
     }
 
     uploadDialogVisible.value = false;
@@ -1065,14 +1071,14 @@ async function handleSaveData() {
 
     // 1. 更新日志列表
     const saveLogHeader = `[保存成功] <span style="color: green; font-weight: bold;">数据已成功入库 (新增项目: ${resultData.project_added}, 新增BOM: ${resultData.bom_added})</span>`;
-    
+
     // 强制触发更新，确保响应式
     const newInfo = [saveLogHeader, ...tableSourceData.value.info];
     tableSourceData.value = {
       ...tableSourceData.value,
-      info: newInfo
+      info: newInfo,
     };
-    
+
     // 2. 打开抽屉并提示
     logDrawerVisible.value = true;
     ElMessage.success(`保存成功！新增BOM: ${resultData.bom_added} 条`);
@@ -1145,7 +1151,13 @@ async function loadingData() {
     const remarkSearch = queryFormData.remark?.toLowerCase() || "";
 
     // 如果没有任何搜索条件且没有数据，直接返回
-    if (!codeSearch && !specSearch && !materialSearch && !remarkSearch && allParsedBoms.value.length === 0) {
+    if (
+      !codeSearch &&
+      !specSearch &&
+      !materialSearch &&
+      !remarkSearch &&
+      allParsedBoms.value.length === 0
+    ) {
       pageTableData.value = [];
       return;
     }
@@ -1154,7 +1166,8 @@ async function loadingData() {
     const filtered = allParsedBoms.value.filter((item) => {
       const matchCode = !codeSearch || item.code?.toLowerCase().includes(codeSearch);
       const matchSpec = !specSearch || item.spec?.toLowerCase().includes(specSearch);
-      const matchMaterial = !materialSearch || item.material?.toLowerCase().includes(materialSearch);
+      const matchMaterial =
+        !materialSearch || item.material?.toLowerCase().includes(materialSearch);
       const matchRemark = !remarkSearch || item.remark?.toLowerCase().includes(remarkSearch);
       return matchCode && matchSpec && matchMaterial && matchRemark;
     });
@@ -1176,12 +1189,16 @@ async function loadingData() {
     };
 
     filtered.forEach(addParents);
-        
-        // 重新转换为树形结构展示
-        pageTableData.value = convertToTree(Array.from(finalBoms), tableSourceData.value.project_code, tableSourceData.value.first_code).tree;
-      } finally {
-        loading.value = false;
-      }
+
+    // 重新转换为树形结构展示
+    pageTableData.value = convertToTree(
+      Array.from(finalBoms),
+      tableSourceData.value.project_code,
+      tableSourceData.value.first_code
+    ).tree;
+  } finally {
+    loading.value = false;
+  }
 }
 
 // 防抖查询

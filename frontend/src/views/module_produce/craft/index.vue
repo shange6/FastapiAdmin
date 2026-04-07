@@ -23,7 +23,12 @@
             @submit.prevent="handleQuery"
           >
             <el-form-item label="工艺名称" prop="name">
-              <el-input v-model="queryFormData.name" placeholder="请输入工艺名称" clearable style="width: 120px" />
+              <el-input
+                v-model="queryFormData.name"
+                placeholder="请输入工艺名称"
+                clearable
+                style="width: 120px"
+              />
             </el-form-item>
             <!-- 查询、重置、展开/收起按钮 -->
             <el-form-item>
@@ -212,8 +217,8 @@
           align="center"
           header-align="center"
           show-overflow-tooltip
-        /> 
-        <el-table-column          
+        />
+        <el-table-column
           label="状态"
           prop="status"
           min-width="55"
@@ -222,51 +227,11 @@
           show-overflow-tooltip
         >
           <template #default="scope">
-            <el-tag :type="scope.row.status == '0' ? 'success' : 'info'">
-              {{ scope.row.status == "0" ? "启用" : "停用" }}
+            <el-tag :type="'success'">
+              {{ "启用" }}
             </el-tag>
           </template>
         </el-table-column>
-        <!-- <el-table-column
-          v-if="tableColumns.find((col) => col.prop === 'operation')?.show"
-          fixed="right"
-          label="操作"
-          align="center"
-          min-width="180"
-        >
-          <template #default="scope">
-            <el-button
-              v-hasPerm="['module_produce:craft:detail']"
-              type="info"
-              size="small"
-              link
-              icon="document"
-              @click="handleOpenDialog('detail', scope.row.id)"
-            >
-              详情
-            </el-button>
-            <el-button
-              v-hasPerm="['module_produce:craft:update']"
-              type="primary"
-              size="small"
-              link
-              icon="edit"
-              @click="handleOpenDialog('update', scope.row.id)"
-            >
-              编辑
-            </el-button>
-            <el-button
-              v-hasPerm="['module_produce:craft:delete']"
-              type="danger"
-              size="small"
-              link
-              icon="delete"
-              @click="handleDelete([scope.row.id])"
-            >
-              删除
-            </el-button>
-          </template>
-        </el-table-column> -->
       </el-table>
 
       <!-- 分页区域 -->
@@ -295,26 +260,6 @@
           <el-descriptions-item label="工艺名称" :span="2">
             {{ detailFormData.name }}
           </el-descriptions-item>
-          <el-descriptions-item label="状态" :span="2">
-            <el-tag :type="detailFormData.status == '0' ? 'success' : 'danger'">
-              {{ detailFormData.status == "0" ? "启用" : "停用" }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="描述" :span="2">
-            {{ detailFormData.description }}
-          </el-descriptions-item>
-          <el-descriptions-item label="创建人" :span="2">
-            {{ detailFormData.created_by?.name }}
-          </el-descriptions-item>
-          <el-descriptions-item label="创建时间" :span="2">
-            {{ detailFormData.created_time }}
-          </el-descriptions-item>
-          <el-descriptions-item label="更新人" :span="2">
-            {{ detailFormData.updated_by?.name }}
-          </el-descriptions-item>
-          <el-descriptions-item label="更新时间" :span="2">
-            {{ detailFormData.updated_time }}
-          </el-descriptions-item>
           <!-- <el-descriptions-item label="UUID" :span="2">
             {{ detailFormData.uuid }}
           </el-descriptions-item> -->
@@ -333,12 +278,6 @@
         >
           <el-form-item label="工艺名称" prop="name" :required="false">
             <el-input v-model="formData.name" placeholder="请输入工艺名称" />
-          </el-form-item>
-          <el-form-item label="状态" prop="status" :required="true">
-            <el-radio-group v-model="formData.status">
-              <el-radio value="0">启用</el-radio>
-              <el-radio value="1">停用</el-radio>
-            </el-radio-group>
           </el-form-item>
         </el-form>
       </template>
@@ -383,10 +322,8 @@ defineOptions({
 import { ref, reactive, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { QuestionFilled, ArrowUp, ArrowDown, Check, CircleClose } from "@element-plus/icons-vue";
-import { formatToDateTime } from "@/utils/dateUtil";
 import { useDictStore } from "@/store";
 import { ResultEnum } from "@/enums/api/result.enum";
-import DatePicker from "@/components/DatePicker/index.vue";
 import type { IContentConfig } from "@/components/CURD/types";
 import ImportModal from "@/components/CURD/ImportModal.vue";
 import ExportModal from "@/components/CURD/ExportModal.vue";
@@ -418,9 +355,7 @@ const tableColumns = ref([
 ]);
 
 // 导出列（不含选择/序号/操作）
-const exportColumns = [
-  { prop: "name", label: "工艺名称" },
-];
+const exportColumns = [{ prop: "name", label: "工艺名称" }];
 
 // 导入/导出配置
 const curdContentConfig = {
@@ -429,7 +364,6 @@ const curdContentConfig = {
   importTemplate: () => ProduceCraftAPI.downloadTemplateProduceCraft(),
   exportsAction: async (params: any) => {
     const query: any = { ...params };
-    query.status = "0";
     query.page_no = 1;
     query.page_size = 9999;
     const all: any[] = [];
@@ -447,30 +381,6 @@ const curdContentConfig = {
 
 // 详情表单
 const detailFormData = ref<ProduceCraftTable>({});
-// 日期范围临时变量
-const createdDateRange = ref<[Date, Date] | []>([]);
-// 更新时间范围临时变量
-const updatedDateRange = ref<[Date, Date] | []>([]);
-
-// 处理创建时间范围变化
-function handleCreatedDateRangeChange(range: [Date, Date]) {
-  createdDateRange.value = range;
-  if (range && range.length === 2) {
-    queryFormData.created_time = [formatToDateTime(range[0]), formatToDateTime(range[1])];
-  } else {
-    queryFormData.created_time = undefined;
-  }
-}
-
-// 处理更新时间范围变化
-function handleUpdatedDateRangeChange(range: [Date, Date]) {
-  updatedDateRange.value = range;
-  if (range && range.length === 2) {
-    queryFormData.updated_time = [formatToDateTime(range[0]), formatToDateTime(range[1])];
-  } else {
-    queryFormData.updated_time = undefined;
-  }
-}
 
 // 分页查询参数
 const queryFormData = reactive<ProduceCraftPageQuery>({
@@ -487,8 +397,7 @@ const formData = reactive<ProduceCraftForm>({
 
 // 字典仓库与需要加载的字典类型
 const dictStore = useDictStore();
-const dictTypes: any = [
-];
+const dictTypes: any = [];
 
 // 弹窗状态
 const dialogVisible = reactive({
@@ -554,11 +463,6 @@ function handleConfirm() {
 async function handleResetQuery() {
   queryFormRef.value.resetFields();
   queryFormData.page_no = 1;
-  // 重置日期范围选择器
-  createdDateRange.value = [];
-  updatedDateRange.value = [];
-  queryFormData.created_time = undefined;
-  queryFormData.updated_time = undefined;
   loadingData();
 }
 
@@ -669,31 +573,6 @@ async function handleDelete(ids: number[]) {
     .catch(() => {
       ElMessageBox.close();
     });
-}
-
-// 批量启用/停用
-async function handleMoreClick(status: string) {
-  if (selectIds.value.length) {
-    ElMessageBox.confirm(`确认${status === "0" ? "启用" : "停用"}该项数据?`, "警告", {
-      confirmButtonText: "确定",
-      cancelButtonText: "取消",
-      type: "warning",
-    })
-      .then(async () => {
-        try {
-          loading.value = true;
-          await ProduceCraftAPI.batchProduceCraft({ ids: selectIds.value, status });
-          handleResetQuery();
-        } catch (error: any) {
-          console.error(error);
-        } finally {
-          loading.value = false;
-        }
-      })
-      .catch(() => {
-        ElMessageBox.close();
-      });
-  }
 }
 
 // 处理上传

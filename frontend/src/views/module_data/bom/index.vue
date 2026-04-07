@@ -145,27 +145,13 @@
                 </el-link>
               </template>
               <div>&nbsp;&nbsp;</div>
-              <el-button
-                type="info"
-                plain
-                icon="Expand"
-                @click="toggleAllExpansion(true)"
-              >
+              <el-button type="info" plain icon="Expand" @click="toggleAllExpansion(true)">
                 全部展开
               </el-button>
-              <el-button
-                type="info"
-                plain
-                icon="Fold"
-                @click="toggleAllExpansion(false)"
-              >
+              <el-button type="info" plain icon="Fold" @click="toggleAllExpansion(false)">
                 全部收起
               </el-button>
-              <el-button
-                type="primary"
-                icon="Collection"
-                @click="handleOpenProjectDrawer"
-              >
+              <el-button type="primary" icon="Collection" @click="handleOpenProjectDrawer">
                 选择项目
               </el-button>
             </el-form-item>
@@ -626,12 +612,7 @@
     </el-dialog>
 
     <!-- 项目选择抽屉 -->
-    <el-drawer
-      v-model="projectDrawerVisible"
-      title="选择项目"
-      direction="rtl"
-      size="40%"
-    >
+    <el-drawer v-model="projectDrawerVisible" title="选择项目" direction="rtl" size="40%">
       <div class="project-drawer-content">
         <el-input
           v-model="projectSearch"
@@ -651,9 +632,28 @@
           highlight-current-row
           @row-click="handleSelectProject"
         >
-          <el-table-column prop="code" label="项目代号" width="150" align="center" header-align="center" show-overflow-tooltip />
-          <el-table-column prop="name" label="项目名称" header-align="center" show-overflow-tooltip />
-          <el-table-column prop="no" label="合同编号" width="150" align="center" header-align="center" show-overflow-tooltip />
+          <el-table-column
+            prop="code"
+            label="项目代号"
+            width="150"
+            align="center"
+            header-align="center"
+            show-overflow-tooltip
+          />
+          <el-table-column
+            prop="name"
+            label="项目名称"
+            header-align="center"
+            show-overflow-tooltip
+          />
+          <el-table-column
+            prop="no"
+            label="合同编号"
+            width="150"
+            align="center"
+            header-align="center"
+            show-overflow-tooltip
+          />
         </el-table>
         <div class="mt-4 flex justify-end">
           <pagination
@@ -694,7 +694,15 @@ defineOptions({
 import { ref, reactive, onMounted, watch, computed } from "vue";
 import { useDebounceFn } from "@vueuse/core";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { QuestionFilled, ArrowUp, ArrowDown, Check, CircleClose, Expand, Fold } from "@element-plus/icons-vue";
+import {
+  QuestionFilled,
+  ArrowUp,
+  ArrowDown,
+  Check,
+  CircleClose,
+  Expand,
+  Fold,
+} from "@element-plus/icons-vue";
 import { formatToDateTime } from "@/utils/dateUtil";
 import { useDictStore } from "@/store";
 import { ResultEnum } from "@/enums/api/result.enum";
@@ -978,10 +986,12 @@ async function loadingData() {
 
     // 3. 本地过滤逻辑
     const filtered = allBoms.value.filter((item) => {
-      const matchParent = !parentCodeSearch || item.parent_code?.toLowerCase().includes(parentCodeSearch);
+      const matchParent =
+        !parentCodeSearch || item.parent_code?.toLowerCase().includes(parentCodeSearch);
       const matchCode = !codeSearch || item.code?.toLowerCase().includes(codeSearch);
       const matchSpec = !specSearch || item.spec?.toLowerCase().includes(specSearch);
-      const matchMaterial = !materialSearch || item.material?.toLowerCase().includes(materialSearch);
+      const matchMaterial =
+        !materialSearch || item.material?.toLowerCase().includes(materialSearch);
       const matchRemark = !remarkSearch || item.remark?.toLowerCase().includes(remarkSearch);
       return matchParent && matchCode && matchSpec && matchMaterial && matchRemark;
     });

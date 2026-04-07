@@ -751,7 +751,7 @@ const handleClose = () => {
 };
 
 // 历史记录管理
-const history = ref<{ nodes: Node[]; edges: Edge[] }[]>([]);
+const history = ref<{ nodes: any[]; edges: any[] }[]>([]);
 const historyIndex = ref(-1);
 
 function saveToHistory(nodesData: Node[], edgesData: Edge[]) {

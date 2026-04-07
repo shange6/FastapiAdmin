@@ -93,11 +93,11 @@ class ProduceCraftRouteService:
         - list[dict] - 工艺路线视图列表
         """
         async with async_db_session() as session:
-            sql = text("SELECT `route`, `name` FROM produce_route_name")
+            sql = text("SELECT `route`, `name` FROM produce_route_name ORDER BY `route` ASC")
 
             if search and search.route_name:
                 like_value = f"%{search.route_name}%"
-                sql = text(f"SELECT `route`, `name` FROM produce_route_name WHERE `name` LIKE :name")
+                sql = text("SELECT `route`, `name` FROM produce_route_name WHERE `name` LIKE :name ORDER BY `route` ASC")
                 result = await session.execute(sql, {"name": like_value})
             else:
                 result = await session.execute(sql)

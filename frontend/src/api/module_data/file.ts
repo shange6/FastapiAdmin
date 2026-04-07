@@ -3,7 +3,7 @@ import request from "@/utils/request";
 const API_PATH = "/data/file";
 
 export const FileAPI = {
-   /**
+  /**
    * 上传文件
    * @param formData 文件数据
    */
@@ -91,4 +91,3 @@ export interface LogEntry {
   /** 关联的 BOM 数据 */
   bom?: Partial<BomItem>;
 }
-

@@ -55,15 +55,6 @@ const ProduceCraftAPI = {
     });
   },
 
-  // 批量启用/停用
-  batchProduceCraft(body: BatchType) {
-    return request<ApiResponse>({
-      url: `${API_PATH}/available/setting`,
-      method: "patch",
-      data: body,
-    });
-  },
-
   // 导出
   exportProduceCraft(query: ProduceCraftPageQuery) {
     return request<Blob>({
@@ -103,18 +94,16 @@ export default ProduceCraftAPI;
 // 列表查询参数
 export interface ProduceCraftPageQuery extends PageQuery {
   name?: string;
-  created_time?: string[];
-  updated_time?: string[];
 }
 
 // 列表展示项
-export interface ProduceCraftTable extends BaseType {
+export interface ProduceCraftTable {
+  id?: number;
   name?: string;
-  created_by?: CommonType;
-  updated_by?: CommonType;
 }
 
 // 新增/修改/详情表单参数
-export interface ProduceCraftForm extends BaseFormType {
+export interface ProduceCraftForm {
+  id?: number;
   name?: string;
 }

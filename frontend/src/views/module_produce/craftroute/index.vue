@@ -23,7 +23,12 @@
             @submit.prevent="handleQuery"
           >
             <el-form-item label="工艺路线名称" prop="route_name">
-              <el-input v-model="queryFormData.route_name" placeholder="工艺路线名称" clearable style="width: 120px"/>
+              <el-input
+                v-model="queryFormData.route_name"
+                placeholder="工艺路线名称"
+                clearable
+                style="width: 120px"
+              />
             </el-form-item>
             <!-- <el-form-item label="排序" prop="sort">
               <el-input v-model="queryFormData.sort" placeholder="输入排序" clearable style="width: 100px"/>
@@ -87,7 +92,7 @@
               </el-button>
               <!-- 展开/收起 -->
               <template v-if="isExpandable">
-                <el-link 
+                <el-link
                   class="ml-3"
                   type="primary"
                   underline="never"
@@ -273,7 +278,7 @@
           header-align="center"
           show-overflow-tooltip
         />
-         <el-table-column
+        <el-table-column
           label="状态"
           prop="status"
           min-width="55"
@@ -401,8 +406,8 @@
       :title="dialogVisible.title"
       @close="handleCloseDialog"
     > -->
-      <!-- 详情 -->
-      <!-- <template v-if="dialogVisible.type === 'detail'">
+    <!-- 详情 -->
+    <!-- <template v-if="dialogVisible.type === 'detail'">
         <el-descriptions :column="2" border>
           <el-descriptions-item label="工艺路线代号" :span="1">
             {{ detailFormData.route_code }}
@@ -413,8 +418,8 @@
         </el-descriptions>
       </template> -->
 
-      <!-- 新增、编辑表单 -->
-      <!-- <template v-else>
+    <!-- 新增、编辑表单 -->
+    <!-- <template v-else>
         <el-form
           ref="dataFormRef"
           :model="formData"
@@ -451,7 +456,7 @@
         </el-form>
       </template> -->
 
-      <!-- <template #footer>
+    <!-- <template #footer>
         <div class="dialog-footer">
           <el-button @click="handleCloseDialog">取消</el-button>
           <el-button v-if="dialogVisible.type !== 'detail'" type="primary" @click="handleSubmit">
@@ -600,8 +605,7 @@ const formData = reactive<ProduceCraftRouteForm>({
 
 // 字典仓库与需要加载的字典类型
 const dictStore = useDictStore();
-const dictTypes: any = [
-];
+const dictTypes: any = [];
 
 // 弹窗状态
 const dialogVisible = reactive({
@@ -654,7 +658,11 @@ async function loadingData() {
     const response = await ProduceCraftRouteAPI.getCraftRouteViewList({
       route_name: queryFormData.route_name || undefined,
     });
-    const allData = response.data.data || [];
+    const allData = (response.data.data || []).slice().sort((a: any, b: any) => {
+      const av = Number(a?.route_code ?? 0);
+      const bv = Number(b?.route_code ?? 0);
+      return av - bv;
+    });
     const start = (queryFormData.page_no - 1) * queryFormData.page_size;
     const end = start + queryFormData.page_size;
     pageTableData.value = allData.slice(start, end);
