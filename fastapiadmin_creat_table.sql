@@ -55,35 +55,6 @@ CREATE TABLE `data_bom` (
   ON UPDATE CASCADE    -- 更新data_project.code时，data_bom.parent_code同步更新
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='BOM清单';
 
-
-CREATE TABLE `produce_order` (
-  `code` varchar(64) NOT NULL COMMENT '项目编码',
-  `name` varchar(255) NOT NULL COMMENT '项目名称',
-  `no` varchar(64) NOT NULL COMMENT '项目编号',
-
-  `id` int NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `uuid` varchar(64) NOT NULL DEFAULT (UUID()) COMMENT 'UUID全局唯一标识',
-  `status` varchar(10) NOT NULL DEFAULT '0' COMMENT '是否启用(0:启用 1:禁用)',
-  `description` text NULL COMMENT '备注/描述',
-  `created_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `updated_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `created_id` int NULL COMMENT '创建人ID',
-  `updated_id` int NULL COMMENT '更新人ID',
-
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_data_project_uuid` (`uuid`),
-  UNIQUE KEY `uk_data_project_code` (`code`),
-  UNIQUE KEY `uk_data_project_no` (`no`),
-  KEY `ix_data_project_status` (`status`),
-  KEY `ix_data_project_created_time` (`created_time`),
-  KEY `ix_data_project_updated_time` (`updated_time`),
-  KEY `ix_data_project_created_id` (`created_id`),
-  KEY `ix_data_project_updated_id` (`updated_id`),
-  CONSTRAINT `fk_data_project_created_id` FOREIGN KEY (`created_id`) REFERENCES `sys_user` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `fk_data_project_updated_id` FOREIGN KEY (`updated_id`) REFERENCES `sys_user` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='项目信息表';
-
-
 -- =============================================
 -- 二、工艺表：支持 主工艺 + 子工艺 树形结构
 -- =============================================
@@ -290,8 +261,8 @@ DROP TABLE IF EXISTS `produce_bom_manhour`;
 CREATE TABLE `produce_bom_manhour` (
   `id` int NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `bom_id` int NOT NULL COMMENT 'BOMID',
-  `craft_id` int NOT NULL COMMENT '工艺ID',
-  `manhour` int NOT NULL DEFAULT 0 COMMENT '工时',
+  `craft_id` int NOT NULL COMMENT '子工艺ID',
+  `man_hour` int NOT NULL DEFAULT 0 COMMENT '工时',
 
   `uuid` varchar(64) NOT NULL DEFAULT (UUID()) COMMENT 'UUID全局唯一标识',
   `status` varchar(10) NOT NULL DEFAULT '0' COMMENT '是否启用(0:启用 1:禁用)',
@@ -305,6 +276,55 @@ CREATE TABLE `produce_bom_manhour` (
   CONSTRAINT `fk_manhour_bom` FOREIGN KEY (`bom_id`) REFERENCES `data_bom` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_manhour_craft` FOREIGN KEY (`craft_id`) REFERENCES `produce_craft` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='BOM工时关联';
+
+-- =============================================
+-- 七、生产工单表（精确到子工艺）
+-- =============================================
+CREATE TABLE `produce_order` (
+  `bom_id` int NOT NULL COMMENT 'BOM ID',
+  `craft_id` int NOT NULL COMMENT '子工艺ID',
+  `man_hour` int NOT NULL DEFAULT 0 COMMENT '工时',  
+  `plan_count` int NOT NULL DEFAULT 1 COMMENT '计划数量',
+  `real_count` int DEFAULT 0 COMMENT '实际数量',
+  `plan_date` date NOT NULL COMMENT '计划日期',
+  `real_date` date DEFAULT NULL COMMENT '实际日期',
+
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '工单ID',  
+  `uuid` varchar(64) NOT NULL DEFAULT (UUID()) COMMENT 'UUID',
+  `status` varchar(10) NOT NULL DEFAULT '0' COMMENT '状态 0=待生产 1=生产中 2=已完成 3=已取消 4=已暂停',
+  `description` text NULL COMMENT '备注/描述',
+  `created_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `created_id` int NULL COMMENT '创建人ID',
+  `updated_id` int NULL COMMENT '更新人ID',
+
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_order_uuid` (`uuid`),
+  UNIQUE KEY `uk_order_bom_craft` (`bom_id`,`craft_id`),
+  KEY `idx_bom` (`bom_id`),
+  KEY `idx_craft` (`craft_id`),
+  KEY `ix_order_status` (`status`),
+  KEY `ix_order_created_time` (`created_time`),
+  KEY `ix_order_updated_time` (`updated_time`),
+  KEY `ix_order_created_id` (`created_id`),
+  KEY `ix_order_updated_id` (`updated_id`),
+  
+  CONSTRAINT `fk_order_bom` FOREIGN KEY (`bom_id`) REFERENCES `data_bom` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_order_craft` FOREIGN KEY (`craft_id`) REFERENCES `produce_craft` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_order_created_id` FOREIGN KEY (`created_id`) REFERENCES `sys_user` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_order_updated_id` FOREIGN KEY (`updated_id`) REFERENCES `sys_user` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='工单表';
+
+
+
+
+
+
+
+
+
+
+
 
 
 
