@@ -113,7 +113,7 @@ async def create_bommanhour_controller(
 @ProduceBomManhourRouter.post(
     "/upsert/batch",
     summary="批量保存BOM工时",
-    description="批量插入或更新BOM工时，忽略工时为0的数据"
+    description="批量插入/更新/删除BOM工时：manhour>0 插入或更新，manhour<=0 删除（如存在）"
 )
 async def upsert_batch_bommanhour_controller(
     data: ProduceBomManhourUpsertBatchSchema,
@@ -133,6 +133,18 @@ async def summary_batch_bommanhour_controller(
     auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:query"]))
 ) -> JSONResponse:
     result_dict = await ProduceBomManhourService.summary_batch_bommanhour_service(auth=auth, bom_ids=data.bom_ids)
+    return SuccessResponse(data=result_dict, msg="查询成功")
+
+@ProduceBomManhourRouter.post(
+    "/summary/craft/batch",
+    summary="批量查询BOM工时（按工艺汇总）",
+    description="按BOM ID批量查询工时，并按工艺名称汇总"
+)
+async def summary_craft_batch_bommanhour_controller(
+    data: ProduceBomManhourSummaryBatchSchema,
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:query"]))
+) -> JSONResponse:
+    result_dict = await ProduceBomManhourService.summary_craft_batch_bommanhour_service(auth=auth, bom_ids=data.bom_ids)
     return SuccessResponse(data=result_dict, msg="查询成功")
 
 @ProduceBomManhourRouter.put(

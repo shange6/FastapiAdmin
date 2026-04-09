@@ -6,8 +6,8 @@
       <template #header>
         <div class="card-header">
           <span>
-            BOM工时关联列表
-            <el-tooltip content="BOM工时关联列表">
+            BOM工单表
+            <el-tooltip content="BOM工单列表">
               <QuestionFilled class="w-4 h-4 mx-1" />
             </el-tooltip>
           </span>
@@ -186,7 +186,7 @@
         <el-table-column
           v-if="tableColumns.find((col) => col.prop === 'selection')?.show"
           type="selection"
-          min-width="35"
+          min-width="40"
           align="center"
         />
         <!-- <el-table-column
@@ -200,10 +200,18 @@
           </template>
         </el-table-column>         -->
         <el-table-column
+          v-if="tableColumns.find((col) => col.prop === 'order_no')?.show"
+          label="单号"
+          prop="order_no"
+          min-width="60"
+          header-align="center"
+          show-overflow-tooltip
+        />
+        <el-table-column
           v-if="tableColumns.find((col) => col.prop === 'code')?.show"
           label="代号"
           prop="code"
-          min-width="280"
+          min-width="180"
           header-align="center"
           show-overflow-tooltip
         />
@@ -260,16 +268,16 @@
         />
         <el-table-column
           v-if="tableColumns.find((col) => col.prop === 'craft_route')?.show"
-          label="路线"
+          label="工艺路线"
           prop="route_code"
-          min-width="60"
+          min-width="330"
           align="center"
           header-align="center"
           fixed="right"
         >
           <template #default="scope">
             <!-- 直接显示：route_code + route_name，和原来下拉框展示一样 -->
-            <span>{{ scope.row.route_code }}</span>
+            <span>{{ scope.row.route_code }} {{ scope.row.route_name }}</span>
           </template>
         </el-table-column>
         <el-table-column
@@ -335,9 +343,7 @@
           height="calc(100vh - 220px)"
           style="width: 100%"
           highlight-current-row
-
-          @cell-mouse-enter="handleProjectRowMouseEnter"
-          @cell-mouse-leave="handleProjectRowMouseLeave"
+          @row-click="handleProjectRowClick"
         >
           <el-table-column
             prop="code"
@@ -369,44 +375,6 @@
             v-model:limit="projectQuery.page_size"
             @pagination="fetchProjects"
           />
-        </div>
-
-        <div
-          v-show="projectHover.visible"
-          class="project-hover-panel"
-          @mouseenter="projectHover.locked = true"
-          @mouseleave="handleProjectHoverPanelLeave"
-        >
-          <el-skeleton v-if="projectHover.loading" :rows="6" animated />
-          <el-empty v-else-if="projectHover.children.length === 0" description="无数据" />
-          <el-table
-            v-else
-            :data="projectHover.children"
-            border
-            stripe
-            height="360"
-            style="width: 100%"
-            highlight-current-row
-            @row-click="handleHoverBomRowClick"
-          >
-            <el-table-column
-              prop="code"
-              label="代号"
-              width="140"
-              header-align="center"
-              align="center"
-              show-overflow-tooltip
-            />
-            <el-table-column prop="spec" label="名称" width="200" header-align="center" show-overflow-tooltip />
-            <el-table-column
-              prop="remark"
-              label="备注"
-              width="100"
-              header-align="center"
-              align="center"
-              show-overflow-tooltip
-            />
-          </el-table>
         </div>
       </div>
     </el-drawer>
@@ -575,6 +543,7 @@ import DataBomAPI, { DataBomTable } from "@/api/module_data/bom";
 import DataProjectAPI, { DataProjectTable } from "@/api/module_data/project";
 import ProduceCraftRouteAPI, { CraftRouteView } from "@/api/module_produce/craftroute";
 import ProduceBomManhourAPI from "@/api/module_produce/bommanhour";
+import ProduceOrderAPI from "@/api/module_produce/order";
 import { convertToTree } from "@/views/module_data/utils";
 
 const visible = ref(true);
@@ -626,20 +595,13 @@ const projectQuery = reactive({
   page_size: 20,
 });
 
-const projectHover = reactive({
-  visible: false,
-  locked: false,
-  project: null as DataProjectTable | null,
-  children: [] as DataBomTable[],
-  loading: false,
-});
-
 const projectChildrenCache = reactive<Record<string, DataBomTable[]>>({});
 
 // 表格列配置
 const tableColumns = ref([
   { prop: "selection", label: "选择框", show: true },
   { prop: "index", label: "序号", show: true },
+  { prop: "order_no", label: "单号", show: true },
   { prop: "code", label: "代号", show: true },
   { prop: "spec", label: "名称", show: true },
   { prop: "craft_route", label: "工艺路线", show: true },
@@ -762,6 +724,8 @@ async function handleRefresh() {
 const allBoms = ref<DataBomTable[]>([]);
 const allBomRoutes = ref<any[]>([]);
 const selectedRootBomCode = ref<string | undefined>(undefined);
+const selectedProjectCode = ref<string | undefined>(undefined);
+const routeCraftIdsCache = new Map<number, number[]>();
 
 function getRouteName(routeCode: any) {
   const matched = (craftRouteOptions.value || []).find((opt: any) => opt.route_code === routeCode);
@@ -792,6 +756,31 @@ async function ensureAllBomRoutesLoaded() {
   allBomRoutes.value = routeRes.data.data || [];
 }
 
+async function ensureRouteCraftIdsLoaded(routeCodes: number[]) {
+  const unique = Array.from(new Set(routeCodes.filter((r) => Number.isFinite(r) && r > 0)));
+  const missing = unique.filter((r) => !routeCraftIdsCache.has(r));
+  if (missing.length === 0) return;
+
+  const results = await Promise.all(
+    missing.map(async (routeCode) => {
+      try {
+        const res = await ProduceCraftRouteAPI.detailProduceCraftRoute(routeCode);
+        const items = res.data?.data?.items || [];
+        const craftIds = items
+          .map((i: any) => Number(i?.craft_id))
+          .filter((id: number) => Number.isFinite(id) && id > 0);
+        return { routeCode, craftIds };
+      } catch {
+        return { routeCode, craftIds: [] as number[] };
+      }
+    })
+  );
+
+  results.forEach(({ routeCode, craftIds }) => {
+    routeCraftIdsCache.set(routeCode, craftIds);
+  });
+}
+
 function collectSubtreeByRootCode(list: any[], rootCode: string) {
   const childrenByParentCode: Record<string, any[]> = {};
   list.forEach((item: any) => {
@@ -817,8 +806,31 @@ function collectSubtreeByRootCode(list: any[], rootCode: string) {
   return results;
 }
 
+function collectSubtreeByParentCode(list: any[], parentCode: string) {
+  const childrenByParentCode: Record<string, any[]> = {};
+  list.forEach((item: any) => {
+    const key = item.parent_code || "";
+    if (!childrenByParentCode[key]) childrenByParentCode[key] = [];
+    childrenByParentCode[key].push(item);
+  });
+
+  const results: any[] = [];
+  const visited = new Set<any>();
+  const queue: any[] = [...(childrenByParentCode[parentCode] || [])];
+  while (queue.length > 0) {
+    const node = queue.shift();
+    const visitKey = node?.id ?? `${node?.code}|${node?.parent_code}|${node?.borrow ?? ""}`;
+    if (visited.has(visitKey)) continue;
+    visited.add(visitKey);
+    results.push(node);
+    const children = childrenByParentCode[node.code] || [];
+    children.forEach((child: any) => queue.push(child));
+  }
+  return results;
+}
+
 async function loadingData() {
-  if (!selectedRootBomCode.value) {
+  if (!selectedRootBomCode.value && !selectedProjectCode.value) {
     pageTableData.value = [];
     total.value = 0;
     return;
@@ -841,25 +853,124 @@ async function loadingData() {
       }
     });
 
-    const subtree = collectSubtreeByRootCode(allBoms.value as any[], selectedRootBomCode.value);
+    let listForDisplay: any[] = [];
+    let manhourScopeList: any[] = [];
+    if (selectedRootBomCode.value) {
+      listForDisplay = collectSubtreeByRootCode(allBoms.value as any[], selectedRootBomCode.value);
+      manhourScopeList = listForDisplay;
+    } else if (selectedProjectCode.value) {
+      listForDisplay = (allBoms.value as any[]).filter(
+        (bom: any) => bom.parent_code === selectedProjectCode.value
+      );
+      manhourScopeList = collectSubtreeByParentCode(allBoms.value as any[], selectedProjectCode.value);
+    }
+
+    await ensureRouteCraftIdsLoaded(
+      listForDisplay
+        .map((b: any) => Number(b?.route_code))
+        .filter((v: number) => Number.isFinite(v) && v > 0)
+    );
+
     const bomIds = Array.from(
       new Set(
-        subtree
+        listForDisplay
+          .map((b: any) => Number(b?.id))
+          .filter((id: number) => Number.isFinite(id) && id > 0)
+      )
+    );
+    const manhourBomIds = Array.from(
+      new Set(
+        manhourScopeList
           .map((b: any) => Number(b?.id))
           .filter((id: number) => Number.isFinite(id) && id > 0)
       )
     );
     if (bomIds.length > 0) {
-      const manhourRes = await ProduceBomManhourAPI.summaryBatchProduceBomManhour({ bom_ids: bomIds });
-      const manhourMap = (manhourRes.data?.data || {}) as Record<string, string>;
-      subtree.forEach((bom: any) => {
-        bom.manhour = manhourMap[String(bom.id)] || "";
+      const [manhourRes, orderRes] = await Promise.all([
+        ProduceBomManhourAPI.summaryCraftBatchProduceBomManhour({ bom_ids: manhourBomIds }),
+        ProduceOrderAPI.summaryBatchProduceOrder({ bom_ids: bomIds }),
+      ]);
+      const manhourMap = (manhourRes.data?.data || {}) as Record<string, Record<string, number>>;
+      const orderMap = (orderRes.data?.data || {}) as Record<string, string>;
+
+      const formatTotals = (totals: Record<string, number>) => {
+        const parts = Object.entries(totals || {})
+          .filter(([, v]) => Number(v) > 0)
+          .sort(([a], [b]) => Number(a) - Number(b))
+          .map(([, v]) => `${v}`);
+        return parts.join(",");
+      };
+
+      const childrenByParentCode: Record<string, any[]> = {};
+      (allBoms.value as any[]).forEach((item: any) => {
+        const key = item?.parent_code || "";
+        if (!childrenByParentCode[key]) childrenByParentCode[key] = [];
+        childrenByParentCode[key].push(item);
+      });
+
+      const totalsMemoByCode = new Map<string, Record<string, number>>();
+      const aggregateForRootCode = (rootCode: string) => {
+        if (totalsMemoByCode.has(rootCode)) return totalsMemoByCode.get(rootCode)!;
+
+        const roots = (allBoms.value as any[]).filter((item: any) => item?.code === rootCode);
+        const visited = new Set<any>();
+        const queue: any[] = [...roots];
+        const totals: Record<string, number> = {};
+
+        while (queue.length > 0) {
+          const node = queue.shift();
+          const visitKey = node?.id ?? `${node?.code}|${node?.parent_code}|${node?.borrow ?? ""}`;
+          if (visited.has(visitKey)) continue;
+          visited.add(visitKey);
+
+          const id = Number(node?.id);
+          const craftMap = (Number.isFinite(id) ? manhourMap[String(id)] : undefined) || {};
+          Object.entries(craftMap).forEach(([craftId, v]) => {
+            const num = Number(v ?? 0);
+            if (!Number.isFinite(num) || num <= 0) return;
+            totals[craftId] = Number(totals[craftId] ?? 0) + num;
+          });
+
+          const children = childrenByParentCode[String(node?.code ?? "")] || [];
+          children.forEach((child: any) => queue.push(child));
+        }
+
+        totalsMemoByCode.set(rootCode, totals);
+        return totals;
+      };
+
+      listForDisplay.forEach((bom: any) => {
+        const code = String(bom?.code ?? "");
+        const totals = code ? aggregateForRootCode(code) : {};
+        const routeCode = Number(bom?.route_code);
+        const routeCraftIds = Number.isFinite(routeCode) ? routeCraftIdsCache.get(routeCode) : undefined;
+        if (routeCraftIds && routeCraftIds.length > 0) {
+          bom.manhour = routeCraftIds
+            .map((cid) => {
+              const v = Number((totals as any)[String(cid)] ?? 0);
+              return v > 0 ? String(v) : "";
+            })
+            .join(",");
+        } else {
+          bom.manhour = code ? formatTotals(totals) : "";
+        }
+        bom.order_no = orderMap[String(bom.id)] || "";
       });
     }
-    const { tree } = convertToTree(subtree, undefined, selectedRootBomCode.value);
-    syncCraftRouteToTree(tree);
-    pageTableData.value = tree;
-    total.value = tree.length;
+    if (selectedRootBomCode.value) {
+      const { tree } = convertToTree(listForDisplay, undefined, selectedRootBomCode.value);
+      syncCraftRouteToTree(tree);
+      pageTableData.value = tree;
+      total.value = tree.length;
+    } else {
+      const flat = listForDisplay.map((b: any) => ({
+        ...b,
+        _tree_id: b?._tree_id ?? b?.id ?? `${b?.code ?? ""}`,
+      }));
+      syncCraftRouteToTree(flat);
+      pageTableData.value = flat;
+      total.value = flat.length;
+    }
   } catch (error: any) {
     console.error(error);
   } finally {
@@ -941,61 +1052,12 @@ async function ensureAllBomsLoadedForProjectHover() {
   allBoms.value = res.data.data || [];
 }
 
-async function loadProjectFirstLevelChildren(projectCode: string) {
-  if (!projectCode) {
-    projectHover.children = [];
-    return;
-  }
-
-  const cached = projectChildrenCache[projectCode];
-  if (cached) {
-    projectHover.children = cached;
-    return;
-  }
-
-  projectHover.loading = true;
-  try {
-    await ensureAllBomsLoadedForProjectHover();
-    const children = (allBoms.value as any[]).filter((bom: any) => bom.parent_code === projectCode);
-    projectChildrenCache[projectCode] = children;
-    projectHover.children = children;
-  } finally {
-    projectHover.loading = false;
-  }
-}
-
-let projectHoverHideTimer: any = null;
-
-function handleProjectRowMouseEnter(row: DataProjectTable) {
-  if (projectHoverHideTimer) {
-    clearTimeout(projectHoverHideTimer);
-    projectHoverHideTimer = null;
-  }
-  projectHover.project = row;
-  projectHover.visible = true;
-  projectHover.locked = false;
-  loadProjectFirstLevelChildren(row.code as any);
-}
-
-function handleProjectRowMouseLeave() {
-  if (projectHoverHideTimer) clearTimeout(projectHoverHideTimer);
-  projectHoverHideTimer = setTimeout(() => {
-    if (!projectHover.locked) projectHover.visible = false;
-  }, 120);
-}
-
-function handleProjectHoverPanelLeave() {
-  projectHover.locked = false;
-  projectHover.visible = false;
-}
-
-function handleHoverBomRowClick(row: DataBomTable) {
+async function handleProjectRowClick(row: DataProjectTable) {
   if (!row?.code) return;
-  selectedRootBomCode.value = row.code as any;
-  queryFormData.parent_code = row.parent_code as any;
+  selectedProjectCode.value = row.code as any;
+  selectedRootBomCode.value = undefined;
+  queryFormData.parent_code = row.code as any;
   projectDrawerVisible.value = false;
-  projectHover.visible = false;
-  projectHover.locked = false;
   loadingData();
 }
 
@@ -1008,23 +1070,32 @@ async function handleOpenManhourDialog(row: any) {
 
   manhourLoading.value = true;
    try {
+    const code = String(row?.code ?? "");
+    const subtree = code ? collectSubtreeByRootCode(allBoms.value as any[], code) : [row];
+    const bomIds = Array.from(
+      new Set(
+        subtree
+          .map((b: any) => Number(b?.id))
+          .filter((id: number) => Number.isFinite(id) && id > 0)
+      )
+    );
+
     const [routeRes, manhourRes] = await Promise.all([
       ProduceCraftRouteAPI.detailProduceCraftRoute(Number(routeCode)),
-      ProduceBomManhourAPI.listProduceBomManhour({
-        bom_id: String(Number(row?.id)),
-      } as any),
+      ProduceBomManhourAPI.summaryCraftBatchProduceBomManhour({ bom_ids: bomIds }),
     ]);
 
     const items = routeRes.data?.data?.items || [];
-    const manhourData: any = manhourRes.data?.data;
-    const existedManhours = Array.isArray(manhourData) ? manhourData : manhourData?.items || [];
-    const manhourMap = new Map<number, number>();
-    existedManhours.forEach((m: any) => {
-      const craftId = Number(m?.craft_id);
-      const manhour = Number(m?.manhour);
-      if (!Number.isFinite(craftId) || craftId <= 0) return;
-      if (!Number.isFinite(manhour) || manhour <= 0) return;
-      manhourMap.set(craftId, manhour);
+    const data = (manhourRes.data?.data || {}) as Record<string, Record<string, number>>;
+    const craftTotals = new Map<number, number>();
+    Object.values(data).forEach((craftMap) => {
+      Object.entries(craftMap || {}).forEach(([craftIdStr, total]) => {
+        const craftId = Number(craftIdStr);
+        const v = Number(total);
+        if (!Number.isFinite(craftId) || craftId <= 0) return;
+        if (!Number.isFinite(v) || v <= 0) return;
+        craftTotals.set(craftId, Number(craftTotals.get(craftId) ?? 0) + v);
+      });
     });
 
     manhourSteps.value = items.map((item: any) => {
@@ -1033,7 +1104,7 @@ async function handleOpenManhourDialog(row: any) {
         key: `${item.route ?? routeCode}-${craftId}`,
         label: `${item.craft_name ?? item.craft_names ?? craftId}`.trim(),
         craft_id: craftId,
-        manhour: manhourMap.get(craftId) ?? null,
+        manhour: craftTotals.get(craftId) ?? null,
       };
     });
   } catch (error: any) {
@@ -1108,6 +1179,8 @@ function handleSelectProject(project: DataProjectTable) {
   queryFormData.parent_code = project.code;
   projectDrawerVisible.value = false;
   allBoms.value = [];
+  selectedProjectCode.value = project.code as any;
+  selectedRootBomCode.value = undefined;
   handleQuery();
 }
 
@@ -1364,24 +1437,5 @@ onMounted(async () => {
 <style lang="scss" scoped>
 .project-drawer-content {
   position: relative;
-}
-
-.project-hover-panel {
-  position: fixed;
-  top: 110px;
-  right: calc(40% + 16px);
-  width: 460px;
-  max-width: calc(60% - 32px);
-  padding: 10px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 10px;
-  background: var(--el-bg-color);
-  box-shadow: var(--el-box-shadow-light);
-  z-index: 9999;
-  pointer-events: auto;
-}
-
-.project-hover-panel :deep(.el-table__inner-wrapper) {
-  border-radius: 8px;
 }
 </style>

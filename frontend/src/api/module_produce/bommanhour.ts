@@ -56,6 +56,15 @@ const ProduceBomManhourAPI = {
     });
   },
 
+  // 批量查询BOM工时（按工艺汇总）
+  summaryCraftBatchProduceBomManhour(body: { bom_ids: number[] }) {
+    return request<ApiResponse<Record<string, Record<string, number>>>>({
+      url: `${API_PATH}/summary/craft/batch`,
+      method: "post",
+      data: body,
+    });
+  },
+
   // 删除（支持批量）
   deleteProduceBomManhour(ids: number[]) {
     return request<ApiResponse>({

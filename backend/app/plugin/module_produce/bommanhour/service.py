@@ -3,7 +3,7 @@
 import io
 import pandas as pd
 from fastapi import UploadFile
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.api.v1.module_system.auth.schema import AuthSchema
 from app.core.base_schema import BatchSetAvailable
@@ -105,24 +105,30 @@ class ProduceBomManhourService:
     @classmethod
     async def upsert_batch_bommanhour_service(cls, auth: AuthSchema, payload: ProduceBomManhourUpsertBatchSchema) -> dict:
         items = payload.items or []
-        effective = [i for i in items if i.manhour and i.manhour > 0]
-        if not effective:
-            return {"inserted": 0, "updated": 0}
+        if not items:
+            return {"inserted": 0, "updated": 0, "deleted": 0}
 
         inserted = 0
         updated = 0
+        deleted = 0
         crud = ProduceBomManhourCRUD(auth)
 
-        for item in effective:
+        for item in items:
             sql = select(ProduceBomManhourModel).where(
                 ProduceBomManhourModel.bom_id == item.bom_id,
                 ProduceBomManhourModel.craft_id == item.craft_id,
             )
             result = await auth.db.execute(sql)
             existed = result.scalars().first()
+            if item.manhour <= 0:
+                if existed:
+                    await crud.delete_bommanhour_crud(ids=[int(existed.id)])  # type: ignore[arg-type]
+                    deleted += 1
+                continue
+
             if existed:
                 await crud.update_bommanhour_crud(
-                    id=existed.id,  # type: ignore[arg-type]
+                    id=int(existed.id),  # type: ignore[arg-type]
                     data=ProduceBomManhourUpdateSchema(
                         bom_id=item.bom_id,
                         craft_id=item.craft_id,
@@ -140,7 +146,7 @@ class ProduceBomManhourService:
                 )
                 inserted += 1
 
-        return {"inserted": inserted, "updated": updated}
+        return {"inserted": inserted, "updated": updated, "deleted": deleted}
 
     @classmethod
     async def summary_batch_bommanhour_service(cls, auth: AuthSchema, bom_ids: list[int]) -> dict[int, str]:
@@ -167,6 +173,34 @@ class ProduceBomManhourService:
             grouped.setdefault(int(bom_id), []).append(int(manhour))
 
         return {bom_id: ",".join(str(v) for v in vals) for bom_id, vals in grouped.items()}
+
+    @classmethod
+    async def summary_craft_batch_bommanhour_service(cls, auth: AuthSchema, bom_ids: list[int]) -> dict[int, dict[int, int]]:
+        ids = [int(i) for i in bom_ids if i]
+        if not ids:
+            return {}
+
+        sql = (
+            select(
+                ProduceBomManhourModel.bom_id,
+                ProduceBomManhourModel.craft_id,
+                func.sum(ProduceBomManhourModel.manhour).label("total_manhour"),
+            )
+            .select_from(ProduceBomManhourModel)
+            .where(ProduceBomManhourModel.bom_id.in_(ids), ProduceBomManhourModel.manhour > 0)
+            .group_by(ProduceBomManhourModel.bom_id, ProduceBomManhourModel.craft_id)
+            .order_by(ProduceBomManhourModel.bom_id.asc(), ProduceBomManhourModel.craft_id.asc())
+        )
+        result = await auth.db.execute(sql)
+        rows = result.fetchall()
+
+        data: dict[int, dict[int, int]] = {}
+        for bom_id, craft_id, total_manhour in rows:
+            if bom_id is None or craft_id is None or total_manhour is None:
+                continue
+            data.setdefault(int(bom_id), {})
+            data[int(bom_id)][int(craft_id)] = int(total_manhour)
+        return data
     
     @classmethod
     async def update_bommanhour_service(cls, auth: AuthSchema, id: int, data: ProduceBomManhourUpdateSchema) -> dict:

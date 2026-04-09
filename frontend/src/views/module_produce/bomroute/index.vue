@@ -186,7 +186,7 @@
         <el-table-column
           v-if="tableColumns.find((col) => col.prop === 'selection')?.show"
           type="selection"
-          min-width="35"
+          min-width="40"
           align="center"
         />
         <!-- <el-table-column

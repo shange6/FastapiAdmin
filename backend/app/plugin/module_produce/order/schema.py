@@ -91,3 +91,7 @@ class ProduceOrderQueryParam:
             self.created_time = (QueueEnum.between.value, (created_time[0], created_time[1]))
         if updated_time and len(updated_time) == 2:
             self.updated_time = (QueueEnum.between.value, (updated_time[0], updated_time[1]))
+
+
+class ProduceOrderSummaryBatchSchema(BaseModel):
+    bom_ids: list[int] = Field(default_factory=list, description="BOM ID列表")

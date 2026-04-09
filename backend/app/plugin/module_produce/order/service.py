@@ -3,6 +3,7 @@
 import io
 import pandas as pd
 from fastapi import UploadFile
+from sqlalchemy import select
 
 from app.api.v1.module_system.auth.schema import AuthSchema
 from app.core.base_schema import BatchSetAvailable
@@ -11,11 +12,12 @@ from app.core.logger import log
 from app.utils.excel_util import ExcelUtil
 
 from .crud import ProduceOrderCRUD
+from .model import ProduceOrderModel
 from .schema import (
     ProduceOrderCreateSchema,
     ProduceOrderUpdateSchema,
     ProduceOrderOutSchema,
-    ProduceOrderQueryParam
+    ProduceOrderQueryParam,
 )
 
 
@@ -57,6 +59,30 @@ class ProduceOrderService:
         search_dict = search.__dict__ if search else None
         obj_list = await ProduceOrderCRUD(auth).list_order_crud(search=search_dict, order_by=order_by)
         return [ProduceOrderOutSchema.model_validate(obj).model_dump() for obj in obj_list]
+
+    @classmethod
+    async def summary_batch_order_service(cls, auth: AuthSchema, bom_ids: list[int]) -> dict[int, str]:
+        ids = [int(i) for i in bom_ids if i]
+        if not ids:
+            return {}
+
+        sql = (
+            select(ProduceOrderModel)
+            .where(ProduceOrderModel.bom_id.in_(ids))
+            .order_by(ProduceOrderModel.bom_id.asc(), ProduceOrderModel.id.asc())
+        )
+        result = await auth.db.execute(sql)
+        rows = result.scalars().all()
+
+        grouped: dict[int, list[int]] = {}
+        for row in rows:
+            bom_id = getattr(row, "bom_id", None)
+            oid = getattr(row, "id", None)
+            if bom_id is None or oid is None:
+                continue
+            grouped.setdefault(int(bom_id), []).append(int(oid))
+
+        return {bom_id: ",".join(str(v) for v in vals) for bom_id, vals in grouped.items()}
 
     @classmethod
     async def page_order_service(cls, auth: AuthSchema, page_no: int, page_size: int, search: ProduceOrderQueryParam | None = None, order_by: list[dict] | None = None) -> dict:

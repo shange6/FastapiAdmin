@@ -1,6 +1,6 @@
 import request from "@/utils/request";
 
-const API_PATH = "/module_produce/order";
+const API_PATH = "/produce/order";
 
 const ProduceOrderAPI = {
   // 列表查询
@@ -9,6 +9,15 @@ const ProduceOrderAPI = {
       url: `${API_PATH}/list`,
       method: "get",
       params: query,
+    });
+  },
+
+  // 批量查询工单单号（按BOM ID汇总）
+  summaryBatchProduceOrder(body: { bom_ids: number[] }) {
+    return request<ApiResponse<Record<string, string>>>({
+      url: `${API_PATH}/summary/batch`,
+      method: "post",
+      data: body,
     });
   },
 

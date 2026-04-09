@@ -12,7 +12,12 @@ from app.core.logger import log
 from app.core.base_schema import BatchSetAvailable
 
 from .service import ProduceOrderService
-from .schema import ProduceOrderCreateSchema, ProduceOrderUpdateSchema, ProduceOrderQueryParam
+from .schema import (
+    ProduceOrderCreateSchema,
+    ProduceOrderUpdateSchema,
+    ProduceOrderQueryParam,
+    ProduceOrderSummaryBatchSchema,
+)
 
 ProduceOrderRouter = APIRouter(prefix='/order', tags=["工单模块"]) 
 
@@ -69,6 +74,18 @@ async def get_order_list_controller(
     )
     log.info("查询工单列表成功")
     return SuccessResponse(data=result_dict, msg="查询工单列表成功")
+
+@ProduceOrderRouter.post(
+    "/summary/batch",
+    summary="批量查询工单单号",
+    description="按BOM ID批量查询工单ID，并用逗号拼接成字符串"
+)
+async def summary_batch_order_controller(
+    data: ProduceOrderSummaryBatchSchema,
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:order:query"]))
+) -> JSONResponse:
+    result_dict = await ProduceOrderService.summary_batch_order_service(auth=auth, bom_ids=data.bom_ids)
+    return SuccessResponse(data=result_dict, msg="查询成功")
 
 @ProduceOrderRouter.post(
     "/create",

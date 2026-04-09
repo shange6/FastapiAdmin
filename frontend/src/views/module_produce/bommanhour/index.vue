@@ -45,14 +45,14 @@
               <el-button type="info" plain icon="Fold" @click="toggleAllExpansion(false)">
                 全部收起
               </el-button>
-              <el-button
+              <!-- <el-button
                 v-hasPerm="['module_produce:bomroute:create']"
                 type="warning"
                 icon="FolderChecked"
                 @click="handleBatchSaveCraftRoute"
               >
                 批量保存
-              </el-button>
+              </el-button> -->
               <el-button type="primary" icon="Collection" @click="handleOpenProjectDrawer">
                 选择项目
               </el-button>
@@ -186,7 +186,7 @@
         <el-table-column
           v-if="tableColumns.find((col) => col.prop === 'selection')?.show"
           type="selection"
-          min-width="35"
+          min-width="40"
           align="center"
         />
         <!-- <el-table-column
@@ -762,6 +762,7 @@ async function handleRefresh() {
 const allBoms = ref<DataBomTable[]>([]);
 const allBomRoutes = ref<any[]>([]);
 const selectedRootBomCode = ref<string | undefined>(undefined);
+const routeCraftIdsCache = new Map<number, number[]>();
 
 function getRouteName(routeCode: any) {
   const matched = (craftRouteOptions.value || []).find((opt: any) => opt.route_code === routeCode);
@@ -790,6 +791,31 @@ async function ensureAllBomRoutesLoaded() {
   if (allBomRoutes.value.length > 0) return;
   const routeRes = await ProduceBomRouteAPI.getAllProduceBomRoute();
   allBomRoutes.value = routeRes.data.data || [];
+}
+
+async function ensureRouteCraftIdsLoaded(routeCodes: number[]) {
+  const unique = Array.from(new Set(routeCodes.filter((r) => Number.isFinite(r) && r > 0)));
+  const missing = unique.filter((r) => !routeCraftIdsCache.has(r));
+  if (missing.length === 0) return;
+
+  const results = await Promise.all(
+    missing.map(async (routeCode) => {
+      try {
+        const res = await ProduceCraftRouteAPI.detailProduceCraftRoute(routeCode);
+        const items = res.data?.data?.items || [];
+        const craftIds = items
+          .map((i: any) => Number(i?.craft_id))
+          .filter((id: number) => Number.isFinite(id) && id > 0);
+        return { routeCode, craftIds };
+      } catch {
+        return { routeCode, craftIds: [] as number[] };
+      }
+    })
+  );
+
+  results.forEach(({ routeCode, craftIds }) => {
+    routeCraftIdsCache.set(routeCode, craftIds);
+  });
 }
 
 function collectSubtreeByRootCode(list: any[], rootCode: string) {
@@ -849,11 +875,34 @@ async function loadingData() {
           .filter((id: number) => Number.isFinite(id) && id > 0)
       )
     );
+    await ensureRouteCraftIdsLoaded(
+      subtree
+        .map((b: any) => Number(b?.route_code))
+        .filter((v: number) => Number.isFinite(v) && v > 0)
+    );
     if (bomIds.length > 0) {
-      const manhourRes = await ProduceBomManhourAPI.summaryBatchProduceBomManhour({ bom_ids: bomIds });
-      const manhourMap = (manhourRes.data?.data || {}) as Record<string, string>;
+      const manhourRes = await ProduceBomManhourAPI.summaryCraftBatchProduceBomManhour({ bom_ids: bomIds });
+      const manhourMap = (manhourRes.data?.data || {}) as Record<string, Record<string, number>>;
       subtree.forEach((bom: any) => {
-        bom.manhour = manhourMap[String(bom.id)] || "";
+        const craftMap = (manhourMap[String(bom.id)] || {}) as Record<string, number>;
+        const routeCode = Number(bom?.route_code);
+        const routeCraftIds = Number.isFinite(routeCode) ? routeCraftIdsCache.get(routeCode) : undefined;
+        if (routeCraftIds && routeCraftIds.length > 0) {
+          bom.manhour = routeCraftIds
+            .map((cid) => {
+              const v = Number(craftMap[String(cid)] ?? 0);
+              return v > 0 ? String(v) : "";
+            })
+            .filter((s) => s !== "")
+            .join(",");
+          return;
+        }
+        bom.manhour = Object.keys(craftMap)
+          .map((k) => ({ k: Number(k), v: Number(craftMap[k] ?? 0) }))
+          .filter((x) => Number.isFinite(x.k) && x.k > 0 && Number.isFinite(x.v) && x.v > 0)
+          .sort((a, b) => a.k - b.k)
+          .map((x) => String(x.v))
+          .join(",");
       });
     }
     const { tree } = convertToTree(subtree, undefined, selectedRootBomCode.value);
@@ -1070,17 +1119,7 @@ async function handleConfirmManhourDialog() {
       craft_id: Number(s.craft_id),
       manhour: Number(s.manhour ?? 0),
     }))
-    .filter((s) => s.craft_id && s.manhour > 0);
-
-  if (items.length === 0) {
-    ElMessage.info("无可保存工时（已忽略为0的工时）");
-    const bom = (allBoms.value as any[]).find((item: any) => item.id === bomId);
-    if (bom) bom.manhour = manhourStr;
-    if (manhourBom.value) manhourBom.value.manhour = manhourStr;
-    updateTreeManhourById(pageTableData.value as any[], bomId, manhourStr);
-    manhourDialogVisible.value = false;
-    return;
-  }
+    .filter((s) => s.craft_id);
 
   try {
     manhourLoading.value = true;
