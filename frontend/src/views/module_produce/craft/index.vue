@@ -219,6 +219,29 @@
           show-overflow-tooltip
         />
         <el-table-column
+          v-if="tableColumns.find((col) => col.prop === 'parent_id')?.show"
+          label="父工艺ID"
+          prop="parent_id"
+          min-width="90"
+          align="center"
+          header-align="center"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          v-if="tableColumns.find((col) => col.prop === 'has_child')?.show"
+          label="有子工艺"
+          prop="has_child"
+          min-width="80"
+          align="center"
+          header-align="center"
+        >
+          <template #default="scope">
+            <el-tag :type="scope.row.has_child ? 'success' : 'info'">
+              {{ scope.row.has_child ? "是" : "否" }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column
           label="状态"
           prop="status"
           min-width="55"
@@ -351,11 +374,17 @@ const tableColumns = ref([
   { prop: "selection", label: "选择框", show: true },
   { prop: "index", label: "序号", show: true },
   { prop: "name", label: "工艺名称", show: true },
+  { prop: "parent_id", label: "父工艺ID", show: true },
+  { prop: "has_child", label: "有子工艺", show: true },
   { prop: "operation", label: "操作", show: true },
 ]);
 
 // 导出列（不含选择/序号/操作）
-const exportColumns = [{ prop: "name", label: "工艺名称" }];
+const exportColumns = [
+  { prop: "name", label: "工艺名称" },
+  { prop: "parent_id", label: "父工艺ID" },
+  { prop: "has_child", label: "有子工艺" },
+];
 
 // 导入/导出配置
 const curdContentConfig = {

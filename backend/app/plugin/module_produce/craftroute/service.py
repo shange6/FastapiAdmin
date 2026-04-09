@@ -3,7 +3,7 @@
 import io
 import pandas as pd
 from fastapi import UploadFile
-from sqlalchemy import select, func, text
+from sqlalchemy import bindparam, select, func, text
 
 from app.api.v1.module_system.auth.schema import AuthSchema
 from app.core.base_schema import BatchSetAvailable
@@ -44,6 +44,158 @@ class ProduceCraftRouteService:
         if not obj:
             raise CustomException(msg="该数据不存在")
         return ProduceCraftRouteOutSchema.model_validate(obj).model_dump()
+
+    @classmethod
+    async def detail_craftroute_by_route_service(cls, auth: AuthSchema, route: int) -> dict:
+        async with async_db_session() as session:
+            route_sql = text(
+                """
+                SELECT
+                    pcr.id,
+                    pcr.craft_id
+                FROM produce_craft_route pcr
+                WHERE pcr.route = :route
+                ORDER BY pcr.id ASC
+                """
+            )
+            route_result = await session.execute(route_sql, {"route": route})
+            route_rows = route_result.fetchall()
+
+            seen_craft_ids: set[int] = set()
+            route_craft_ids: list[int] = []
+            for _rid, craft_id in route_rows:
+                if craft_id is None:
+                    continue
+                cid = int(craft_id)
+                if cid in seen_craft_ids:
+                    continue
+                seen_craft_ids.add(cid)
+                route_craft_ids.append(cid)
+
+            if not route_craft_ids:
+                return {
+                    "page_no": 1,
+                    "page_size": 0,
+                    "total": 0,
+                    "has_next": False,
+                    "items": [],
+                }
+
+            craft_sql = (
+                text(
+                    """
+                    SELECT id, name, has_child
+                    FROM produce_craft
+                    WHERE id IN :craft_ids
+                    """
+                )
+                .bindparams(bindparam("craft_ids", expanding=True))
+            )
+            craft_result = await session.execute(craft_sql, {"craft_ids": route_craft_ids})
+            craft_rows = craft_result.fetchall()
+            craft_map: dict[int, dict] = {
+                int(row[0]): {"id": int(row[0]), "name": row[1], "has_child": row[2]}
+                for row in craft_rows
+            }
+
+            dedup_keywords = ("机加", "下料", "喷漆")
+            seen_keyword: set[str] = set()
+            deduped_craft_ids: list[int] = []
+            for cid in route_craft_ids:
+                craft_name = str((craft_map.get(cid) or {}).get("name") or "")
+                matched_keyword = next((k for k in dedup_keywords if k in craft_name), None)
+                if matched_keyword:
+                    if matched_keyword in seen_keyword:
+                        continue
+                    seen_keyword.add(matched_keyword)
+                deduped_craft_ids.append(cid)
+
+            children_cache: dict[int, list[dict]] = {}
+
+            async def ensure_children_loaded(parent_ids: list[int]) -> None:
+                ids_to_load = [pid for pid in parent_ids if pid not in children_cache]
+                if not ids_to_load:
+                    return
+                child_sql = (
+                    text(
+                        """
+                        SELECT id, name, parent_id, has_child
+                        FROM produce_craft
+                        WHERE parent_id IN :parent_ids
+                        """
+                    )
+                    .bindparams(bindparam("parent_ids", expanding=True))
+                )
+                child_result = await session.execute(child_sql, {"parent_ids": ids_to_load})
+                for row in child_result.fetchall():
+                    pid = int(row[2]) if row[2] is not None else None
+                    if pid is None:
+                        continue
+                    children_cache.setdefault(pid, []).append(
+                        {"id": int(row[0]), "name": row[1], "has_child": row[3]}
+                    )
+                for pid in ids_to_load:
+                    children_cache.setdefault(pid, [])
+
+            expanded_crafts: list[dict] = []
+
+            async def expand_craft(craft_id: int, visited: set[int]) -> None:
+                if craft_id in visited:
+                    return
+                visited.add(craft_id)
+                craft = craft_map.get(craft_id)
+                if not craft:
+                    expanded_crafts.append({"craft_id": craft_id, "craft_name": None, "craft_has_child": None})
+                    return
+                has_child = bool(craft.get("has_child"))
+                if not has_child:
+                    expanded_crafts.append(
+                        {"craft_id": craft_id, "craft_name": craft.get("name"), "craft_has_child": craft.get("has_child")}
+                    )
+                    return
+                await ensure_children_loaded([craft_id])
+                children = children_cache.get(craft_id, [])
+                if not children:
+                    expanded_crafts.append(
+                        {"craft_id": craft_id, "craft_name": craft.get("name"), "craft_has_child": craft.get("has_child")}
+                    )
+                    return
+                for child in children:
+                    child_id = int(child["id"])
+                    if child_id not in craft_map:
+                        craft_map[child_id] = {"id": child_id, "name": child.get("name"), "has_child": child.get("has_child")}
+                    await expand_craft(child_id, visited)
+
+            for cid in deduped_craft_ids:
+                await expand_craft(cid, set())
+
+            final_items: list[dict] = []
+            final_seen: set[int] = set()
+            for craft in expanded_crafts:
+                cid = craft.get("craft_id")
+                if cid is None:
+                    continue
+                cid_int = int(cid)
+                if cid_int in final_seen:
+                    continue
+                final_seen.add(cid_int)
+                final_items.append(
+                    {
+                        "route": route,
+                        "craft_id": cid_int,
+                        "craft_name": craft.get("craft_name"),
+                        "craft_has_child": craft.get("craft_has_child"),
+                    }
+                )
+
+            items = final_items
+            return {
+                "page_no": 1,
+                "page_size": len(items),
+                "total": len(items),
+                "has_next": False,
+                "items": items,
+            }
     
     @classmethod
     async def list_craftroute_service(cls, auth: AuthSchema, search: ProduceCraftRouteQueryParam | None = None, order_by: list[dict] | None = None) -> list[dict]:

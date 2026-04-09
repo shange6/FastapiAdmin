@@ -18,3 +18,5 @@ class ProduceCraftModel(MappedBase):
         autoincrement=True,
     )
     name: Mapped[str] = mapped_column(String(30), nullable=False, comment='工艺名称')
+    parent_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    has_child: Mapped[int | None] = mapped_column(Integer, nullable=True)

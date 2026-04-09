@@ -40,6 +40,19 @@ async def get_craftroute_detail_controller(
     return SuccessResponse(data=result_dict, msg="获取工艺路线详情成功")
 
 @ProduceCraftRouteRouter.get(
+    "/detail/route/{route}",
+    summary="获取指定路线的工艺列表",
+    description="根据route获取produce_craft_route的工艺列表"
+)
+async def get_craftroute_detail_by_route_controller(
+    route: int = Path(..., description="工艺路线(route)"),
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:craftroute:query"]))
+) -> JSONResponse:
+    result_dict = await ProduceCraftRouteService.detail_craftroute_by_route_service(auth=auth, route=route)
+    log.info(f"获取指定路线的工艺列表成功 {route}")
+    return SuccessResponse(data=result_dict, msg="获取指定路线的工艺列表成功")
+
+@ProduceCraftRouteRouter.get(
     "/list",
     summary="查询工艺路线列表",
     description="查询工艺路线列表"

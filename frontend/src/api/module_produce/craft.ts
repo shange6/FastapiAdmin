@@ -100,6 +100,8 @@ export interface ProduceCraftPageQuery extends PageQuery {
 export interface ProduceCraftTable {
   id?: number;
   name?: string;
+  parent_id?: number;
+  has_child?: number | boolean;
 }
 
 // 新增/修改/详情表单参数

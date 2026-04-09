@@ -30,9 +30,9 @@ const ProduceCraftRouteAPI = {
   },
 
   // 详情查询
-  detailProduceCraftRoute(id: number) {
-    return request<ApiResponse<ProduceCraftRouteTable>>({
-      url: `${API_PATH}/detail/${id}`,
+  detailProduceCraftRoute(route: number) {
+    return request<ApiResponse<PageResult<any[]>>>({
+      url: `${API_PATH}/detail/route/${route}`,
       method: "get",
     });
   },

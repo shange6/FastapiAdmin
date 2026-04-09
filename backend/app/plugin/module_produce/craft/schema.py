@@ -23,6 +23,8 @@ class ProduceCraftOutSchema(ProduceCraftCreateSchema):
     """
     model_config = ConfigDict(from_attributes=True)
     id: int = Field(description="工艺ID")
+    parent_id: int | None = Field(default=None, description="父工艺ID")
+    has_child: bool | None = Field(default=None, description="是否存在子工艺")
 
 
 class ProduceCraftQueryParam:

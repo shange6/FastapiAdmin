@@ -6,8 +6,8 @@
       <template #header>
         <div class="card-header">
           <span>
-            BOM路线关联列表
-            <el-tooltip content="BOM路线关联列表">
+            BOM工时关联列表
+            <el-tooltip content="BOM工时关联列表">
               <QuestionFilled class="w-4 h-4 mx-1" />
             </el-tooltip>
           </span>
@@ -260,31 +260,47 @@
         />
         <el-table-column
           v-if="tableColumns.find((col) => col.prop === 'craft_route')?.show"
-          label="工艺路线"
-          prop="craft_route"
-          min-width="370"
+          label="路线"
+          prop="route_code"
+          min-width="60"
           align="center"
           header-align="center"
-          show-overflow-tooltip
           fixed="right"
         >
           <template #default="scope">
-            <el-select
-              v-model="scope.row.craft_route"
-              placeholder="请选择工艺路线"
-              clearable
-              filterable
-              default-first-option
-              style="width: 100%"
-              @change="handleCraftRouteChange(scope.row)"
+            <!-- 直接显示：route_code + route_name，和原来下拉框展示一样 -->
+            <span>{{ scope.row.route_code }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column
+          v-if="tableColumns.find((col) => col.prop === 'manhour')?.show"
+          label="工时"
+          prop="manhour"
+          min-width="200"
+          header-align="center"
+          fixed="right"
+          show-overflow-tooltip
+        >
+          <template #default="scope">
+            <span>{{ scope.row.manhour }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column
+          v-if="tableColumns.find((col) => col.prop === 'operation')?.show"
+          fixed="right"
+          label="操作"
+          align="center"
+          min-width="60"
+        >
+          <template #default="scope">
+            <el-button
+              v-hasPerm="['module_produce:bommanhour:update']"
+              type="primary"
+              link
+              @click="handleOpenManhourDialog(scope.row)"
             >
-              <el-option
-                v-for="item in craftRouteOptions"
-                :key="item.route_code"
-                :label="`${item.route_code} ${item.route_name}`"
-                :value="item.route_code"
-              />
-            </el-select>
+              编辑
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -444,6 +460,66 @@
       </template>
     </el-dialog>
 
+    <el-dialog 
+      v-model="manhourDialogVisible" 
+      title="工时" 
+      width="600px" 
+      top="5vh"
+      @close="handleCloseManhourDialog"
+    >
+      <el-descriptions v-if="manhourBom" :column="2" border >
+        <el-descriptions-item label-align="center" label="代号">{{ manhourBom.code }}</el-descriptions-item>
+        <el-descriptions-item label-align="center" label="数量">{{ manhourBom.count }}</el-descriptions-item>
+        <el-descriptions-item label-align="center" label="名称">{{ manhourBom.spec }}</el-descriptions-item>
+        <el-descriptions-item label-align="center" label="单重">{{ manhourBom.unit_mass }}</el-descriptions-item>
+        <el-descriptions-item label-align="center" label="材质">{{ manhourBom.material }}</el-descriptions-item>
+        <el-descriptions-item label-align="center" label="总重">{{ manhourBom.total_mass }}</el-descriptions-item>
+        <el-descriptions-item label-align="center" label="备注" :span="2">{{ manhourBom.remark }}</el-descriptions-item>
+      </el-descriptions>
+
+      <el-divider content-position="left">工艺工时</el-divider>
+      <el-skeleton v-if="manhourLoading" :rows="6" animated />
+      <el-empty v-else-if="manhourSteps.length === 0" description="该路线未配置工艺" />
+      <el-form v-else label-position="left" style="padding-left: 0px; margin-bottom: -0px;">
+        <div v-for="group in manhourStepGroups" :key="group[0].key" style="display: flex; gap: 12px">
+          <el-form-item :label="group[0].label" style="flex: 1">
+            <el-input-number
+              v-model="group[0].manhour"
+              :min="0"
+              :step="1"
+              controls-position="right"
+              style="width: 120px"
+            />
+          </el-form-item>
+          <el-form-item v-if="group[1]" :label="group[1].label" style="flex: 1">
+            <el-input-number
+              v-model="group[1].manhour"
+              :min="0"
+              :step="1"
+              controls-position="right"
+              style="width: 120px"
+            />
+          </el-form-item>
+          <div v-else style="flex: 1"></div>
+          <el-form-item v-if="group[2]" :label="group[2].label" style="flex: 1">
+            <el-input-number
+              v-model="group[2].manhour"
+              :min="0"
+              :step="1"
+              controls-position="right"
+              style="width: 120px"
+            />
+          </el-form-item>
+          <div v-else style="flex: 1"></div>
+        </div>
+      </el-form>
+
+      <template #footer>
+        <el-button @click="handleCloseManhourDialog">取消</el-button>
+        <el-button type="primary" @click="handleConfirmManhourDialog">保存工时</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 导入弹窗 -->
     <ImportModal
       v-model="importDialogVisible"
@@ -469,7 +545,7 @@ defineOptions({
   inheritAttrs: false,
 });
 
-import { ref, reactive, onMounted } from "vue";
+import { ref, reactive, onMounted, computed } from "vue";
 import { useDebounceFn } from "@vueuse/core";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
@@ -498,6 +574,7 @@ import ProduceBomRouteAPI, {
 import DataBomAPI, { DataBomTable } from "@/api/module_data/bom";
 import DataProjectAPI, { DataProjectTable } from "@/api/module_data/project";
 import ProduceCraftRouteAPI, { CraftRouteView } from "@/api/module_produce/craftroute";
+import ProduceBomManhourAPI from "@/api/module_produce/bommanhour";
 import { convertToTree } from "@/views/module_data/utils";
 
 const visible = ref(true);
@@ -510,6 +587,27 @@ const selectionRows = ref<ProduceBomRouteTable[]>([]);
 const loading = ref(false);
 const isExpand = ref(false);
 const isExpandable = ref(true);
+
+const manhourDialogVisible = ref(false);
+const manhourLoading = ref(false);
+const manhourBom = ref<any | null>(null);
+const manhourSteps = ref<{ key: string; label: string; craft_id: number; manhour: number | null }[]>([]);
+
+const manhourStepGroups = computed(() => {
+  const groups: [
+    { key: string; label: string; craft_id: number; manhour: number | null },
+    { key: string; label: string; craft_id: number; manhour: number | null } | null,
+    { key: string; label: string; craft_id: number; manhour: number | null } | null,
+  ][] = [];
+  for (let i = 0; i < manhourSteps.value.length; i += 3) {
+    groups.push([
+      manhourSteps.value[i],
+      manhourSteps.value[i + 1] ?? null,
+      manhourSteps.value[i + 2] ?? null,
+    ]);
+  }
+  return groups;
+});
 
 // 分页表单
 const pageTableData = ref<DataBomTable[]>([]);
@@ -550,6 +648,8 @@ const tableColumns = ref([
   { prop: "unit_mass", label: "单重", show: true },
   { prop: "total_mass", label: "总重", show: true },
   { prop: "remark", label: "备注", show: true },
+  { prop: "manhour", label: "工时", show: true },
+  { prop: "operation", label: "操作", show: true },
 ]);
 
 // 导出列（不含选择/序号/操作）
@@ -663,12 +763,22 @@ const allBoms = ref<DataBomTable[]>([]);
 const allBomRoutes = ref<any[]>([]);
 const selectedRootBomCode = ref<string | undefined>(undefined);
 
+function getRouteName(routeCode: any) {
+  const matched = (craftRouteOptions.value || []).find((opt: any) => opt.route_code === routeCode);
+  return matched?.route_name;
+}
+
 function syncCraftRouteToTree(nodes: any[]) {
   if (!nodes) return;
   nodes.forEach((node: any) => {
     const routeRecord = allBomRoutes.value.find((r: any) => r.bom_id === node.id);
     if (routeRecord) {
+      node.route_code = routeRecord.route;
+      node.route_name = getRouteName(routeRecord.route);
       node.craft_route = routeRecord.route;
+    } else {
+      node.route_code = undefined;
+      node.route_name = undefined;
     }
     if (node.children && node.children.length > 0) {
       syncCraftRouteToTree(node.children);
@@ -722,11 +832,30 @@ async function loadingData() {
     allBoms.value.forEach((bom: any) => {
       const routeRecord = allBomRoutes.value.find((r: any) => r.bom_id === bom.id);
       if (routeRecord) {
+        bom.route_code = routeRecord.route;
+        bom.route_name = getRouteName(routeRecord.route);
         bom.craft_route = routeRecord.route;
+      } else {
+        bom.route_code = undefined;
+        bom.route_name = undefined;
       }
     });
 
     const subtree = collectSubtreeByRootCode(allBoms.value as any[], selectedRootBomCode.value);
+    const bomIds = Array.from(
+      new Set(
+        subtree
+          .map((b: any) => Number(b?.id))
+          .filter((id: number) => Number.isFinite(id) && id > 0)
+      )
+    );
+    if (bomIds.length > 0) {
+      const manhourRes = await ProduceBomManhourAPI.summaryBatchProduceBomManhour({ bom_ids: bomIds });
+      const manhourMap = (manhourRes.data?.data || {}) as Record<string, string>;
+      subtree.forEach((bom: any) => {
+        bom.manhour = manhourMap[String(bom.id)] || "";
+      });
+    }
     const { tree } = convertToTree(subtree, undefined, selectedRootBomCode.value);
     syncCraftRouteToTree(tree);
     pageTableData.value = tree;
@@ -870,6 +999,104 @@ function handleHoverBomRowClick(row: DataBomTable) {
   loadingData();
 }
 
+async function handleOpenManhourDialog(row: any) {
+  manhourBom.value = row;
+  manhourDialogVisible.value = true;
+  manhourSteps.value = [];
+  const routeCode = row?.route_code ?? row?.craft_route;
+  if (!routeCode) return;
+
+  manhourLoading.value = true;
+   try {
+    const [routeRes, manhourRes] = await Promise.all([
+      ProduceCraftRouteAPI.detailProduceCraftRoute(Number(routeCode)),
+      ProduceBomManhourAPI.listProduceBomManhour({
+        bom_id: String(Number(row?.id)),
+      } as any),
+    ]);
+
+    const items = routeRes.data?.data?.items || [];
+    const manhourData: any = manhourRes.data?.data;
+    const existedManhours = Array.isArray(manhourData) ? manhourData : manhourData?.items || [];
+    const manhourMap = new Map<number, number>();
+    existedManhours.forEach((m: any) => {
+      const craftId = Number(m?.craft_id);
+      const manhour = Number(m?.manhour);
+      if (!Number.isFinite(craftId) || craftId <= 0) return;
+      if (!Number.isFinite(manhour) || manhour <= 0) return;
+      manhourMap.set(craftId, manhour);
+    });
+
+    manhourSteps.value = items.map((item: any) => {
+      const craftId = Number(item?.craft_id);
+      return {
+        key: `${item.route ?? routeCode}-${craftId}`,
+        label: `${item.craft_name ?? item.craft_names ?? craftId}`.trim(),
+        craft_id: craftId,
+        manhour: manhourMap.get(craftId) ?? null,
+      };
+    });
+  } catch (error: any) {
+    console.error(error);
+    manhourSteps.value = [];
+  } finally {
+    manhourLoading.value = false;
+  }
+}
+
+
+
+function handleCloseManhourDialog() {
+  manhourDialogVisible.value = false;
+  manhourLoading.value = false;
+  manhourBom.value = null;
+  manhourSteps.value = [];
+}
+
+async function handleConfirmManhourDialog() {
+  const bomId = Number(manhourBom.value?.id);
+  if (!bomId) {
+    ElMessage.error("未找到BOM ID，无法保存");
+    return;
+  }
+  const manhourStr = (manhourSteps.value || [])
+    .map((s) => Number(s.manhour ?? 0))
+    .filter((v) => Number.isFinite(v) && v > 0)
+    .join(",");
+
+  const items = (manhourSteps.value || [])
+    .map((s) => ({
+      bom_id: bomId,
+      craft_id: Number(s.craft_id),
+      manhour: Number(s.manhour ?? 0),
+    }))
+    .filter((s) => s.craft_id && s.manhour > 0);
+
+  if (items.length === 0) {
+    ElMessage.info("无可保存工时（已忽略为0的工时）");
+    const bom = (allBoms.value as any[]).find((item: any) => item.id === bomId);
+    if (bom) bom.manhour = manhourStr;
+    if (manhourBom.value) manhourBom.value.manhour = manhourStr;
+    updateTreeManhourById(pageTableData.value as any[], bomId, manhourStr);
+    manhourDialogVisible.value = false;
+    return;
+  }
+
+  try {
+    manhourLoading.value = true;
+    await ProduceBomManhourAPI.upsertBatchProduceBomManhour({ items });
+    const bom = (allBoms.value as any[]).find((item: any) => item.id === bomId);
+    if (bom) bom.manhour = manhourStr;
+    if (manhourBom.value) manhourBom.value.manhour = manhourStr;
+    updateTreeManhourById(pageTableData.value as any[], bomId, manhourStr);
+    manhourDialogVisible.value = false;
+  } catch (error: any) {
+    console.error(error);
+  } finally {
+    manhourLoading.value = false;
+  }
+}
+
 // 打开项目选择抽屉
 async function handleOpenProjectDrawer() {
   projectDrawerVisible.value = true;
@@ -918,6 +1145,20 @@ function updateTreeCraftRouteById(nodes: any[], bomId: number, craftRoute: any):
     }
     if (node.children && node.children.length > 0) {
       const updated = updateTreeCraftRouteById(node.children, bomId, craftRoute);
+      if (updated) return true;
+    }
+  }
+  return false;
+}
+
+function updateTreeManhourById(nodes: any[], bomId: number, manhour: string): boolean {
+  for (const node of nodes || []) {
+    if (node.id === bomId) {
+      node.manhour = manhour;
+      return true;
+    }
+    if (node.children && node.children.length > 0) {
+      const updated = updateTreeManhourById(node.children, bomId, manhour);
       if (updated) return true;
     }
   }
