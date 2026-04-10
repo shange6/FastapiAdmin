@@ -39,20 +39,20 @@
               >
                 重置
               </el-button> -->
-              <el-button type="info" plain icon="Expand" @click="toggleAllExpansion(true)">
+              <!-- <el-button type="info" plain icon="Expand" @click="toggleAllExpansion(true)">
                 全部展开
               </el-button>
               <el-button type="info" plain icon="Fold" @click="toggleAllExpansion(false)">
                 全部收起
-              </el-button>
-              <el-button
+              </el-button> -->
+              <!-- <el-button
                 v-hasPerm="['module_produce:bomroute:create']"
                 type="warning"
                 icon="FolderChecked"
                 @click="handleBatchSaveCraftRoute"
               >
                 批量保存
-              </el-button>
+              </el-button> -->
               <el-button type="primary" icon="Collection" @click="handleOpenProjectDrawer">
                 选择项目
               </el-button>
@@ -307,7 +307,7 @@
               link
               @click="handleOpenManhourDialog(scope.row)"
             >
-              编辑
+              排产
             </el-button>
           </template>
         </el-table-column>
@@ -380,111 +380,110 @@
     </el-drawer>
 
     <!-- 弹窗区域 -->
-    <el-dialog
-      v-model="dialogVisible.visible"
-      :title="dialogVisible.title"
-      @close="handleCloseDialog"
-    >
-      <!-- 详情 -->
-      <template v-if="dialogVisible.type === 'detail'">
-        <el-descriptions :column="4" border>
-          <el-descriptions-item label="BOMID" :span="2">
-            {{ detailFormData.bom_id }}
-          </el-descriptions-item>
-          <el-descriptions-item label="工艺路线" :span="2">
-            {{ detailFormData.route }}
-          </el-descriptions-item>
-        </el-descriptions>
-      </template>
-
-      <!-- 新增、编辑表单 -->
-      <template v-else>
-        <el-form
-          ref="dataFormRef"
-          :model="formData"
-          :rules="rules"
-          label-suffix=":"
-          label-width="auto"
-          label-position="right"
-        >
-          <el-form-item label="BOMID" prop="bom_id" :required="false">
-            <el-input v-model="formData.bom_id" placeholder="请输入BOMID" />
-          </el-form-item>
-          <el-form-item label="工艺路线" prop="route" :required="false">
-            <el-input v-model="formData.route" placeholder="请输入工艺路线" />
-          </el-form-item>
-        </el-form>
-      </template>
-
-      <template #footer>
-        <div class="dialog-footer">
-          <!-- 详情弹窗不需要确定按钮的提交逻辑 -->
-          <el-button @click="handleCloseDialog">取消</el-button>
-          <el-button v-if="dialogVisible.type !== 'detail'" type="primary" @click="handleSubmit">
-            确定
-          </el-button>
-          <el-button v-else type="primary" @click="handleCloseDialog">确定</el-button>
-        </div>
-      </template>
-    </el-dialog>
-
     <el-dialog 
       v-model="manhourDialogVisible" 
-      title="工时" 
-      width="600px" 
+      header-class="hidden-header"
+      title="创建工单"
+      width="1080" 
       top="5vh"
       @close="handleCloseManhourDialog"
     >
-      <el-descriptions v-if="manhourBom" :column="2" border >
-        <el-descriptions-item label-align="center" label="代号">{{ manhourBom.code }}</el-descriptions-item>
-        <el-descriptions-item label-align="center" label="数量">{{ manhourBom.count }}</el-descriptions-item>
-        <el-descriptions-item label-align="center" label="名称">{{ manhourBom.spec }}</el-descriptions-item>
-        <el-descriptions-item label-align="center" label="单重">{{ manhourBom.unit_mass }}</el-descriptions-item>
-        <el-descriptions-item label-align="center" label="材质">{{ manhourBom.material }}</el-descriptions-item>
-        <el-descriptions-item label-align="center" label="总重">{{ manhourBom.total_mass }}</el-descriptions-item>
-        <el-descriptions-item label-align="center" label="备注" :span="2">{{ manhourBom.remark }}</el-descriptions-item>
-      </el-descriptions>
+      <el-table 
+        v-if="manhourBom" 
+        :data="[manhourBom]" 
+        border
+      >
+        <el-table-column prop="code" label="代号" align="center" width="190" />
+        <el-table-column prop="spec" label="名称" align="center" width="170" show-overflow-tooltip />
+        <el-table-column prop="material" label="材质" align="center" width="145" show-overflow-tooltip />
+        <el-table-column prop="count" label="数量" align="center" width="80" />
+        <el-table-column prop="unit_mass" label="单重" align="center" width="110" />
+        <el-table-column prop="total_mass" label="总重" align="center" width="110" />
+        <el-table-column prop="remark" label="备注" align="center" show-overflow-tooltip />
+      </el-table>
 
-      <el-divider content-position="left">工艺工时</el-divider>
+      <el-divider content-position="left"></el-divider>
       <el-skeleton v-if="manhourLoading" :rows="6" animated />
       <el-empty v-else-if="manhourSteps.length === 0" description="该路线未配置工艺" />
-      <el-form v-else label-position="left" style="padding-left: 0px; margin-bottom: -0px;">
-        <div v-for="group in manhourStepGroups" :key="group[0].key" style="display: flex; gap: 12px">
-          <el-form-item :label="group[0].label" style="flex: 1">
-            <el-input-number
-              v-model="group[0].manhour"
-              :min="0"
-              :step="1"
-              controls-position="right"
-              style="width: 120px"
-            />
-          </el-form-item>
-          <el-form-item v-if="group[1]" :label="group[1].label" style="flex: 1">
-            <el-input-number
-              v-model="group[1].manhour"
-              :min="0"
-              :step="1"
-              controls-position="right"
-              style="width: 120px"
-            />
-          </el-form-item>
-          <div v-else style="flex: 1"></div>
-          <el-form-item v-if="group[2]" :label="group[2].label" style="flex: 1">
-            <el-input-number
-              v-model="group[2].manhour"
-              :min="0"
-              :step="1"
-              controls-position="right"
-              style="width: 120px"
-            />
-          </el-form-item>
-          <div v-else style="flex: 1"></div>
-        </div>
-      </el-form>
+
+      <!-- 外层左右分栏容器 -->
+      <div style="display: flex; gap: 0px;">
+        <!-- 左侧表格：显示前一半数据 -->
+        <el-table
+          :data="manhourStepsLeft"
+          border
+          stripe
+          header-align="center"
+          style="flex: 1;"
+        >
+          <el-table-column label="工艺" width="80" align="center">
+            <template #default="{ row }">
+              <el-tag style="font-size: 14px; background:#e8f3ff; color:#1989fa; border-color:#dcdfe6">
+                {{ row.label }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="工时" width="110" align="center">
+            <template #default="{ row }"><el-input v-model="row.manhour" disabled/></template>
+          </el-table-column>
+          <el-table-column label="计划日期" width="170" align="center">
+            <template #default="{ row }"><el-date-picker v-model="row.date" type="date" style="width: 100%" /></template>
+          </el-table-column>
+          <el-table-column label="计划用户" min-width="140" align="center">
+            <template #default="{ row }">
+              <el-select v-model="row.tags" multiple collapse-tags filterable clearable style="width: 100%">
+                <el-option
+                  v-for="name in row.staffOptions || []"
+                  :key="name"
+                  :label="name"
+                  :value="name"
+                />
+              </el-select>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <!-- 右侧表格：显示后一半数据 -->
+        <el-table
+          :data="manhourStepsRight"
+          border
+          stripe
+          header-align="center"
+          style="flex: 1;"
+        >
+          <el-table-column label="工艺" width="80" align="center">
+            <template #default="{ row }">
+              <el-tag style="font-size: 14px; background:#e8f3ff; color:#1989fa; border-color:#dcdfe6">
+                {{ row.label }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="工时" width="110" align="center">
+            <template #default="{ row }"><el-input v-model="row.manhour" disabled/></template>
+          </el-table-column>
+          <el-table-column label="计划日期" width="170" align="center">
+            <template #default="{ row }"><el-date-picker v-model="row.date" type="date" style="width: 100%" /></template>
+          </el-table-column>
+          <el-table-column label="计划用户" min-width="140" align="center">
+            <template #default="{ row }">
+              <el-select v-model="row.tags" multiple collapse-tags filterable clearable style="width: 100%">
+                <el-option
+                  v-for="name in row.staffOptions || []"
+                  :key="name"
+                  :label="name"
+                  :value="name"
+                />
+              </el-select>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
+
 
       <template #footer>
         <el-button @click="handleCloseManhourDialog">取消</el-button>
-        <el-button type="primary" @click="handleConfirmManhourDialog">保存工时</el-button>
+        <el-button type="primary" @click="handleConfirmManhourDialog">保存工单</el-button>
       </template>
     </el-dialog>
 
@@ -544,6 +543,9 @@ import DataProjectAPI, { DataProjectTable } from "@/api/module_data/project";
 import ProduceCraftRouteAPI, { CraftRouteView } from "@/api/module_produce/craftroute";
 import ProduceBomManhourAPI from "@/api/module_produce/bommanhour";
 import ProduceOrderAPI from "@/api/module_produce/order";
+import ProduceCraftAPI from "@/api/module_produce/craft";
+import PositionAPI from "@/api/module_system/position";
+import UserAPI, { UserInfo } from "@/api/module_system/user";
 import { convertToTree } from "@/views/module_data/utils";
 
 const visible = ref(true);
@@ -560,19 +562,38 @@ const isExpandable = ref(true);
 const manhourDialogVisible = ref(false);
 const manhourLoading = ref(false);
 const manhourBom = ref<any | null>(null);
-const manhourSteps = ref<{ key: string; label: string; craft_id: number; manhour: number | null }[]>([]);
+const manhourSteps = ref<{
+  key: string;
+  label: string;
+  craft_id: number;
+  manhour: number | null;
+  date: string | null;
+  tags: string[];
+  staffOptions: string[];
+}[]>([]);
+
+const manhourStepsLeft = computed(() => manhourSteps.value.filter((_, idx) => idx % 2 === 0));
+const manhourStepsRight = computed(() => manhourSteps.value.filter((_, idx) => idx % 2 === 1));
 
 const manhourStepGroups = computed(() => {
-  const groups: [
-    { key: string; label: string; craft_id: number; manhour: number | null },
-    { key: string; label: string; craft_id: number; manhour: number | null } | null,
-    { key: string; label: string; craft_id: number; manhour: number | null } | null,
-  ][] = [];
-  for (let i = 0; i < manhourSteps.value.length; i += 3) {
+  const groups: (
+    | {
+        key: string;
+        label: string;
+        craft_id: number;
+        manhour: number | null;
+        date: string | null;
+        tags: string[];
+        staffOptions: string[];
+      }
+    | null
+  )[][] = [];
+  for (let i = 0; i < manhourSteps.value.length; i += 4) {
     groups.push([
-      manhourSteps.value[i],
+      manhourSteps.value[i] ?? null,
       manhourSteps.value[i + 1] ?? null,
       manhourSteps.value[i + 2] ?? null,
+      manhourSteps.value[i + 3] ?? null,
     ]);
   }
   return groups;
@@ -583,6 +604,109 @@ const pageTableData = ref<DataBomTable[]>([]);
 
 // 工艺路线下拉选项
 const craftRouteOptions = ref<any[]>([]);
+
+const craftByIdCache = new Map<number, { id?: number; name?: string; parent_id?: number }>();
+const positionNameToIdCache = new Map<string, number>();
+const usersCache = ref<UserInfo[]>([]);
+
+async function ensureCraftsLoaded() {
+  if (craftByIdCache.size > 0) return;
+  const res = await ProduceCraftAPI.getAllProduceCraft();
+  const list = res.data?.data || [];
+  list.forEach((c: any) => {
+    const id = Number(c?.id);
+    if (!Number.isFinite(id) || id <= 0) return;
+    craftByIdCache.set(id, { id, name: c?.name, parent_id: c?.parent_id });
+  });
+}
+
+async function ensurePositionsLoaded() {
+  if (positionNameToIdCache.size > 0) return;
+  const pageSize = 100;
+  let pageNo = 1;
+  while (true) {
+    const res = await PositionAPI.listPosition({ page_no: pageNo, page_size: pageSize } as any);
+    const list = res.data?.data?.items || [];
+    list.forEach((p: any) => {
+      const id = Number(p?.id);
+      const name = String(p?.name ?? "");
+      if (!Number.isFinite(id) || id <= 0 || !name) return;
+      positionNameToIdCache.set(name, id);
+    });
+    if (list.length < pageSize) break;
+    pageNo += 1;
+    if (pageNo > 200) break;
+  }
+}
+
+async function ensureUsersLoaded() {
+  if (usersCache.value.length > 0) return;
+  const all: UserInfo[] = [];
+  const pageSize = 100;
+  let pageNo = 1;
+  while (true) {
+    const res = await UserAPI.listUser({ page_no: pageNo, page_size: pageSize } as any);
+    const items = (res.data?.data?.items || []) as UserInfo[];
+    all.push(...items);
+    if (items.length < pageSize) break;
+    pageNo += 1;
+    if (pageNo > 200) break;
+  }
+  usersCache.value = all;
+}
+
+function getCraftMatchName(craftId: number): string {
+  const craft = craftByIdCache.get(craftId);
+  if (!craft) return "";
+  const parentId = Number(craft.parent_id);
+  if (Number.isFinite(parentId) && parentId > 0) {
+    const parent = craftByIdCache.get(parentId);
+    return String(parent?.name ?? "");
+  }
+  return String(craft.name ?? "");
+}
+
+function normalizeText(v: string) {
+  return String(v ?? "").trim().toLowerCase().replace(/\s+/g, "");
+}
+
+function findPositionIdByCraftName(craftName: string): number | undefined {
+  const target = normalizeText(craftName);
+  if (!target) return undefined;
+
+  for (const [name, id] of positionNameToIdCache.entries()) {
+    const n = normalizeText(name);
+    if (!n) continue;
+    if (n.includes(target)) return id;
+  }
+  return undefined;
+}
+
+function getStaffNamesByCraftName(craftName: string): string[] {
+  const positionId = findPositionIdByCraftName(craftName);
+  if (!positionId) return [];
+  const names = usersCache.value
+    .filter((u: any) => {
+      const ids = (u?.position_ids || []) as any[];
+      if (Array.isArray(ids) && ids.map((x) => Number(x)).includes(positionId)) return true;
+      const positions = (u?.positions || []) as any[];
+      if (Array.isArray(positions) && positions.some((p: any) => Number(p?.id) === positionId)) return true;
+      return false;
+    })
+    .map((u: any) => String(u?.name || u?.username || ""))
+    .filter((n: string) => !!n);
+  return Array.from(new Set(names));
+}
+
+async function fillStaffOptionsByCraft(
+  steps: { craft_id: number; staffOptions: string[]; tags?: string[] }[]
+) {
+  await Promise.all([ensureCraftsLoaded(), ensurePositionsLoaded(), ensureUsersLoaded()]);
+  steps.forEach((s) => {
+    const craftName = getCraftMatchName(Number(s.craft_id));
+    s.staffOptions = craftName ? getStaffNamesByCraftName(craftName) : [];
+  });
+}
 
 // 项目选择相关
 const projectDrawerVisible = ref(false);
@@ -1098,15 +1222,30 @@ async function handleOpenManhourDialog(row: any) {
       });
     });
 
-    manhourSteps.value = items.map((item: any) => {
+    await ensureCraftsLoaded();
+    const filteredItems = (items || []).filter((item: any) => {
+      const craftId = Number(item?.craft_id);
+      if (!Number.isFinite(craftId) || craftId <= 0) return false;
+      const craft = craftByIdCache.get(craftId);
+      const isChildCraft = Number(craft?.parent_id) > 0;
+      if (!isChildCraft) return true;
+      return Number(craftTotals.get(craftId) ?? 0) > 0;
+    });
+
+    manhourSteps.value = filteredItems.map((item: any) => {
       const craftId = Number(item?.craft_id);
       return {
         key: `${item.route ?? routeCode}-${craftId}`,
         label: `${item.craft_name ?? item.craft_names ?? craftId}`.trim(),
         craft_id: craftId,
         manhour: craftTotals.get(craftId) ?? null,
+        date: null,
+        tags: [],
+        staffOptions: [],
       };
     });
+
+    await fillStaffOptionsByCraft(manhourSteps.value);
   } catch (error: any) {
     console.error(error);
     manhourSteps.value = [];
