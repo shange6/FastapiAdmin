@@ -17,6 +17,7 @@ from .schema import (
     ProduceOrderUpdateSchema,
     ProduceOrderQueryParam,
     ProduceOrderSummaryBatchSchema,
+    ProduceOrderUpsertBatchSchema,
 )
 
 ProduceOrderRouter = APIRouter(prefix='/order', tags=["工单模块"]) 
@@ -86,6 +87,19 @@ async def summary_batch_order_controller(
 ) -> JSONResponse:
     result_dict = await ProduceOrderService.summary_batch_order_service(auth=auth, bom_ids=data.bom_ids)
     return SuccessResponse(data=result_dict, msg="查询成功")
+
+@ProduceOrderRouter.post(
+    "/upsert/batch",
+    summary="批量保存工单（存在则更新，不存在则创建）",
+    description="按BOM与子工艺唯一键进行批量保存"
+)
+async def upsert_batch_order_controller(
+    data: ProduceOrderUpsertBatchSchema,
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:order:create"]))
+) -> JSONResponse:
+    result_dict = await ProduceOrderService.upsert_batch_order_service(auth=auth, data=data)
+    log.info("批量保存工单成功")
+    return SuccessResponse(data=result_dict, msg="批量保存工单成功")
 
 @ProduceOrderRouter.post(
     "/create",

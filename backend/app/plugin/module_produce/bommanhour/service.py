@@ -13,6 +13,7 @@ from app.utils.excel_util import ExcelUtil
 
 from .crud import ProduceBomManhourCRUD
 from .model import ProduceBomManhourModel
+from ..craft.model import ProduceCraftModel
 from .schema import (
     ProduceBomManhourCreateSchema,
     ProduceBomManhourUpdateSchema,
@@ -149,30 +150,35 @@ class ProduceBomManhourService:
         return {"inserted": inserted, "updated": updated, "deleted": deleted}
 
     @classmethod
-    async def summary_batch_bommanhour_service(cls, auth: AuthSchema, bom_ids: list[int]) -> dict[int, str]:
+    async def summary_batch_bommanhour_service(cls, auth: AuthSchema, bom_ids: list[int]) -> dict[int, list[dict]]:
         ids = [int(i) for i in bom_ids if i]
         if not ids:
             return {}
 
         sql = (
-            select(ProduceBomManhourModel)
+            select(
+                ProduceBomManhourModel.bom_id,
+                ProduceBomManhourModel.craft_id,
+                ProduceBomManhourModel.manhour,
+                ProduceCraftModel.name.label("craft_name")
+            )
+            .join(ProduceCraftModel, ProduceBomManhourModel.craft_id == ProduceCraftModel.id)
             .where(ProduceBomManhourModel.bom_id.in_(ids))
-            .order_by(ProduceBomManhourModel.bom_id.asc(), ProduceBomManhourModel.craft_id.asc())
         )
         result = await auth.db.execute(sql)
-        rows = result.scalars().all()
+        rows = result.all()
 
-        grouped: dict[int, list[int]] = {}
+        res: dict[int, list[dict]] = {}
         for row in rows:
-            bom_id = getattr(row, "bom_id", None)
-            manhour = getattr(row, "manhour", None)
-            if bom_id is None or manhour is None:
-                continue
-            if int(manhour) <= 0:
-                continue
-            grouped.setdefault(int(bom_id), []).append(int(manhour))
+            bid, cid, val, cname = row
+            if bid is not None:
+                res.setdefault(int(bid), []).append({
+                    "craft_id": cid,
+                    "manhour": val,
+                    "craft_name": cname
+                })
 
-        return {bom_id: ",".join(str(v) for v in vals) for bom_id, vals in grouped.items()}
+        return res
 
     @classmethod
     async def summary_craft_batch_bommanhour_service(cls, auth: AuthSchema, bom_ids: list[int]) -> dict[int, dict[int, int]]:

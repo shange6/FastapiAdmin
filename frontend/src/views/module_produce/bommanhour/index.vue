@@ -335,7 +335,6 @@
           height="calc(100vh - 220px)"
           style="width: 100%"
           highlight-current-row
-
           @cell-mouse-enter="handleProjectRowMouseEnter"
           @cell-mouse-leave="handleProjectRowMouseLeave"
         >
@@ -397,7 +396,13 @@
               align="center"
               show-overflow-tooltip
             />
-            <el-table-column prop="spec" label="名称" width="200" header-align="center" show-overflow-tooltip />
+            <el-table-column
+              prop="spec"
+              label="名称"
+              width="200"
+              header-align="center"
+              show-overflow-tooltip
+            />
             <el-table-column
               prop="remark"
               label="备注"
@@ -460,28 +465,46 @@
       </template>
     </el-dialog>
 
-    <el-dialog 
-      v-model="manhourDialogVisible" 
-      title="工时" 
-      width="600px" 
+    <el-dialog
+      v-model="manhourDialogVisible"
+      title="工时"
+      width="600px"
       top="5vh"
       @close="handleCloseManhourDialog"
     >
-      <el-descriptions v-if="manhourBom" :column="2" border >
-        <el-descriptions-item label-align="center" label="代号">{{ manhourBom.code }}</el-descriptions-item>
-        <el-descriptions-item label-align="center" label="数量">{{ manhourBom.count }}</el-descriptions-item>
-        <el-descriptions-item label-align="center" label="名称">{{ manhourBom.spec }}</el-descriptions-item>
-        <el-descriptions-item label-align="center" label="单重">{{ manhourBom.unit_mass }}</el-descriptions-item>
-        <el-descriptions-item label-align="center" label="材质">{{ manhourBom.material }}</el-descriptions-item>
-        <el-descriptions-item label-align="center" label="总重">{{ manhourBom.total_mass }}</el-descriptions-item>
-        <el-descriptions-item label-align="center" label="备注" :span="2">{{ manhourBom.remark }}</el-descriptions-item>
+      <el-descriptions v-if="manhourBom" :column="2" border>
+        <el-descriptions-item label-align="center" label="代号">
+          {{ manhourBom.code }}
+        </el-descriptions-item>
+        <el-descriptions-item label-align="center" label="数量">
+          {{ manhourBom.count }}
+        </el-descriptions-item>
+        <el-descriptions-item label-align="center" label="名称">
+          {{ manhourBom.spec }}
+        </el-descriptions-item>
+        <el-descriptions-item label-align="center" label="单重">
+          {{ manhourBom.unit_mass }}
+        </el-descriptions-item>
+        <el-descriptions-item label-align="center" label="材质">
+          {{ manhourBom.material }}
+        </el-descriptions-item>
+        <el-descriptions-item label-align="center" label="总重">
+          {{ manhourBom.total_mass }}
+        </el-descriptions-item>
+        <el-descriptions-item label-align="center" label="备注" :span="2">
+          {{ manhourBom.remark }}
+        </el-descriptions-item>
       </el-descriptions>
 
       <el-divider content-position="left">工艺工时</el-divider>
       <el-skeleton v-if="manhourLoading" :rows="6" animated />
       <el-empty v-else-if="manhourSteps.length === 0" description="该路线未配置工艺" />
-      <el-form v-else label-position="left" style="padding-left: 0px; margin-bottom: -0px;">
-        <div v-for="group in manhourStepGroups" :key="group[0].key" style="display: flex; gap: 12px">
+      <el-form v-else label-position="left" style="padding-left: 0px; margin-bottom: -0px">
+        <div
+          v-for="group in manhourStepGroups"
+          :key="group[0].key"
+          style="display: flex; gap: 12px"
+        >
           <el-form-item :label="group[0].label" style="flex: 1">
             <el-input-number
               v-model="group[0].manhour"
@@ -591,7 +614,9 @@ const isExpandable = ref(true);
 const manhourDialogVisible = ref(false);
 const manhourLoading = ref(false);
 const manhourBom = ref<any | null>(null);
-const manhourSteps = ref<{ key: string; label: string; craft_id: number; manhour: number | null }[]>([]);
+const manhourSteps = ref<
+  { key: string; label: string; craft_id: number; manhour: number | null }[]
+>([]);
 
 const manhourStepGroups = computed(() => {
   const groups: [
@@ -870,9 +895,7 @@ async function loadingData() {
     const subtree = collectSubtreeByRootCode(allBoms.value as any[], selectedRootBomCode.value);
     const bomIds = Array.from(
       new Set(
-        subtree
-          .map((b: any) => Number(b?.id))
-          .filter((id: number) => Number.isFinite(id) && id > 0)
+        subtree.map((b: any) => Number(b?.id)).filter((id: number) => Number.isFinite(id) && id > 0)
       )
     );
     await ensureRouteCraftIdsLoaded(
@@ -881,12 +904,16 @@ async function loadingData() {
         .filter((v: number) => Number.isFinite(v) && v > 0)
     );
     if (bomIds.length > 0) {
-      const manhourRes = await ProduceBomManhourAPI.summaryCraftBatchProduceBomManhour({ bom_ids: bomIds });
+      const manhourRes = await ProduceBomManhourAPI.summaryCraftBatchProduceBomManhour({
+        bom_ids: bomIds,
+      });
       const manhourMap = (manhourRes.data?.data || {}) as Record<string, Record<string, number>>;
       subtree.forEach((bom: any) => {
         const craftMap = (manhourMap[String(bom.id)] || {}) as Record<string, number>;
         const routeCode = Number(bom?.route_code);
-        const routeCraftIds = Number.isFinite(routeCode) ? routeCraftIdsCache.get(routeCode) : undefined;
+        const routeCraftIds = Number.isFinite(routeCode)
+          ? routeCraftIdsCache.get(routeCode)
+          : undefined;
         if (routeCraftIds && routeCraftIds.length > 0) {
           bom.manhour = routeCraftIds
             .map((cid) => {
@@ -1056,7 +1083,7 @@ async function handleOpenManhourDialog(row: any) {
   if (!routeCode) return;
 
   manhourLoading.value = true;
-   try {
+  try {
     const [routeRes, manhourRes] = await Promise.all([
       ProduceCraftRouteAPI.detailProduceCraftRoute(Number(routeCode)),
       ProduceBomManhourAPI.listProduceBomManhour({
@@ -1092,8 +1119,6 @@ async function handleOpenManhourDialog(row: any) {
     manhourLoading.value = false;
   }
 }
-
-
 
 function handleCloseManhourDialog() {
   manhourDialogVisible.value = false;

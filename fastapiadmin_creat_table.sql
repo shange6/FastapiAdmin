@@ -282,6 +282,7 @@ CREATE TABLE `produce_bom_manhour` (
 -- =============================================
 DROP TABLE IF EXISTS `produce_order`;
 CREATE TABLE `produce_order` (
+  `no` varchar(32) NOT NULL COMMENT '单号',
   `bom_id` int NOT NULL COMMENT 'BOM ID',
   `craft_id` int NOT NULL COMMENT '子工艺ID',
   `man_hour` int NOT NULL DEFAULT 0 COMMENT '工时',  
@@ -304,6 +305,7 @@ CREATE TABLE `produce_order` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_order_uuid` (`uuid`),
   UNIQUE KEY `uk_order_bom_craft` (`bom_id`,`craft_id`),
+  KEY `ix_order_no` (`no`),
   KEY `idx_bom` (`bom_id`),
   KEY `idx_craft` (`craft_id`),
   KEY `ix_order_status` (`status`),

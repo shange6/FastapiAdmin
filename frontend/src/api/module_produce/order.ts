@@ -93,6 +93,15 @@ const ProduceOrderAPI = {
       headers: { "Content-Type": "multipart/form-data" },
     });
   },
+
+  // 批量保存（存在则更新）
+  upsertBatchProduceOrder(body: { items: ProduceOrderForm[] }) {
+    return request<ApiResponse>({
+      url: `${API_PATH}/upsert/batch`,
+      method: "post",
+      data: body,
+    });
+  },
 };
 
 export default ProduceOrderAPI;
@@ -119,13 +128,15 @@ export interface ProduceOrderPageQuery extends PageQuery {
 
 // 列表展示项
 export interface ProduceOrderTable extends BaseType {
-  bom_id?: string;
-  craft_id?: string;
-  man_hour?: string;
-  plan_count?: string;
-  real_count?: string;
+  bom_id?: number;
+  craft_id?: number;
+  man_hour?: number;
+  plan_count?: number;
+  real_count?: number;
   plan_date?: string;
   real_date?: string;
+  plan_user?: number;
+  real_user?: number;
   created_id?: string;
   updated_id?: string;
   created_by?: CommonType;
@@ -134,11 +145,12 @@ export interface ProduceOrderTable extends BaseType {
 
 // 新增/修改/详情表单参数
 export interface ProduceOrderForm extends BaseFormType {
-  bom_id?: string;
-  craft_id?: string;
-  man_hour?: string;
-  plan_count?: string;
-  real_count?: string;
+  bom_id?: number;
+  craft_id?: number;
+  man_hour?: number;
+  plan_count?: number;
+  real_count?: number;
   plan_date?: string;
   real_date?: string;
+  plan_user?: number;
 }

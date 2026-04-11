@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import io
+import datetime
 import pandas as pd
 from fastapi import UploadFile
 from sqlalchemy import select
@@ -18,6 +19,7 @@ from .schema import (
     ProduceOrderUpdateSchema,
     ProduceOrderOutSchema,
     ProduceOrderQueryParam,
+    ProduceOrderUpsertBatchSchema,
 )
 
 
@@ -67,22 +69,21 @@ class ProduceOrderService:
             return {}
 
         sql = (
-            select(ProduceOrderModel)
+            select(ProduceOrderModel.bom_id, ProduceOrderModel.no)
             .where(ProduceOrderModel.bom_id.in_(ids))
-            .order_by(ProduceOrderModel.bom_id.asc(), ProduceOrderModel.id.asc())
+            .group_by(ProduceOrderModel.bom_id, ProduceOrderModel.no)
         )
         result = await auth.db.execute(sql)
-        rows = result.scalars().all()
+        rows = result.all()
 
-        grouped: dict[int, list[int]] = {}
+        res: dict[int, str] = {}
         for row in rows:
-            bom_id = getattr(row, "bom_id", None)
-            oid = getattr(row, "id", None)
-            if bom_id is None or oid is None:
-                continue
-            grouped.setdefault(int(bom_id), []).append(int(oid))
+            bid, no = row
+            if bid is not None and no:
+                # 相同 bom_id 对应的 no 应该是一样的，这里简单覆盖即可
+                res[int(bid)] = str(no)
 
-        return {bom_id: ",".join(str(v) for v in vals) for bom_id, vals in grouped.items()}
+        return res
 
     @classmethod
     async def page_order_service(cls, auth: AuthSchema, page_no: int, page_size: int, search: ProduceOrderQueryParam | None = None, order_by: list[dict] | None = None) -> dict:
@@ -181,6 +182,86 @@ class ProduceOrderService:
         - None
         """
         await ProduceOrderCRUD(auth).set_available_order_crud(ids=data.ids, status=data.status)
+    
+    @classmethod
+    async def _get_max_serial(cls, auth: AuthSchema, yy: str) -> int:
+        """
+        获取当年最大的序列号
+        """
+        sql = (
+            select(ProduceOrderModel.no)
+            .where(ProduceOrderModel.no.like(f"{yy}%"))
+            .order_by(ProduceOrderModel.no.desc())
+            .limit(1)
+        )
+        result = await auth.db.execute(sql)
+        max_no = result.scalar()
+        if max_no:
+            try:
+                return int(max_no[-3:])
+            except (ValueError, TypeError):
+                pass
+        return 0
+
+    @classmethod
+    async def upsert_batch_order_service(cls, auth: AuthSchema, data: ProduceOrderUpsertBatchSchema) -> dict:
+        created = 0
+        updated = 0
+        items = data.items or []
+        crud = ProduceOrderCRUD(auth)
+        
+        # 预先查询这些 BOM 是否已有单号
+        bom_ids = list(set(item.bom_id for item in items))
+        bom_no_map: dict[int, str] = {}
+        if bom_ids:
+            sql = select(ProduceOrderModel.bom_id, ProduceOrderModel.no).where(
+                ProduceOrderModel.bom_id.in_(bom_ids),
+                ProduceOrderModel.no.is_not(None)
+            ).group_by(ProduceOrderModel.bom_id, ProduceOrderModel.no)
+            res = await auth.db.execute(sql)
+            for bid, no in res.all():
+                if bid is not None and no:
+                    bom_no_map[int(bid)] = str(no)
+
+        now = datetime.datetime.now()
+        yy = now.strftime('%y')
+        # 获取当前数据库中最大的序列号作为起始
+        current_max_serial = await cls._get_max_serial(auth, yy)
+
+        for item in items:
+            exists = await crud.get(bom_id=item.bom_id, craft_id=item.craft_id)
+            
+            # 确定单号：如果前端没传，则尝试从已有记录获取，否则生成新的
+            order_no = item.no
+            if not order_no:
+                order_no = bom_no_map.get(item.bom_id)
+            
+            if not order_no:
+                # 生成新单号: 年份后两位 + 三位递增数字
+                current_max_serial += 1
+                order_no = f"{yy}{str(current_max_serial).zfill(3)}"
+                bom_no_map[item.bom_id] = order_no # 同一批次后续 item 复用
+
+            payload = {
+                "no": order_no,
+                "bom_id": item.bom_id,
+                "craft_id": item.craft_id,
+                "man_hour": item.man_hour,
+                "plan_count": item.plan_count,
+                "real_count": item.real_count,
+                "plan_date": item.plan_date,
+                "real_date": item.real_date,
+                "plan_user": item.plan_user,
+                "status": item.status,
+                "description": item.description,
+            }
+            if exists:
+                await crud.update_order_crud(id=exists.id, data=ProduceOrderUpdateSchema.model_validate(payload))
+                updated += 1
+            else:
+                await crud.create_order_crud(data=ProduceOrderCreateSchema.model_validate(payload))
+                created += 1
+        return {"created": created, "updated": updated, "total": len(items)}
     
     @classmethod
     async def batch_export_order_service(cls, obj_list: list[dict]) -> bytes:

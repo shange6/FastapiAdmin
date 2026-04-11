@@ -13,13 +13,16 @@ class ProduceOrderCreateSchema(BaseModel):
     """
     工单新增模型
     """
+    no: str | None = Field(default=None, description='单号')
     bom_id: int = Field(default=..., description='BOM ID')
     craft_id: int = Field(default=..., description='子工艺ID')
     man_hour: int = Field(default=..., description='工时')
     plan_count: int = Field(default=..., description='计划数量')
-    real_count: int = Field(default=..., description='实际数量')
+    real_count: int | None = Field(default=None, description='实际数量')
     plan_date: date = Field(default=..., description='计划日期')
-    real_date: date = Field(default=..., description='实际日期')
+    real_date: date | None = Field(default=None, description='实际日期')
+    plan_user: int = Field(default=..., description='计划用户ID')
+    real_user: int | None = Field(default=None, description='实际用户ID')
     status: str = Field(default="0", description='状态 0=待生产 1=生产中 2=已完成 3=已取消 4=已暂停')
     description: str | None = Field(default=None, max_length=255, description='备注/描述')
 
@@ -95,3 +98,21 @@ class ProduceOrderQueryParam:
 
 class ProduceOrderSummaryBatchSchema(BaseModel):
     bom_ids: list[int] = Field(default_factory=list, description="BOM ID列表")
+
+
+class ProduceOrderUpsertItemSchema(BaseModel):
+    no: str | None = Field(default=None, description="单号")
+    bom_id: int = Field(default=..., description="BOM ID")
+    craft_id: int = Field(default=..., description="子工艺ID")
+    man_hour: int = Field(default=..., description="工时")
+    plan_date: date = Field(default=..., description="计划日期")
+    plan_user: int = Field(default=..., description="计划用户ID")
+    plan_count: int = Field(default=1, description="计划数量")
+    real_count: int = Field(default=0, description="实际数量")
+    real_date: date | None = Field(default=None, description="实际日期")
+    status: str = Field(default="0", description='状态 0=待生产 1=生产中 2=已完成 3=已取消 4=已暂停')
+    description: str | None = Field(default=None, description="备注")
+
+
+class ProduceOrderUpsertBatchSchema(BaseModel):
+    items: list[ProduceOrderUpsertItemSchema] = Field(default_factory=list, description="工单列表")

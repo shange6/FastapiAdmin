@@ -319,7 +319,6 @@
           height="calc(100vh - 220px)"
           style="width: 100%"
           highlight-current-row
-
           @cell-mouse-enter="handleProjectRowMouseEnter"
           @cell-mouse-leave="handleProjectRowMouseLeave"
         >
@@ -381,7 +380,13 @@
               align="center"
               show-overflow-tooltip
             />
-            <el-table-column prop="spec" label="名称" width="200" header-align="center" show-overflow-tooltip />
+            <el-table-column
+              prop="spec"
+              label="名称"
+              width="200"
+              header-align="center"
+              show-overflow-tooltip
+            />
             <el-table-column
               prop="remark"
               label="备注"

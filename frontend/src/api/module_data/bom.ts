@@ -150,6 +150,8 @@ export interface DataBomTable extends BaseType {
   procure?: boolean;
   noimage?: boolean;
   figure?: boolean;
+  no?: string;
+  manhour_details?: { name: string; value: number }[];
   created_id?: string;
   updated_id?: string;
   created_by?: CommonType;
