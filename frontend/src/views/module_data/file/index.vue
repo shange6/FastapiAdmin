@@ -110,14 +110,14 @@
             </el-form-item> -->
             <!-- 查询、重置、展开/收起按钮 -->
             <el-form-item>
-              <el-button
+              <!-- <el-button
                 v-hasPerm="['module_data:bom:query']"
                 type="primary"
                 icon="search"
                 @click="handleQuery"
               >
                 查询
-              </el-button>
+              </el-button> -->
               <el-button
                 v-hasPerm="['module_data:bom:query']"
                 icon="refresh"
@@ -126,10 +126,10 @@
                 重置
               </el-button>
               <el-button type="info" plain icon="Expand" @click="toggleAllExpansion(true)">
-                全部展开
+                展开
               </el-button>
               <el-button type="info" plain icon="Fold" @click="toggleAllExpansion(false)">
-                全部收起
+                收起
               </el-button>
               <!-- 展开/收起 -->
               <!-- <template v-if="isExpandable">
@@ -159,7 +159,7 @@
                 native-type="button"
                 @click="handleSaveData"
               >
-                保存数据
+                保存
               </el-button>
               <el-button
                 v-hasPerm="['module_data:file:create']"
@@ -167,7 +167,7 @@
                 icon="plus"
                 @click="handleUploadFile"
               >
-                上传文件
+                上传
               </el-button>
               <el-button
                 v-if="tableSourceData.info.length > 0"
@@ -175,7 +175,7 @@
                 icon="document"
                 @click="logDrawerVisible = true"
               >
-                查看日志
+                日志
               </el-button>
             </el-form-item>
           </el-form>

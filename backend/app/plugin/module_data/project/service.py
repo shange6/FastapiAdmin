@@ -55,7 +55,8 @@ class DataProjectService:
         - list[dict] - 数据列表
         """
         search_dict = search.__dict__ if search else None
-        obj_list = await DataProjectCRUD(auth).list_project_crud(search=search_dict, order_by=order_by)
+        order_by_list = order_by or [{'id': 'desc'}]
+        obj_list = await DataProjectCRUD(auth).list_project_crud(search=search_dict, order_by=order_by_list)
         return [DataProjectOutSchema.model_validate(obj).model_dump() for obj in obj_list]
 
     @classmethod
@@ -74,7 +75,7 @@ class DataProjectService:
         - dict - 分页查询结果
         """
         search_dict = search.__dict__ if search else {}
-        order_by_list = order_by or [{'id': 'asc'}]
+        order_by_list = order_by or [{'id': 'desc'}]
         offset = (page_no - 1) * page_size
         result = await DataProjectCRUD(auth).page_project_crud(
             offset=offset,

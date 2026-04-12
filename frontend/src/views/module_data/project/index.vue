@@ -64,7 +64,7 @@
                 重置
               </el-button>
               <!-- 展开/收起 -->
-              <template v-if="isExpandable">
+              <!-- <template v-if="isExpandable">
                 <el-link
                   class="ml-3"
                   type="primary"
@@ -81,14 +81,14 @@
                     </template>
                   </el-icon>
                 </el-link>
-              </template>
+              </template> -->
             </el-form-item>
           </el-form>
         </div>
       </template>
 
       <!-- 功能区域 -->
-      <div class="data-table__toolbar">
+      <!-- <div class="data-table__toolbar">
         <div class="data-table__toolbar--left">
           <el-row :gutter="10">
             <el-col :span="1.5">
@@ -191,7 +191,7 @@
             </el-col>
           </el-row>
         </div>
-      </div>
+      </div> -->
 
       <!-- 表格区域：系统配置列表 -->
       <el-table
@@ -269,7 +269,7 @@
           fixed="right"
           label="操作"
           align="center"
-          min-width="200"
+          min-width="100"
         >
           <template #default="scope">
             <el-button
@@ -282,7 +282,7 @@
             >
               详情
             </el-button>
-            <el-button
+            <!-- <el-button
               v-hasPerm="['module_data:project:update']"
               type="primary"
               size="small"
@@ -301,7 +301,7 @@
               @click="handleDelete([scope.row.id])"
             >
               删除
-            </el-button>
+            </el-button> -->
           </template>
         </el-table-column>
       </el-table>
@@ -452,6 +452,7 @@ const isExpandable = ref(true);
 
 // 分页表单
 const pageTableData = ref<DataProjectTable[]>([]);
+const allProjects = ref<DataProjectTable[]>([]); // 存储全量原始数据用于本地过滤
 
 // 表格列配置
 const tableColumns = ref([
@@ -549,6 +550,7 @@ function handleOpenExportsModal() {
 
 // 列表刷新
 async function handleRefresh() {
+  allProjects.value = []; // 清空缓存，强制拉取最新数据
   await loadingData();
 }
 
@@ -556,9 +558,29 @@ async function handleRefresh() {
 async function loadingData() {
   loading.value = true;
   try {
-    const response = await DataProjectAPI.listDataProject(queryFormData);
-    pageTableData.value = response.data.data.items;
-    total.value = response.data.data.total;
+    // 1. 如果缓存为空，则从后端拉取全量数据（不分页新接口）
+    if (allProjects.value.length === 0) {
+      const response = await DataProjectAPI.getAllDataProject();
+      allProjects.value = response.data.data || [];
+    }
+
+    // 2. 本地过滤逻辑
+    const codeSearch = queryFormData.code?.toLowerCase() || "";
+    const nameSearch = queryFormData.name?.toLowerCase() || "";
+    const noSearch = queryFormData.no?.toLowerCase() || "";
+
+    const filtered = allProjects.value.filter((item) => {
+      const matchCode = !codeSearch || item.code?.toLowerCase().includes(codeSearch);
+      const matchName = !nameSearch || item.name?.toLowerCase().includes(nameSearch);
+      const matchNo = !noSearch || item.no?.toLowerCase().includes(noSearch);
+      return matchCode && matchName && matchNo;
+    });
+
+    // 3. 处理本地分页
+    total.value = filtered.length;
+    const start = (queryFormData.page_no - 1) * queryFormData.page_size;
+    const end = start + queryFormData.page_size;
+    pageTableData.value = filtered.slice(start, end);
   } catch (error: any) {
     console.error(error);
   } finally {
@@ -660,6 +682,7 @@ async function handleSubmit() {
           dialogVisible.visible = false;
           resetForm();
           handleCloseDialog();
+          allProjects.value = []; // 清空缓存，确保下次加载获取最新数据
           handleResetQuery();
         } catch (error: any) {
           console.error(error);
@@ -672,6 +695,7 @@ async function handleSubmit() {
           dialogVisible.visible = false;
           resetForm();
           handleCloseDialog();
+          allProjects.value = []; // 清空缓存，确保下次加载获取最新数据
           handleResetQuery();
         } catch (error: any) {
           console.error(error);
@@ -694,6 +718,7 @@ async function handleDelete(ids: number[]) {
       try {
         loading.value = true;
         await DataProjectAPI.deleteDataProject(ids);
+        allProjects.value = []; // 清空缓存，确保下次加载获取最新数据
         handleResetQuery();
       } catch (error: any) {
         console.error(error);
@@ -718,6 +743,7 @@ async function handleMoreClick(status: string) {
         try {
           loading.value = true;
           await DataProjectAPI.batchDataProject({ ids: selectIds.value, status });
+          allProjects.value = []; // 清空缓存，确保下次加载获取最新数据
           handleResetQuery();
         } catch (error: any) {
           console.error(error);
@@ -739,6 +765,7 @@ const handleUpload = async (formData: FormData) => {
     if (response.data.code === ResultEnum.SUCCESS) {
       ElMessage.success(`${response.data.msg}，${response.data.data}`);
       importDialogVisible.value = false;
+      allProjects.value = []; // 清空缓存，确保下次加载获取最新数据
       await handleQuery();
     }
   } catch (error: any) {

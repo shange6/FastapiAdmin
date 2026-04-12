@@ -7,7 +7,7 @@
         v-model:page-size="pageSize"
         :background="background"
         :layout="layout"
-        :page-sizes="pageSizes"
+        :page-sizes="displayPageSizes"
         :total="total"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
@@ -17,6 +17,8 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
+
 const props = defineProps({
   total: {
     type: Number as PropType<number>,
@@ -60,6 +62,15 @@ const pageSize = defineModel("limit", {
   default: 10,
 });
 
+// ==============================================
+// 核心修改：把当前选中的 pageSize 自动加入选项列表
+// ==============================================
+const displayPageSizes = computed(() => {
+  // 去重合并
+  const sizes = new Set([pageSize.value, ...props.pageSizes]);
+  return Array.from(sizes).sort((a, b) => a - b);
+});
+
 watch(
   () => props.total,
   (newVal: number) => {
@@ -81,9 +92,9 @@ function handleCurrentChange(val: number) {
 }
 </script>
 
-<style lang="scss" scoped>
+<style lang="scss" scss>
 .pagination {
-  padding: 12px;
+  padding: 0px;
 
   &.hidden {
     display: none;

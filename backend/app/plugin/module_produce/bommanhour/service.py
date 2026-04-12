@@ -14,6 +14,7 @@ from app.utils.excel_util import ExcelUtil
 from .crud import ProduceBomManhourCRUD
 from .model import ProduceBomManhourModel
 from ..craft.model import ProduceCraftModel
+from ...module_data.bom.model import DataBomModel
 from .schema import (
     ProduceBomManhourCreateSchema,
     ProduceBomManhourUpdateSchema,
@@ -150,33 +151,122 @@ class ProduceBomManhourService:
         return {"inserted": inserted, "updated": updated, "deleted": deleted}
 
     @classmethod
-    async def summary_batch_bommanhour_service(cls, auth: AuthSchema, bom_ids: list[int]) -> dict[int, list[dict]]:
+    async def summary_batch_bommanhour_service(cls, auth: AuthSchema, bom_ids: list[int], recursive: bool = True) -> dict[int, list[dict]]:
+        """
+        批量查询BOM工时分类汇总（可选是否递归汇总后代节点）
+        """
         ids = [int(i) for i in bom_ids if i]
         if not ids:
             return {}
 
+        # 如果不递归，直接查并按BOM ID分组
+        if not recursive:
+            sql = (
+                select(
+                    ProduceBomManhourModel.bom_id,
+                    ProduceBomManhourModel.manhour,
+                    ProduceCraftModel.name.label("craft_name")
+                )
+                .join(ProduceCraftModel, ProduceBomManhourModel.craft_id == ProduceCraftModel.id)
+                .where(ProduceBomManhourModel.bom_id.in_(ids))
+            )
+            result = await auth.db.execute(sql)
+            rows = result.all()
+            
+            res: dict[int, list[dict]] = {}
+            for row in rows:
+                if row.bom_id is not None:
+                    res.setdefault(int(row.bom_id), []).append({
+                        "craft_name": row.craft_name,
+                        "manhour": row.manhour
+                    })
+            return res
+
+        # 1. 获取请求的BOM节点信息（代号和根代号）
+        bom_sql = select(DataBomModel.id, DataBomModel.code, DataBomModel.first_code).where(DataBomModel.id.in_(ids))
+        bom_result = await auth.db.execute(bom_sql)
+        requested_rows = bom_result.all()
+        if not requested_rows:
+            return {}
+
+        first_codes = list(set([row.first_code for row in requested_rows]))
+        
+        # 2. 获取涉及到的所有根代号下的全部BOM节点，用于在内存中构建树结构
+        all_bom_sql = select(DataBomModel.id, DataBomModel.code, DataBomModel.parent_code, DataBomModel.first_code).where(DataBomModel.first_code.in_(first_codes))
+        all_bom_result = await auth.db.execute(all_bom_sql)
+        all_boms = all_bom_result.all()
+
+        # 构建映射： (first_code, parent_code) -> [child_id, ...]
+        children_map = {}
+        # 构建映射： id -> (code, first_code)
+        id_to_info = {}
+        for row in all_boms:
+            id_to_info[row.id] = (row.code, row.first_code)
+            key = (row.first_code, row.parent_code)
+            children_map.setdefault(key, []).append(row.id)
+
+        # 递归函数：获取节点及其所有后代的ID（带缓存以优化性能）
+        memo = {}
+        def get_descendant_ids(bom_id):
+            if bom_id in memo:
+                return memo[bom_id]
+            
+            # 使用 set 防止循环引用（虽然 BOM 树理论上不会有循环）
+            results = {bom_id}
+            code, first_code = id_to_info.get(bom_id, (None, None))
+            if code:
+                children = children_map.get((first_code, code), [])
+                for child_id in children:
+                    results.update(get_descendant_ids(child_id))
+            
+            memo[bom_id] = results
+            return results
+
+        # 为每个请求的BOM计算其后代ID列表
+        bom_to_all_ids = {}
+        all_involved_ids = set()
+        for row in requested_rows:
+            desc_ids = get_descendant_ids(row.id)
+            bom_to_all_ids[row.id] = list(desc_ids)
+            all_involved_ids.update(desc_ids)
+
+        # 3. 批量查询所有涉及节点的工时记录
         sql = (
             select(
                 ProduceBomManhourModel.bom_id,
-                ProduceBomManhourModel.craft_id,
                 ProduceBomManhourModel.manhour,
                 ProduceCraftModel.name.label("craft_name")
             )
             .join(ProduceCraftModel, ProduceBomManhourModel.craft_id == ProduceCraftModel.id)
-            .where(ProduceBomManhourModel.bom_id.in_(ids))
+            .where(ProduceBomManhourModel.bom_id.in_(list(all_involved_ids)))
         )
         result = await auth.db.execute(sql)
         rows = result.all()
 
-        res: dict[int, list[dict]] = {}
+        # 按 bom_id 分组记录工时
+        id_to_manhours = {}
         for row in rows:
-            bid, cid, val, cname = row
-            if bid is not None:
-                res.setdefault(int(bid), []).append({
-                    "craft_id": cid,
-                    "manhour": val,
-                    "craft_name": cname
-                })
+            id_to_manhours.setdefault(row.bom_id, []).append({
+                "craft_name": row.craft_name,
+                "manhour": row.manhour
+            })
+
+        # 4. 执行分类汇总
+        res: dict[int, list[dict]] = {}
+        for bom_id, sub_ids in bom_to_all_ids.items():
+            craft_summary = {} # craft_name -> total_manhour
+            for s_id in sub_ids:
+                m_list = id_to_manhours.get(s_id, [])
+                for m in m_list:
+                    cname = m["craft_name"]
+                    val = m["manhour"]
+                    craft_summary[cname] = craft_summary.get(cname, 0) + val
+            
+            res[bom_id] = [
+                {"craft_name": cname, "manhour": val}
+                for cname, val in craft_summary.items()
+                if val > 0
+            ]
 
         return res
 

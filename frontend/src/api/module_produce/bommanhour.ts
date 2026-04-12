@@ -48,8 +48,10 @@ const ProduceBomManhourAPI = {
   },
 
   // 批量查询BOM工时汇总
-  summaryBatchProduceBomManhour(body: { bom_ids: number[] }) {
-    return request<ApiResponse<Record<string, { craft_id: number; manhour: number; craft_name: string }[]>>>({
+  summaryBatchProduceBomManhour(body: { bom_ids: number[]; recursive?: boolean }) {
+    return request<
+      ApiResponse<Record<string, { craft_id: number; manhour: number; craft_name: string }[]>>
+    >({
       url: `${API_PATH}/summary/batch`,
       method: "post",
       data: body,

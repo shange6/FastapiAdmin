@@ -61,111 +61,6 @@
         </div>
       </template>
 
-      <!-- 功能区域 -->
-      <!-- <div class="data-table__toolbar">
-        <div class="data-table__toolbar--left">
-          <el-row :gutter="10">
-            <el-col :span="1.5">
-              <el-button
-                v-hasPerm="['module_produce:bomroute:create']"
-                type="success"
-                icon="plus"
-                @click="handleOpenDialog('create')"
-              >
-                新增
-              </el-button>
-            </el-col>
-            <el-col :span="1.5">
-              <el-button
-                v-hasPerm="['module_produce:bomroute:delete']"
-                type="danger"
-                icon="delete"
-                :disabled="selectIds.length === 0"
-                @click="handleDelete(selectIds)"
-              >
-                批量删除
-              </el-button>
-            </el-col>
-            <el-col :span="1.5">
-              <el-dropdown v-hasPerm="['module_produce:bomroute:batch']" trigger="click">
-                <el-button type="default" :disabled="selectIds.length === 0" icon="ArrowDown">
-                  更多
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item :icon="Check" @click="handleMoreClick('0')">
-                      批量启用
-                    </el-dropdown-item>
-                    <el-dropdown-item :icon="CircleClose" @click="handleMoreClick('1')">
-                      批量停用
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </el-col>
-          </el-row>
-        </div>
-        <div class="data-table__toolbar--right">
-          <el-row :gutter="10">
-            <el-col :span="1.5">
-              <el-tooltip content="导入">
-                <el-button
-                  v-hasPerm="['module_produce:bomroute:import']"
-                  type="success"
-                  icon="upload"
-                  circle
-                  @click="handleOpenImportDialog"
-                />
-              </el-tooltip>
-            </el-col>
-            <el-col :span="1.5">
-              <el-tooltip content="导出">
-                <el-button
-                  v-hasPerm="['module_produce:bomroute:export']"
-                  type="warning"
-                  icon="download"
-                  circle
-                  @click="handleOpenExportsModal"
-                />
-              </el-tooltip>
-            </el-col>
-            <el-col :span="1.5">
-              <el-tooltip content="搜索显示/隐藏">
-                <el-button
-                  v-hasPerm="['*:*:*']"
-                  type="info"
-                  icon="search"
-                  circle
-                  @click="visible = !visible"
-                />
-              </el-tooltip>
-            </el-col>
-            <el-col :span="1.5">
-              <el-tooltip content="刷新">
-                <el-button
-                  v-hasPerm="['module_produce:bomroute:query']"
-                  type="primary"
-                  icon="refresh"
-                  circle
-                  @click="handleRefresh"
-                />
-              </el-tooltip>
-            </el-col>
-            <el-col :span="1.5">
-              <el-popover placement="bottom" trigger="click">
-                <template #reference>
-                  <el-button type="danger" icon="operation" circle></el-button>
-                </template>
-                <el-scrollbar max-height="350px">
-                  <template v-for="column in tableColumns" :key="column.prop">
-                    <el-checkbox v-if="column.prop" v-model="column.show" :label="column.label" />
-                  </template>
-                </el-scrollbar>
-              </el-popover>
-            </el-col>
-          </el-row>
-        </div>
-      </div> -->
 
       <!-- 表格区域：系统配置列表 -->
       <el-table
@@ -189,21 +84,22 @@
           min-width="40"
           align="center"
         />
-        <!-- <el-table-column
-          v-if="tableColumns.find((col) => col.prop === 'index')?.show"
-          fixed
-          label="序号"
-          min-width="60"
-        >
-          <template #default="scope">
-            {{ (queryFormData.page_no - 1) * queryFormData.page_size + scope.$index + 1 }}
-          </template>
-        </el-table-column>         -->
         <el-table-column
           v-if="tableColumns.find((col) => col.prop === 'code')?.show"
+          fixed="left"
           label="代号"
           prop="code"
-          min-width="280"
+          min-width="260"
+          header-align="center"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          v-if="tableColumns.find((col) => col.prop === 'index')?.show"
+          fixed="left"
+          label="ID"
+          prop="id"
+          min-width="80"
+          align="center"
           header-align="center"
           show-overflow-tooltip
         />
@@ -288,16 +184,6 @@
           </template>
         </el-table-column>
       </el-table>
-
-      <!-- 分页区域 -->
-      <!-- <template #footer>
-        <pagination
-          v-model:total="total"
-          v-model:page="queryFormData.page_no"
-          v-model:limit="queryFormData.page_size"
-          @pagination="loadingData"
-        />
-      </template> -->
     </el-card>
 
     <!-- 项目选择抽屉 -->
@@ -546,7 +432,7 @@ const projectChildrenCache = reactive<Record<string, DataBomTable[]>>({});
 // 表格列配置
 const tableColumns = ref([
   { prop: "selection", label: "选择框", show: true },
-  { prop: "index", label: "序号", show: true },
+  { prop: "index", label: "BOMID", show: true },
   { prop: "code", label: "代号", show: true },
   { prop: "spec", label: "名称", show: true },
   { prop: "craft_route", label: "工艺路线", show: true },
@@ -915,6 +801,56 @@ async function loadCraftRouteOptions() {
   }
 }
 
+// 工艺路线明细缓存
+const routeCraftsCache = new Map<number, number[]>();
+
+async function getRouteCrafts(routeCode: number): Promise<number[]> {
+  if (!routeCode) return [];
+  if (routeCraftsCache.has(routeCode)) return routeCraftsCache.get(routeCode)!;
+
+  try {
+    const res = await ProduceCraftRouteAPI.detailProduceCraftRoute(routeCode);
+    const items = res.data?.data?.items || [];
+    const craftIds = items.map((i: any) => Number(i.craft_id)).filter((id: number) => id > 0);
+    routeCraftsCache.set(routeCode, craftIds);
+    return craftIds;
+  } catch (error) {
+    console.error(`Failed to fetch crafts for route ${routeCode}:`, error);
+    return [];
+  }
+}
+
+function isSubset(subset: number[], superset: number[]): boolean {
+  return subset.every((id) => superset.includes(id));
+}
+
+// 获取所有祖先节点
+function getAllAncestors(node: any, allNodes: any[]): any[] {
+  const ancestors: any[] = [];
+  let currentParentCode = node.parent_code;
+  while (currentParentCode) {
+    const parent = allNodes.find((n) => n.code === currentParentCode);
+    if (parent) {
+      ancestors.push(parent);
+      currentParentCode = parent.parent_code;
+    } else {
+      break;
+    }
+  }
+  return ancestors;
+}
+
+// 获取所有后代节点
+function getAllDescendants(node: any, allNodes: any[]): any[] {
+  const descendants: any[] = [];
+  const children = allNodes.filter((n) => n.parent_code === node.code);
+  for (const child of children) {
+    descendants.push(child);
+    descendants.push(...getAllDescendants(child, allNodes));
+  }
+  return descendants;
+}
+
 function updateTreeCraftRouteById(nodes: any[], bomId: number, craftRoute: any): boolean {
   for (const node of nodes || []) {
     if (node.id === bomId) {
@@ -956,23 +892,119 @@ function handleCraftRouteChange(row: any) {
 // 批量保存工艺路线到数据库
 async function handleBatchSaveCraftRoute() {
   try {
-    if (selectionRows.value.length === 0) {
-      ElMessage.warning("请先选择记录");
+    if (!selectedRootBomCode.value) {
+      ElMessage.warning("请先选择项目或BOM");
       return;
     }
-    const changedRows = (selectionRows.value as any[]).filter(
-      (item: any) => item.craft_route !== undefined && item.craft_route !== null
-    );
-    if (changedRows.length === 0) {
-      ElMessage.warning("请先选择工艺路线");
+
+    // 1. 获取当前显示的所有节点
+    const targetNodes = collectSubtreeByRootCode(allBoms.value as any[], selectedRootBomCode.value);
+    if (targetNodes.length === 0) {
+      ElMessage.warning("暂无数据可保存");
       return;
     }
+
     loading.value = true;
-    const data = changedRows.map((row: any) => ({
-      bom_id: row.id,
-      route: row.craft_route,
-    }));
+
+    // 2. 收集所有涉及到的工艺路线代码（用于校验）
+    const relevantRoutes = new Set<number>();
+    targetNodes.forEach((node: any) => {
+      if (node.craft_route) relevantRoutes.add(Number(node.craft_route));
+
+      // 收集所有祖先和后代的工艺路线
+      const ancestors = getAllAncestors(node, allBoms.value);
+      ancestors.forEach((a) => {
+        if (a.craft_route) relevantRoutes.add(Number(a.craft_route));
+      });
+      const descendants = getAllDescendants(node, allBoms.value);
+      descendants.forEach((d) => {
+        if (d.craft_route) relevantRoutes.add(Number(d.craft_route));
+      });
+    });
+
+    // 3. 预取所有涉及到的工艺路线明细（并行请求以提高效率）
+    await Promise.all(Array.from(relevantRoutes).map((r) => getRouteCrafts(r)));
+
+    // 4. 执行校验逻辑
+    for (const node of targetNodes) {
+      const nodeRoute = Number(node.craft_route || 0);
+      const nodeCrafts = await getRouteCrafts(nodeRoute);
+
+      // 规则 A：递归校验所有父节点是否涵盖当前节点的工艺路线
+      const ancestors = getAllAncestors(node, allBoms.value);
+      for (const ancestor of ancestors) {
+        const ancestorRoute = Number(ancestor.craft_route || 0);
+        if (ancestorRoute) {
+          const ancestorCrafts = await getRouteCrafts(ancestorRoute);
+          if (!isSubset(nodeCrafts, ancestorCrafts)) {
+            ElMessage.error(
+              `校验失败：父节点 [${ancestor.id}] 工艺路线未包含子节点 [${node.id}]`
+            );
+            loading.value = false;
+            return;
+          }
+        } else if (nodeRoute > 0) {
+          // 如果子节点有工艺但父节点没设
+          ElMessage.error(`校验失败：父节点 [${ancestor.id}] 未设置工艺路线，无法包含子节点`);
+          loading.value = false;
+          return;
+        }
+      }
+
+      // 规则 B：递归校验所有子节点是否被当前节点的工艺路线包含
+      const descendants = getAllDescendants(node, allBoms.value);
+      for (const descendant of descendants) {
+        const descendantRoute = Number(descendant.craft_route || 0);
+        if (descendantRoute) {
+          const descendantCrafts = await getRouteCrafts(descendantRoute);
+          if (!isSubset(descendantCrafts, nodeCrafts)) {
+            ElMessage.error(
+              `校验失败：子节点 [${descendant.id}] 工艺路线未被父节点 [${node.id}] 包含`
+            );
+            loading.value = false;
+            return;
+          }
+        }
+      }
+    }
+
+    // 5. 收集所有发生变化的节点（不论是否勾选，去掉自动包含祖先的逻辑）
+    const data: { bom_id: number; route: number }[] = [];
+    targetNodes.forEach((node: any) => {
+      const bomId = node.id;
+      const currentRoute = node.craft_route;
+      // 从原始数据中查找旧的工艺路线
+      const originalRecord = allBomRoutes.value.find((r: any) => r.bom_id === bomId);
+      const originalRoute = originalRecord ? originalRecord.route : undefined;
+
+      // 如果当前路线与原始路线不同，则需要保存
+      if (currentRoute !== originalRoute) {
+        data.push({
+          bom_id: bomId,
+          route: currentRoute,
+        });
+      }
+    });
+
+    if (data.length === 0) {
+      ElMessage.info("数据未发生变化，无需保存");
+      loading.value = false;
+      return;
+    }
+
     await ProduceBomRouteAPI.upsertBatchProduceBomRoute(data);
+
+    // 6. 保存成功后，更新本地缓存的原始数据
+    data.forEach((item) => {
+      const existing = allBomRoutes.value.find((r: any) => r.bom_id === item.bom_id);
+      if (existing) {
+        existing.route = item.route;
+      } else {
+        allBomRoutes.value.push({ bom_id: item.bom_id, route: item.route });
+      }
+    });
+
+    ElMessage.success(`保存成功，共更新 ${data.length} 条记录`);
   } catch (error: any) {
     console.error(error);
   } finally {

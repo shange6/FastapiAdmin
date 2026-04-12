@@ -45,7 +45,37 @@ class DataBomCRUD(CRUDBase[DataBomModel, DataBomCreateSchema, DataBomUpdateSchem
         返回:
         - Sequence[DataBomModel]: 模型实例序列
         """
+        # 如果指定了递归查询
+        if search and search.get("recursive") and search.get("parent_code"):
+            parent_code = search["parent_code"][1] # 获取元组中的值 ('eq', value)
+            return await self.list_bom_recursive_crud(parent_code=parent_code)
+            
         return await self.list(search=search, order_by=order_by, preload=preload)
+
+    async def list_bom_recursive_crud(self, parent_code: str) -> Sequence[DataBomModel]:
+        """
+        递归获取所有后代BOM
+        """
+        from sqlalchemy import text
+        
+        # 使用递归CTE查询所有后代
+        # 注意：这里假设 code 字段在树结构中是唯一的逻辑标识符
+        sql = text("""
+            WITH RECURSIVE descendants AS (
+                SELECT * FROM data_bom WHERE parent_code = :parent_code
+                UNION ALL
+                SELECT b.* FROM data_bom b
+                JOIN descendants d ON b.parent_code = d.code
+            )
+            SELECT * FROM descendants
+        """)
+        
+        result = await self.auth.db.execute(sql, {"parent_code": parent_code})
+        # 将结果转换为模型对象列表
+        rows = result.fetchall()
+        # 获取列名映射
+        columns = result.keys()
+        return [DataBomModel(**dict(zip(columns, row))) for row in rows]
     
     async def create_bom_crud(self, data: DataBomCreateSchema) -> DataBomModel | None:
         """

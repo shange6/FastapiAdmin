@@ -94,7 +94,10 @@ class DataBomQueryParam:
         updated_id: Optional[int] = Query(None, description="更新人ID"),
         created_time: Optional[list[DateTimeStr]] = Query(None, description="创建时间范围", examples=["2025-01-01 00:00:00", "2025-12-31 23:59:59"]),
         updated_time: Optional[list[DateTimeStr]] = Query(None, description="更新时间范围", examples=["2025-01-01 00:00:00", "2025-12-31 23:59:59"]),
+        recursive: bool = Query(False, description="是否递归查询后代"),
     ) -> None:
+        # 是否递归查询
+        self.recursive = recursive
         # 精确查询字段
         if parent_code:
             self.parent_code = (QueueEnum.eq.value, parent_code)

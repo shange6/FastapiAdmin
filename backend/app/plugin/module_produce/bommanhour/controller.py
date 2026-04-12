@@ -126,13 +126,15 @@ async def upsert_batch_bommanhour_controller(
 @ProduceBomManhourRouter.post(
     "/summary/batch",
     summary="批量查询BOM工时汇总",
-    description="按BOM ID批量查询工时，并用逗号拼接成字符串"
+    description="按BOM ID批量查询工时，支持递归汇总后代节点工时"
 )
 async def summary_batch_bommanhour_controller(
     data: ProduceBomManhourSummaryBatchSchema,
     auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:query"]))
 ) -> JSONResponse:
-    result_dict = await ProduceBomManhourService.summary_batch_bommanhour_service(auth=auth, bom_ids=data.bom_ids)
+    result_dict = await ProduceBomManhourService.summary_batch_bommanhour_service(
+        auth=auth, bom_ids=data.bom_ids, recursive=data.recursive
+    )
     return SuccessResponse(data=result_dict, msg="查询成功")
 
 @ProduceBomManhourRouter.post(

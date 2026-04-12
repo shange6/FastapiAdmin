@@ -110,14 +110,14 @@
             </el-form-item>
             <!-- 查询、重置、展开/收起按钮 -->
             <el-form-item>
-              <el-button
+              <!-- <el-button
                 v-hasPerm="['module_data:bom:query']"
                 type="primary"
                 icon="search"
                 @click="handleQuery"
               >
                 查询
-              </el-button>
+              </el-button> -->
               <el-button
                 v-hasPerm="['module_data:bom:query']"
                 icon="refresh"
@@ -126,7 +126,7 @@
                 重置
               </el-button>
               <!-- 展开/收起 -->
-              <template v-if="isExpandable">
+              <!-- <template v-if="isExpandable">
                 <el-link
                   class="ml-3"
                   type="primary"
@@ -143,16 +143,16 @@
                     </template>
                   </el-icon>
                 </el-link>
-              </template>
+              </template> -->
               <div>&nbsp;&nbsp;</div>
               <el-button type="info" plain icon="Expand" @click="toggleAllExpansion(true)">
-                全部展开
+                展开
               </el-button>
               <el-button type="info" plain icon="Fold" @click="toggleAllExpansion(false)">
-                全部收起
+                收起
               </el-button>
               <el-button type="primary" icon="Collection" @click="handleOpenProjectDrawer">
-                选择项目
+                项目
               </el-button>
             </el-form-item>
           </el-form>
@@ -160,7 +160,7 @@
       </template>
 
       <!-- 功能区域 -->
-      <div class="data-table__toolbar">
+      <!-- <div class="data-table__toolbar">
         <div class="data-table__toolbar--left">
           <el-row :gutter="10">
             <el-col :span="1.5">
@@ -263,7 +263,7 @@
             </el-col>
           </el-row>
         </div>
-      </div>
+      </div> -->
 
       <!-- 表格区域：系统配置列表 -->
       <el-table
@@ -308,7 +308,7 @@
           v-if="tableColumns.find((col) => col.prop === 'code')?.show"
           label="代号"
           prop="code"
-          min-width="180"
+          min-width="260"
           header-align="center"
           show-overflow-tooltip
         />
@@ -316,7 +316,7 @@
           v-if="tableColumns.find((col) => col.prop === 'spec')?.show"
           label="名称"
           prop="spec"
-          min-width="140"
+          min-width="160"
           header-align="center"
           show-overflow-tooltip
         />
@@ -333,7 +333,7 @@
           v-if="tableColumns.find((col) => col.prop === 'material')?.show"
           label="材质"
           prop="material"
-          min-width="100"
+          min-width="120"
           header-align="center"
           show-overflow-tooltip
         />
@@ -440,7 +440,7 @@
           fixed="right"
           label="操作"
           align="center"
-          min-width="200"
+          min-width="60"
         >
           <template #default="scope">
             <el-button
@@ -453,10 +453,9 @@
             >
               详情
             </el-button>
-            <el-button
+            <!-- <el-button
               v-hasPerm="['module_data:bom:update']"
               type="primary"
-              size="small"
               link
               icon="edit"
               @click="handleOpenDialog('update', scope.row.id)"
@@ -466,13 +465,12 @@
             <el-button
               v-hasPerm="['module_data:bom:delete']"
               type="danger"
-              size="small"
               link
               icon="delete"
               @click="handleDelete([scope.row.id])"
             >
               删除
-            </el-button>
+            </el-button> -->
           </template>
         </el-table-column>
       </el-table>
@@ -627,7 +625,7 @@
           :data="projectList"
           border
           stripe
-          height="calc(100vh - 220px)"
+          height="calc(100vh - 200px)"
           style="width: 100%"
           highlight-current-row
           @row-click="handleSelectProject"
@@ -655,7 +653,9 @@
             show-overflow-tooltip
           />
         </el-table>
-        <div class="mt-4 flex justify-end">
+      </div>
+      <template #footer>
+        <div class="flex justify-end">
           <pagination
             v-model:total="projectTotal"
             v-model:page="projectQuery.page_no"
@@ -663,7 +663,7 @@
             @pagination="fetchProjects"
           />
         </div>
-      </div>
+      </template>
     </el-drawer>
 
     <!-- 导入弹窗 -->
@@ -692,7 +692,7 @@ defineOptions({
 });
 
 import { ref, reactive, onMounted, watch, computed } from "vue";
-import { useDebounceFn } from "@vueuse/core";
+import { useDebounceFn, useWindowSize } from "@vueuse/core";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
   QuestionFilled,
@@ -724,31 +724,61 @@ const loading = ref(false);
 const isExpand = ref(false);
 const isExpandable = ref(true);
 
+// 动态计算分页条数
+const { height: windowHeight } = useWindowSize();
+const calculatePageSize = () => {
+  // 表格高度 calc(100vh - 200px)，表头约40px，每行约40px
+  const tableHeight = windowHeight.value - 200;
+  const size = Math.floor((tableHeight - 40) / 40);
+  return size > 5 ? size : 10;
+};
+
 // 项目选择相关
 const projectDrawerVisible = ref(false);
 const projectLoading = ref(false);
+const currentProjectCode = ref<string>(); // 当前选中的项目代号
+const allProjects = ref<DataProjectTable[]>([]);
 const projectList = ref<DataProjectTable[]>([]);
 const projectTotal = ref(0);
 const projectSearch = ref("");
+
 const projectQuery = reactive({
   page_no: 1,
-  page_size: 20,
+  page_size: calculatePageSize(),
+});
+
+// 监听窗口高度变化，动态调整分页条数
+watch(windowHeight, () => {
+  projectQuery.page_size = calculatePageSize();
+  if (projectDrawerVisible.value) {
+    fetchProjects();
+  }
 });
 
 // 获取项目列表
 async function fetchProjects() {
   projectLoading.value = true;
   try {
-    const params: any = {
-      page_no: projectQuery.page_no,
-      page_size: projectQuery.page_size,
-    };
-    if (projectSearch.value) {
-      params.keyword = projectSearch.value;
+    // 1. 如果缓存为空，则从后端拉取全量数据（不分页新接口）
+    if (allProjects.value.length === 0) {
+      const response = await DataProjectAPI.getAllDataProject();
+      allProjects.value = response.data.data || [];
     }
-    const res = await DataProjectAPI.listDataProject(params);
-    projectList.value = res.data.data.items || [];
-    projectTotal.value = res.data.data.total || 0;
+
+    // 2. 本地过滤逻辑
+    const keyword = projectSearch.value?.toLowerCase() || "";
+    const filtered = allProjects.value.filter((item) => {
+      const matchCode = !keyword || item.code?.toLowerCase().includes(keyword);
+      const matchName = !keyword || item.name?.toLowerCase().includes(keyword);
+      const matchNo = !keyword || item.no?.toLowerCase().includes(keyword);
+      return matchCode || matchName || matchNo;
+    });
+
+    // 3. 处理本地分页
+    projectTotal.value = filtered.length;
+    const start = (projectQuery.page_no - 1) * projectQuery.page_size;
+    const end = start + projectQuery.page_size;
+    projectList.value = filtered.slice(start, end);
   } catch (error) {
     console.error("Fetch projects error:", error);
   } finally {
@@ -769,10 +799,24 @@ async function handleOpenProjectDrawer() {
 }
 
 // 选择项目
-function handleSelectProject(project: DataProjectTable) {
-  queryFormData.parent_code = project.code;
+async function handleSelectProject(project: DataProjectTable) {
+  currentProjectCode.value = project.code;
   projectDrawerVisible.value = false;
-  handleQuery();
+
+  // 获取该项目下的所有后代BOM (按 parent_code 递归获取)
+  loading.value = true;
+  try {
+    const response = await DataBomAPI.listDataBom({
+      parent_code: project.code,
+      recursive: true,
+    });
+    allBoms.value = response.data.data || [];
+    handleQuery();
+  } catch (error) {
+    console.error("Fetch BOMs for project error:", error);
+  } finally {
+    loading.value = false;
+  }
 }
 
 // 数据缓存
@@ -876,6 +920,7 @@ const queryFormData = reactive<DataBomQuery>({
   updated_time: undefined,
   created_id: undefined,
   updated_id: undefined,
+  recursive: false,
 });
 
 // 编辑表单
@@ -964,26 +1009,14 @@ function toggleAllExpansion(expanded: boolean) {
 
 // 加载/过滤表格数据
 async function loadingData() {
-  // 1. 初始时或未选择任何过滤条件时不显示数据，且不触发后端请求
   const parentCodeSearch = queryFormData.parent_code?.toLowerCase() || "";
   const codeSearch = queryFormData.code?.toLowerCase() || "";
   const specSearch = queryFormData.spec?.toLowerCase() || "";
   const materialSearch = queryFormData.material?.toLowerCase() || "";
   const remarkSearch = queryFormData.remark?.toLowerCase() || "";
 
-  if (!parentCodeSearch && !codeSearch && !specSearch && !materialSearch && !remarkSearch) {
-    pageTableData.value = [];
-    return;
-  }
-
   loading.value = true;
   try {
-    // 2. 如果缓存为空，则从后端拉取全量数据
-    if (allBoms.value.length === 0) {
-      const response = await DataBomAPI.listDataBom({}); // 不带参数获取全部
-      allBoms.value = response.data.data || [];
-    }
-
     // 3. 本地过滤逻辑
     const filtered = allBoms.value.filter((item) => {
       const matchParent =
@@ -1015,7 +1048,7 @@ async function loadingData() {
     filtered.forEach(addParents);
 
     // 5. 重新转换为树形结构展示
-    const { tree } = convertToTree(Array.from(finalBoms), queryFormData.parent_code);
+    const { tree } = convertToTree(Array.from(finalBoms), currentProjectCode.value);
     pageTableData.value = tree;
   } catch (error: any) {
     console.error(error);
@@ -1061,14 +1094,12 @@ function handleConfirm() {
 // 重置查询
 async function handleResetQuery() {
   queryFormRef.value.resetFields();
-  // 手动重置被隐藏或不在表单中的字段
-  queryFormData.parent_code = undefined;
-  // 重置日期范围选择器
+  // 手动重置日期范围选择器
   createdDateRange.value = [];
   updatedDateRange.value = [];
   queryFormData.created_time = undefined;
   queryFormData.updated_time = undefined;
-  allBoms.value = []; // 清空缓存，强制重新从后端拉取最新数据
+  // 不再清空 allBoms 缓存，利用本地数据恢复表格，减少后端请求
   loadingData();
 }
 
@@ -1226,7 +1257,7 @@ async function handleMoreClick(status: string) {
 }
 
 onMounted(() => {
-  loadingData();
+  // loadingData(); // 初次加载不加载数据
 });
 
 // 处理上传
@@ -1255,10 +1286,12 @@ onMounted(async () => {
 </script>
 
 <style lang="scss" scoped>
-.project-drawer-content {
-  padding: 0 10px;
+:deep(.el-drawer__body) {
+  padding-bottom: 0;
 }
-.mb-4 {
-  margin-bottom: 1rem;
+:deep(.el-drawer__footer) {
+  border-top: none;
+  padding-top: 0;
+  padding-bottom: 20px;
 }
 </style>

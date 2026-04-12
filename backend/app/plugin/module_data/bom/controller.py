@@ -40,6 +40,27 @@ async def get_bom_detail_controller(
     return SuccessResponse(data=result_dict, msg="获取BOM清单详情成功")
 
 @DataBomRouter.get(
+    "/list/all",
+    summary="查询所有BOM清单列表",
+    description="查询所有BOM清单列表（不分页）"
+)
+async def get_bom_all_list_controller(
+    auth: AuthSchema = Depends(AuthPermission(["module_data:bom:query"]))
+) -> JSONResponse:
+    """
+    查询所有BOM清单列表接口（不分页）
+    
+    参数:
+    - auth: AuthSchema - 认证信息
+    
+    返回:
+    - JSONResponse - 包含BOM清单列表的JSON响应
+    """
+    result_list = await DataBomService.list_bom_service(auth=auth)
+    log.info("查询所有BOM清单列表成功")
+    return SuccessResponse(data=result_list, msg="查询所有BOM清单列表成功")
+
+@DataBomRouter.get(
     "/list",
     summary="查询BOM清单列表",
     description="查询BOM清单列表"

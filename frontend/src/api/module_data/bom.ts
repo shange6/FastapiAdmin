@@ -116,6 +116,7 @@ export interface DataBomQuery {
   updated_time?: string[];
   created_id?: number;
   updated_id?: number;
+  recursive?: boolean;
 }
 
 export interface DataBomPageQuery extends PageQuery {

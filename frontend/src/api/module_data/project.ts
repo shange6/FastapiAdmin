@@ -3,12 +3,20 @@ import request from "@/utils/request";
 const API_PATH = "/data/project";
 
 const DataProjectAPI = {
-  // 列表查询
+  // 查询项目信息列表
   listDataProject(query: DataProjectPageQuery) {
-    return request<ApiResponse<PageResult<DataProjectTable[]>>>({
+    return request<ApiResponse<PageResponse<DataProjectTable>>>({
       url: `${API_PATH}/list`,
       method: "get",
       params: query,
+    });
+  },
+
+  // 查询所有项目信息列表（不分页）
+  getAllDataProject() {
+    return request<ApiResponse<DataProjectTable[]>>({
+      url: `${API_PATH}/list/all`,
+      method: "get",
     });
   },
 

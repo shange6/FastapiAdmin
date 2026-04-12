@@ -211,7 +211,7 @@
           v-if="tableColumns.find((col) => col.prop === 'spec')?.show"
           label="名称"
           prop="spec"
-          min-width="160"
+          min-width="180"
           header-align="center"
           show-overflow-tooltip
         />
@@ -228,7 +228,7 @@
           v-if="tableColumns.find((col) => col.prop === 'material')?.show"
           label="材质"
           prop="material"
-          min-width="100"
+          min-width="120"
           header-align="center"
           show-overflow-tooltip
         />
@@ -254,7 +254,7 @@
           v-if="tableColumns.find((col) => col.prop === 'remark')?.show"
           label="备注"
           prop="remark"
-          min-width="100"
+          min-width="120"
           header-align="center"
           show-overflow-tooltip
         />
@@ -276,13 +276,31 @@
           v-if="tableColumns.find((col) => col.prop === 'manhour')?.show"
           label="工时"
           prop="manhour"
-          min-width="200"
+          min-width="60"
+          align="center"
           header-align="center"
           fixed="right"
-          show-overflow-tooltip
         >
-          <template #default="scope">
-            <span>{{ scope.row.manhour }}</span>
+          <template #default="{ row }">
+            <el-tooltip placement="top" effect="dark">
+              <template #content>
+                <div v-if="Array.isArray(row.manhour) && row.manhour.length > 0">
+                  <div v-for="(item, index) in row.manhour" :key="index">
+                    {{ item.craft_name }}：{{ item.manhour }}
+                  </div>
+                </div>
+                <div v-else>暂无工时</div>
+              </template>
+              <span style="font-size: 16px; cursor: pointer">
+                <span
+                  v-if="isManhourComplete(row)"
+                  style="color: green"
+                >
+                  ✔
+                </span>
+                <span v-else style="color: red">✖</span>
+              </span>
+            </el-tooltip>
           </template>
         </el-table-column>
         <el-table-column
@@ -904,32 +922,13 @@ async function loadingData() {
         .filter((v: number) => Number.isFinite(v) && v > 0)
     );
     if (bomIds.length > 0) {
-      const manhourRes = await ProduceBomManhourAPI.summaryCraftBatchProduceBomManhour({
+      const manhourRes = await ProduceBomManhourAPI.summaryBatchProduceBomManhour({
         bom_ids: bomIds,
+        recursive: false,
       });
-      const manhourMap = (manhourRes.data?.data || {}) as Record<string, Record<string, number>>;
+      const manhourMap = manhourRes.data?.data || {};
       subtree.forEach((bom: any) => {
-        const craftMap = (manhourMap[String(bom.id)] || {}) as Record<string, number>;
-        const routeCode = Number(bom?.route_code);
-        const routeCraftIds = Number.isFinite(routeCode)
-          ? routeCraftIdsCache.get(routeCode)
-          : undefined;
-        if (routeCraftIds && routeCraftIds.length > 0) {
-          bom.manhour = routeCraftIds
-            .map((cid) => {
-              const v = Number(craftMap[String(cid)] ?? 0);
-              return v > 0 ? String(v) : "";
-            })
-            .filter((s) => s !== "")
-            .join(",");
-          return;
-        }
-        bom.manhour = Object.keys(craftMap)
-          .map((k) => ({ k: Number(k), v: Number(craftMap[k] ?? 0) }))
-          .filter((x) => Number.isFinite(x.k) && x.k > 0 && Number.isFinite(x.v) && x.v > 0)
-          .sort((a, b) => a.k - b.k)
-          .map((x) => String(x.v))
-          .join(",");
+        bom.manhour = manhourMap[String(bom.id)] || [];
       });
     }
     const { tree } = convertToTree(subtree, undefined, selectedRootBomCode.value);
@@ -941,6 +940,22 @@ async function loadingData() {
   } finally {
     loading.value = false;
   }
+}
+
+function isManhourComplete(row: any) {
+  const routeCode = Number(row.route_code);
+  if (!routeCode || !routeCraftIdsCache.has(routeCode)) return false;
+
+  const expectedCraftIds = routeCraftIdsCache.get(routeCode) || [];
+  if (expectedCraftIds.length === 0) return false;
+
+  const actualManhours = (Array.isArray(row.manhour) ? row.manhour : []) as any[];
+  // 过滤掉工时为 0 或空的记录，并按工艺名称去重（防止异常数据影响）
+  const validCraftNames = new Set(
+    actualManhours.filter((m: any) => Number(m.manhour) > 0).map((m: any) => m.craft_name)
+  );
+
+  return validCraftNames.size === expectedCraftIds.length;
 }
 
 // 展开/收起所有行
@@ -1133,10 +1148,6 @@ async function handleConfirmManhourDialog() {
     ElMessage.error("未找到BOM ID，无法保存");
     return;
   }
-  const manhourStr = (manhourSteps.value || [])
-    .map((s) => Number(s.manhour ?? 0))
-    .filter((v) => Number.isFinite(v) && v > 0)
-    .join(",");
 
   const items = (manhourSteps.value || [])
     .map((s) => ({
@@ -1146,13 +1157,22 @@ async function handleConfirmManhourDialog() {
     }))
     .filter((s) => s.craft_id);
 
+  // 构造前端显示的工时数组
+  const manhourArray = (manhourSteps.value || [])
+    .filter((s) => Number(s.manhour ?? 0) > 0)
+    .map((s) => ({
+      craft_id: Number(s.craft_id),
+      craft_name: s.label,
+      manhour: Number(s.manhour),
+    }));
+
   try {
     manhourLoading.value = true;
     await ProduceBomManhourAPI.upsertBatchProduceBomManhour({ items });
     const bom = (allBoms.value as any[]).find((item: any) => item.id === bomId);
-    if (bom) bom.manhour = manhourStr;
-    if (manhourBom.value) manhourBom.value.manhour = manhourStr;
-    updateTreeManhourById(pageTableData.value as any[], bomId, manhourStr);
+    if (bom) bom.manhour = manhourArray;
+    if (manhourBom.value) manhourBom.value.manhour = manhourArray;
+    updateTreeManhourById(pageTableData.value as any[], bomId, manhourArray);
     manhourDialogVisible.value = false;
   } catch (error: any) {
     console.error(error);
@@ -1215,7 +1235,7 @@ function updateTreeCraftRouteById(nodes: any[], bomId: number, craftRoute: any):
   return false;
 }
 
-function updateTreeManhourById(nodes: any[], bomId: number, manhour: string): boolean {
+function updateTreeManhourById(nodes: any[], bomId: number, manhour: any[]): boolean {
   for (const node of nodes || []) {
     if (node.id === bomId) {
       node.manhour = manhour;

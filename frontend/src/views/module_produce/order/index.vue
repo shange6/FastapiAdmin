@@ -179,7 +179,7 @@
             align="center"
             show-overflow-tooltip
           />
-          <el-table-column prop="name" label="项目名称" show-overflow-tooltip />
+          <el-table-column prop="name" label="项目名称" header-align="center" show-overflow-tooltip />
           <el-table-column
             prop="no"
             label="合同编号"
@@ -587,11 +587,10 @@ async function loadingData() {
     );
 
     const bomIds = displayList.map((b) => Number(b.id)).filter((id) => id > 0);
-    const manhourIds = manhourScope.map((b) => Number(b.id)).filter((id) => id > 0);
 
     if (bomIds.length > 0) {
       const [manhourRes, orderRes] = await Promise.all([
-        ProduceBomManhourAPI.summaryBatchProduceBomManhour({ bom_ids: manhourIds }),
+        ProduceBomManhourAPI.summaryBatchProduceBomManhour({ bom_ids: bomIds }),
         ProduceOrderAPI.summaryBatchProduceOrder({ bom_ids: bomIds }),
       ]);
       const manhourMap = manhourRes.data?.data || {};

@@ -41,6 +41,7 @@ class ProduceBomManhourUpsertBatchSchema(BaseModel):
 
 class ProduceBomManhourSummaryBatchSchema(BaseModel):
     bom_ids: list[int] = Field(default_factory=list, description="BOM ID列表")
+    recursive: bool = Field(default=True, description="是否递归汇总后代节点工时")
 
 
 class ProduceBomManhourQueryParam:

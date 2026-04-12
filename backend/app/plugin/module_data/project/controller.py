@@ -40,6 +40,27 @@ async def get_project_detail_controller(
     return SuccessResponse(data=result_dict, msg="获取项目信息详情成功")
 
 @DataProjectRouter.get(
+    "/list/all",
+    summary="查询所有项目信息列表",
+    description="查询所有项目信息列表（不分页）"
+)
+async def get_project_all_list_controller(
+    auth: AuthSchema = Depends(AuthPermission(["module_data:project:query"]))
+) -> JSONResponse:
+    """
+    查询所有项目信息列表接口（不分页）
+    
+    参数:
+    - auth: AuthSchema - 认证信息
+    
+    返回:
+    - JSONResponse - 包含项目信息列表的JSON响应
+    """
+    result_list = await DataProjectService.list_project_service(auth=auth)
+    log.info("查询所有项目信息列表成功")
+    return SuccessResponse(data=result_list, msg="查询所有项目信息列表成功")
+
+@DataProjectRouter.get(
     "/list",
     summary="查询项目信息列表",
     description="查询项目信息列表"
