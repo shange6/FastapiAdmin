@@ -4,14 +4,14 @@
     <!-- 内容区域 -->
     <el-card class="data-table">
       <template #header>
-        <div class="card-header">
+        <!-- <div class="card-header">
           <span>
             工艺路线列表
             <el-tooltip content="工艺路线列表">
               <QuestionFilled class="w-4 h-4 mx-1" />
             </el-tooltip>
           </span>
-        </div>
+        </div> -->
 
         <!-- 搜索区域 -->
         <div v-show="visible" class="search-container">
@@ -91,7 +91,7 @@
                 重置
               </el-button>
               <!-- 展开/收起 -->
-              <template v-if="isExpandable">
+              <!-- <template v-if="isExpandable">
                 <el-link
                   class="ml-3"
                   type="primary"
@@ -108,7 +108,7 @@
                     </template>
                   </el-icon>
                 </el-link>
-              </template>
+              </template> -->
             </el-form-item>
           </el-form>
         </div>

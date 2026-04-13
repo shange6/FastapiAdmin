@@ -4,17 +4,8 @@
     <!-- 内容区域 -->
     <el-card class="data-table">
       <template #header>
-        <!-- <div class="card-header">
-          <span>
-            项目信息列表
-            <el-tooltip content="项目信息列表">
-              <QuestionFilled class="w-4 h-4 mx-1" />
-            </el-tooltip>
-          </span>
-        </div> -->
-
         <!-- 搜索区域 -->
-        <div v-show="visible" class="search-container">
+        <div class="search-container">
           <el-form
             ref="queryFormRef"
             :model="queryFormData"
@@ -48,14 +39,6 @@
             </el-form-item>
             <!-- 查询、重置、展开/收起按钮 -->
             <el-form-item>
-              <!-- <el-button
-                v-hasPerm="['module_data:project:query']"
-                type="primary"
-                icon="search"
-                @click="handleQuery"
-              >
-                查询
-              </el-button> -->
               <el-button
                 v-hasPerm="['module_data:project:query']"
                 icon="refresh"
@@ -63,168 +46,24 @@
               >
                 重置
               </el-button>
-              <!-- 展开/收起 -->
-              <!-- <template v-if="isExpandable">
-                <el-link
-                  class="ml-3"
-                  type="primary"
-                  underline="never"
-                  @click="isExpand = !isExpand"
-                >
-                  {{ isExpand ? "收起" : "展开" }}
-                  <el-icon>
-                    <template v-if="isExpand">
-                      <ArrowUp />
-                    </template>
-                    <template v-else>
-                      <ArrowDown />
-                    </template>
-                  </el-icon>
-                </el-link>
-              </template> -->
             </el-form-item>
           </el-form>
         </div>
       </template>
 
-      <!-- 功能区域 -->
-      <!-- <div class="data-table__toolbar">
-        <div class="data-table__toolbar--left">
-          <el-row :gutter="10">
-            <el-col :span="1.5">
-              <el-button
-                v-hasPerm="['module_data:project:create']"
-                type="success"
-                icon="plus"
-                @click="handleOpenDialog('create')"
-              >
-                新增
-              </el-button>
-            </el-col>
-            <el-col :span="1.5">
-              <el-button
-                v-hasPerm="['module_data:project:delete']"
-                type="danger"
-                icon="delete"
-                :disabled="selectIds.length === 0"
-                @click="handleDelete(selectIds)"
-              >
-                批量删除
-              </el-button>
-            </el-col>
-            <el-col :span="1.5">
-              <el-dropdown v-hasPerm="['module_data:project:batch']" trigger="click">
-                <el-button type="default" :disabled="selectIds.length === 0" icon="ArrowDown">
-                  更多
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item :icon="Check" @click="handleMoreClick('0')">
-                      批量启用
-                    </el-dropdown-item>
-                    <el-dropdown-item :icon="CircleClose" @click="handleMoreClick('1')">
-                      批量停用
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </el-col>
-          </el-row>
-        </div>
-        <div class="data-table__toolbar--right">
-          <el-row :gutter="10">
-            <el-col :span="1.5">
-              <el-tooltip content="导入">
-                <el-button
-                  v-hasPerm="['module_data:project:import']"
-                  type="success"
-                  icon="upload"
-                  circle
-                  @click="handleOpenImportDialog"
-                />
-              </el-tooltip>
-            </el-col>
-            <el-col :span="1.5">
-              <el-tooltip content="导出">
-                <el-button
-                  v-hasPerm="['module_data:project:export']"
-                  type="warning"
-                  icon="download"
-                  circle
-                  @click="handleOpenExportsModal"
-                />
-              </el-tooltip>
-            </el-col>
-            <el-col :span="1.5">
-              <el-tooltip content="搜索显示/隐藏">
-                <el-button
-                  v-hasPerm="['*:*:*']"
-                  type="info"
-                  icon="search"
-                  circle
-                  @click="visible = !visible"
-                />
-              </el-tooltip>
-            </el-col>
-            <el-col :span="1.5">
-              <el-tooltip content="刷新">
-                <el-button
-                  v-hasPerm="['module_data:project:query']"
-                  type="primary"
-                  icon="refresh"
-                  circle
-                  @click="handleRefresh"
-                />
-              </el-tooltip>
-            </el-col>
-            <el-col :span="1.5">
-              <el-popover placement="bottom" trigger="click">
-                <template #reference>
-                  <el-button type="danger" icon="operation" circle></el-button>
-                </template>
-                <el-scrollbar max-height="350px">
-                  <template v-for="column in tableColumns" :key="column.prop">
-                    <el-checkbox v-if="column.prop" v-model="column.show" :label="column.label" />
-                  </template>
-                </el-scrollbar>
-              </el-popover>
-            </el-col>
-          </el-row>
-        </div>
-      </div> -->
-
       <!-- 表格区域：系统配置列表 -->
       <el-table
-        ref="tableRef"
         v-loading="loading"
         :data="pageTableData"
         highlight-current-row
         class="data-table__content"
         border
         stripe
-        @selection-change="handleSelectionChange"
       >
         <template #empty>
           <el-empty :image-size="80" description="暂无数据" />
         </template>
         <el-table-column
-          v-if="tableColumns.find((col) => col.prop === 'selection')?.show"
-          type="selection"
-          min-width="40"
-          align="center"
-        />
-        <!-- <el-table-column
-          v-if="tableColumns.find((col) => col.prop === 'index')?.show"
-          fixed
-          label="序号"
-          min-width="60"
-        >
-          <template #default="scope">
-            {{ (queryFormData.page_no - 1) * queryFormData.page_size + scope.$index + 1 }}
-          </template>
-        </el-table-column> -->
-        <el-table-column
-          v-if="tableColumns.find((col) => col.prop === 'code')?.show"
           label="项目编码"
           prop="code"
           min-width="150"
@@ -233,7 +72,6 @@
           align="center"
         />
         <el-table-column
-          v-if="tableColumns.find((col) => col.prop === 'name')?.show"
           label="项目名称"
           prop="name"
           min-width="200"
@@ -242,7 +80,6 @@
           align="center"
         />
         <el-table-column
-          v-if="tableColumns.find((col) => col.prop === 'no')?.show"
           label="项目编号"
           prop="no"
           min-width="100"
@@ -265,7 +102,6 @@
           </template>
         </el-table-column>
         <el-table-column
-          v-if="tableColumns.find((col) => col.prop === 'operation')?.show"
           fixed="right"
           label="操作"
           align="center"
@@ -278,30 +114,10 @@
               size="small"
               link
               icon="document"
-              @click="handleOpenDialog('detail', scope.row.id)"
+              @click="handleOpenDialog(scope.row.id)"
             >
               详情
             </el-button>
-            <!-- <el-button
-              v-hasPerm="['module_data:project:update']"
-              type="primary"
-              size="small"
-              link
-              icon="edit"
-              @click="handleOpenDialog('update', scope.row.id)"
-            >
-              编辑
-            </el-button>
-            <el-button
-              v-hasPerm="['module_data:project:delete']"
-              type="danger"
-              size="small"
-              link
-              icon="delete"
-              @click="handleDelete([scope.row.id])"
-            >
-              删除
-            </el-button> -->
           </template>
         </el-table-column>
       </el-table>
@@ -324,99 +140,47 @@
       @close="handleCloseDialog"
     >
       <!-- 详情 -->
-      <template v-if="dialogVisible.type === 'detail'">
-        <el-descriptions :column="4" border>
-          <el-descriptions-item label="项目编码" :span="2" :label-width="120">
-            {{ detailFormData.code }}
-          </el-descriptions-item>
-          <el-descriptions-item label="项目名称" :span="2" :label-width="120">
-            {{ detailFormData.name }}
-          </el-descriptions-item>
-          <el-descriptions-item label="项目编号" :span="2" :label-width="120">
-            {{ detailFormData.no }}
-          </el-descriptions-item>
-          <el-descriptions-item label="UUID" :span="2" :label-width="120">
-            {{ detailFormData.uuid }}
-          </el-descriptions-item>
-          <el-descriptions-item label="状态" :span="2">
-            <el-tag :type="detailFormData.status == '0' ? 'success' : 'danger'">
-              {{ detailFormData.status == "0" ? "启用" : "停用" }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="描述" :span="2">
-            {{ detailFormData.description }}
-          </el-descriptions-item>
-          <el-descriptions-item label="创建人" :span="2">
-            {{ detailFormData.created_by?.name }}
-          </el-descriptions-item>
-          <el-descriptions-item label="创建时间" :span="2">
-            {{ detailFormData.created_time }}
-          </el-descriptions-item>
-          <el-descriptions-item label="更新人" :span="2">
-            {{ detailFormData.updated_by?.name }}
-          </el-descriptions-item>
-          <el-descriptions-item label="更新时间" :span="2">
-            {{ detailFormData.updated_time }}
-          </el-descriptions-item>
-        </el-descriptions>
-      </template>
-
-      <!-- 新增、编辑表单 -->
-      <template v-else>
-        <el-form
-          ref="dataFormRef"
-          :model="formData"
-          :rules="rules"
-          label-suffix=":"
-          label-width="auto"
-          label-position="right"
-        >
-          <el-form-item label="项目编码" prop="code" :required="false">
-            <el-input v-model="formData.code" placeholder="请输入项目编码" />
-          </el-form-item>
-          <el-form-item label="项目名称" prop="name" :required="false">
-            <el-input v-model="formData.name" placeholder="请输入项目名称" />
-          </el-form-item>
-          <el-form-item label="项目编号" prop="no" :required="false">
-            <el-input v-model="formData.no" placeholder="请输入项目编号" />
-          </el-form-item>
-          <el-form-item label="状态" prop="status" :required="true">
-            <el-radio-group v-model="formData.status">
-              <el-radio value="0">启用</el-radio>
-              <el-radio value="1">停用</el-radio>
-            </el-radio-group>
-          </el-form-item>
-        </el-form>
-      </template>
+      <el-descriptions :column="4" border>
+        <el-descriptions-item label="项目编码" :span="2" :label-width="120">
+          {{ detailFormData.code }}
+        </el-descriptions-item>
+        <el-descriptions-item label="项目名称" :span="2" :label-width="120">
+          {{ detailFormData.name }}
+        </el-descriptions-item>
+        <el-descriptions-item label="项目编号" :span="2" :label-width="120">
+          {{ detailFormData.no }}
+        </el-descriptions-item>
+        <el-descriptions-item label="UUID" :span="2" :label-width="120">
+          {{ detailFormData.uuid }}
+        </el-descriptions-item>
+        <el-descriptions-item label="状态" :span="2">
+          <el-tag :type="detailFormData.status == '0' ? 'success' : 'danger'">
+            {{ detailFormData.status == "0" ? "启用" : "停用" }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="描述" :span="2">
+          {{ detailFormData.description }}
+        </el-descriptions-item>
+        <el-descriptions-item label="创建人" :span="2">
+          {{ detailFormData.created_by?.name }}
+        </el-descriptions-item>
+        <el-descriptions-item label="创建时间" :span="2">
+          {{ detailFormData.created_time }}
+        </el-descriptions-item>
+        <el-descriptions-item label="更新人" :span="2">
+          {{ detailFormData.updated_by?.name }}
+        </el-descriptions-item>
+        <el-descriptions-item label="更新时间" :span="2">
+          {{ detailFormData.updated_time }}
+        </el-descriptions-item>
+      </el-descriptions>
 
       <template #footer>
         <div class="dialog-footer">
-          <!-- 详情弹窗不需要确定按钮的提交逻辑 -->
-          <el-button @click="handleCloseDialog">取消</el-button>
-          <el-button v-if="dialogVisible.type !== 'detail'" type="primary" @click="handleSubmit">
-            确定
-          </el-button>
-          <el-button v-else type="primary" @click="handleCloseDialog">确定</el-button>
+          <el-button type="primary" @click="handleCloseDialog">确定</el-button>
         </div>
       </template>
     </el-dialog>
-
-    <!-- 导入弹窗 -->
-    <ImportModal
-      v-model="importDialogVisible"
-      :content-config="curdContentConfig"
-      :loading="uploadLoading"
-      @upload="handleUpload"
-    />
-
-    <!-- 导出弹窗 -->
-    <ExportModal
-      v-model="exportsDialogVisible"
-      :content-config="curdContentConfig"
-      :query-params="queryFormData"
-      :page-data="pageTableData"
-      :selection-data="selectionRows"
-    />
   </div>
 </template>
 
@@ -427,72 +191,18 @@ defineOptions({
 });
 
 import { ref, reactive, onMounted, watch } from "vue";
-import { ElMessage, ElMessageBox } from "element-plus";
-import { QuestionFilled, ArrowUp, ArrowDown, Check, CircleClose } from "@element-plus/icons-vue";
-import { useDictStore } from "@/store";
-import { ResultEnum } from "@/enums/api/result.enum";
-import type { IContentConfig } from "@/components/CURD/types";
-import ImportModal from "@/components/CURD/ImportModal.vue";
-import ExportModal from "@/components/CURD/ExportModal.vue";
 import DataProjectAPI, {
   DataProjectPageQuery,
   DataProjectTable,
-  DataProjectForm,
 } from "@/api/module_data/project";
 
-const visible = ref(true);
 const queryFormRef = ref();
-const dataFormRef = ref();
 const total = ref(0);
-const selectIds = ref<number[]>([]);
-const selectionRows = ref<DataProjectTable[]>([]);
 const loading = ref(false);
-const isExpand = ref(false);
-const isExpandable = ref(true);
 
 // 分页表单
 const pageTableData = ref<DataProjectTable[]>([]);
 const allProjects = ref<DataProjectTable[]>([]); // 存储全量原始数据用于本地过滤
-
-// 表格列配置
-const tableColumns = ref([
-  { prop: "selection", label: "选择框", show: true },
-  { prop: "index", label: "序号", show: true },
-  { prop: "code", label: "项目编码", show: true },
-  { prop: "name", label: "项目名称", show: true },
-  { prop: "no", label: "项目编号", show: true },
-  { prop: "operation", label: "操作", show: true },
-]);
-
-// 导出列（不含选择/序号/操作）
-const exportColumns = [
-  { prop: "code", label: "项目编码" },
-  { prop: "name", label: "项目名称" },
-  { prop: "no", label: "项目编号" },
-];
-
-// 导入/导出配置
-const curdContentConfig = {
-  permPrefix: "module_data:project",
-  cols: exportColumns as any,
-  importTemplate: () => DataProjectAPI.downloadTemplateDataProject(),
-  exportsAction: async (params: any) => {
-    const query: any = { ...params };
-    query.status = "0";
-    query.page_no = 1;
-    query.page_size = 9999;
-    const all: any[] = [];
-    while (true) {
-      const res = await DataProjectAPI.listDataProject(query);
-      const items = res.data?.data?.items || [];
-      const total = res.data?.data?.total || 0;
-      all.push(...items);
-      if (all.length >= total || items.length === 0) break;
-      query.page_no += 1;
-    }
-    return all;
-  },
-} as unknown as IContentConfig;
 
 // 详情表单
 const detailFormData = ref<DataProjectTable>({});
@@ -506,53 +216,11 @@ const queryFormData = reactive<DataProjectPageQuery>({
   no: undefined,
 });
 
-// 编辑表单
-const formData = reactive<DataProjectForm>({
-  code: undefined,
-  name: undefined,
-  no: undefined,
-});
-
-// 字典仓库与需要加载的字典类型
-const dictStore = useDictStore();
-const dictTypes: any = [];
-
 // 弹窗状态
 const dialogVisible = reactive({
   title: "",
   visible: false,
-  type: "create" as "create" | "update" | "detail",
 });
-
-// 表单验证规则
-const rules = reactive({
-  code: [{ required: false, message: "请输入项目编码", trigger: "blur" }],
-  name: [{ required: false, message: "请输入项目名称", trigger: "blur" }],
-  no: [{ required: false, message: "请输入项目编号", trigger: "blur" }],
-});
-
-// 导入弹窗显示状态
-const importDialogVisible = ref(false);
-const uploadLoading = ref(false);
-
-// 导出弹窗显示状态
-const exportsDialogVisible = ref(false);
-
-// 打开导入弹窗
-function handleOpenImportDialog() {
-  importDialogVisible.value = true;
-}
-
-// 打开导出弹窗
-function handleOpenExportsModal() {
-  exportsDialogVisible.value = true;
-}
-
-// 列表刷新
-async function handleRefresh() {
-  allProjects.value = []; // 清空缓存，强制拉取最新数据
-  await loadingData();
-}
 
 // 加载表格数据
 async function loadingData() {
@@ -618,168 +286,22 @@ async function handleResetQuery() {
   loadingData();
 }
 
-// 定义初始表单数据常量
-const initialFormData: DataProjectForm = {
-  id: undefined,
-  code: undefined,
-  name: undefined,
-  no: undefined,
-};
-
-// 重置表单
-async function resetForm() {
-  if (dataFormRef.value) {
-    dataFormRef.value.resetFields();
-    dataFormRef.value.clearValidate();
-  }
-  // 完全重置 formData 为初始状态
-  Object.assign(formData, initialFormData);
-}
-
-// 行复选框选中项变化
-async function handleSelectionChange(selection: any) {
-  selectIds.value = selection.map((item: any) => item.id);
-  selectionRows.value = selection;
-}
-
 // 关闭弹窗
 async function handleCloseDialog() {
   dialogVisible.visible = false;
-  resetForm();
 }
 
 // 打开弹窗
-async function handleOpenDialog(type: "create" | "update" | "detail", id?: number) {
-  dialogVisible.type = type;
+async function handleOpenDialog(id: number) {
   if (id) {
     const response = await DataProjectAPI.detailDataProject(id);
-    if (type === "detail") {
-      dialogVisible.title = "详情";
-      Object.assign(detailFormData.value, response.data.data);
-    } else if (type === "update") {
-      dialogVisible.title = "修改";
-      Object.assign(formData, response.data.data);
-    }
-  } else {
-    dialogVisible.title = "新增DataProject";
-    Object.assign(formData, initialFormData);
-  }
-  dialogVisible.visible = true;
-}
-
-// 提交表单（防抖）
-async function handleSubmit() {
-  // 表单校验
-  dataFormRef.value.validate(async (valid: any) => {
-    if (valid) {
-      loading.value = true;
-      // 根据弹窗传入的参数(deatil\create\update)判断走什么逻辑
-      const submitData = { ...formData };
-      const id = formData.id;
-      if (dialogVisible.type === "update" && id) {
-        try {
-          await DataProjectAPI.updateDataProject(id, { id, ...submitData });
-          dialogVisible.visible = false;
-          resetForm();
-          handleCloseDialog();
-          allProjects.value = []; // 清空缓存，确保下次加载获取最新数据
-          handleResetQuery();
-        } catch (error: any) {
-          console.error(error);
-        } finally {
-          loading.value = false;
-        }
-      } else {
-        try {
-          await DataProjectAPI.createDataProject(submitData);
-          dialogVisible.visible = false;
-          resetForm();
-          handleCloseDialog();
-          allProjects.value = []; // 清空缓存，确保下次加载获取最新数据
-          handleResetQuery();
-        } catch (error: any) {
-          console.error(error);
-        } finally {
-          loading.value = false;
-        }
-      }
-    }
-  });
-}
-
-// 删除、批量删除
-async function handleDelete(ids: number[]) {
-  ElMessageBox.confirm("确认删除该项数据?", "警告", {
-    confirmButtonText: "确定",
-    cancelButtonText: "取消",
-    type: "warning",
-  })
-    .then(async () => {
-      try {
-        loading.value = true;
-        await DataProjectAPI.deleteDataProject(ids);
-        allProjects.value = []; // 清空缓存，确保下次加载获取最新数据
-        handleResetQuery();
-      } catch (error: any) {
-        console.error(error);
-      } finally {
-        loading.value = false;
-      }
-    })
-    .catch(() => {
-      ElMessageBox.close();
-    });
-}
-
-// 批量启用/停用
-async function handleMoreClick(status: string) {
-  if (selectIds.value.length) {
-    ElMessageBox.confirm(`确认${status === "0" ? "启用" : "停用"}该项数据?`, "警告", {
-      confirmButtonText: "确定",
-      cancelButtonText: "取消",
-      type: "warning",
-    })
-      .then(async () => {
-        try {
-          loading.value = true;
-          await DataProjectAPI.batchDataProject({ ids: selectIds.value, status });
-          allProjects.value = []; // 清空缓存，确保下次加载获取最新数据
-          handleResetQuery();
-        } catch (error: any) {
-          console.error(error);
-        } finally {
-          loading.value = false;
-        }
-      })
-      .catch(() => {
-        ElMessageBox.close();
-      });
+    dialogVisible.title = "详情";
+    Object.assign(detailFormData.value, response.data.data);
+    dialogVisible.visible = true;
   }
 }
-
-// 处理上传
-const handleUpload = async (formData: FormData) => {
-  try {
-    uploadLoading.value = true;
-    const response = await DataProjectAPI.importDataProject(formData);
-    if (response.data.code === ResultEnum.SUCCESS) {
-      ElMessage.success(`${response.data.msg}，${response.data.data}`);
-      importDialogVisible.value = false;
-      allProjects.value = []; // 清空缓存，确保下次加载获取最新数据
-      await handleQuery();
-    }
-  } catch (error: any) {
-    console.error(error);
-  } finally {
-    uploadLoading.value = false;
-  }
-};
 
 onMounted(async () => {
-  // 预加载字典数据
-  if (dictTypes.length > 0) {
-    await dictStore.getDict(dictTypes);
-  }
   loadingData();
 });
 </script>

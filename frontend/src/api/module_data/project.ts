@@ -5,7 +5,7 @@ const API_PATH = "/data/project";
 const DataProjectAPI = {
   // 查询项目信息列表
   listDataProject(query: DataProjectPageQuery) {
-    return request<ApiResponse<PageResponse<DataProjectTable>>>({
+    return request<ApiResponse<PageResult<DataProjectTable>>>({
       url: `${API_PATH}/list`,
       method: "get",
       params: query,

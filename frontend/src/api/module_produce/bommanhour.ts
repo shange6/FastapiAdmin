@@ -12,6 +12,15 @@ const ProduceBomManhourAPI = {
     });
   },
 
+  // 获取全部（不分页）
+  getAllProduceBomManhour(query: ProduceBomManhourQuery) {
+    return request<ApiResponse<ProduceBomManhourTable[]>>({
+      url: `${API_PATH}/list`,
+      method: "get",
+      params: query,
+    });
+  },
+
   // 详情查询
   detailProduceBomManhour(id: number) {
     return request<ApiResponse<ProduceBomManhourTable>>({
@@ -120,6 +129,15 @@ export default ProduceBomManhourAPI;
 // ------------------------------
 // TS 类型声明
 // ------------------------------
+
+// 列表查询参数（不带分页）
+export interface ProduceBomManhourQuery {
+  bom_id?: string;
+  craft_id?: string;
+  manhour?: string;
+  created_time?: string[];
+  updated_time?: string[];
+}
 
 // 列表查询参数
 export interface ProduceBomManhourPageQuery extends PageQuery {
