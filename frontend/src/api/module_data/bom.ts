@@ -20,6 +20,23 @@ const DataBomAPI = {
     });
   },
 
+  // 按项目代号查询第一层级BOM清单列表
+  listProjectBoms(code: string) {
+    return request<ApiResponse<DataBomTable[]>>({
+      url: `${API_PATH}/list/project/${code}`,
+      method: "get",
+    });
+  },
+
+  // 按代号递归查询所有后代BOM列表
+  listRecursiveBoms(code: string, first_code?: string) {
+    return request<ApiResponse<DataBomTable[]>>({
+      url: `${API_PATH}/list/recursive/${code}`,
+      method: "get",
+      params: { first_code },
+    });
+  },
+
   // 详情查询
   detailDataBom(id: number) {
     return request<ApiResponse<DataBomTable>>({

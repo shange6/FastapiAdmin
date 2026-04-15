@@ -22,8 +22,10 @@
         stripe
         height="calc(100vh - 200px)"
         style="width: 100%"
-        highlight-current-row
+        :highlight-current-row="!showBomTable"
         @row-click="handleSelectProject"
+        @cell-mouse-enter="handleProjectMouseEnter"
+        @cell-mouse-leave="handleProjectMouseLeave"
       >
         <el-table-column
           prop="code"
@@ -49,6 +51,52 @@
         />
       </el-table>
     </div>
+
+    <!-- BOM悬浮面板 -->
+    <div 
+      v-show="projectHover.visible" 
+      class="project-hover-panel" 
+      @mouseenter="projectHover.locked = true" 
+      @mouseleave="handleProjectHoverPanelLeave" 
+    > 
+      <el-skeleton v-if="projectHover.loading" :rows="6" animated /> 
+      <el-empty v-else-if="projectHover.children.length === 0" description="无数据" /> 
+      <el-table 
+        v-else 
+        :data="projectHover.children" 
+        border 
+        stripe 
+        height="360" 
+        style="width: 100%" 
+        highlight-current-row 
+        @row-click="handleHoverBomRowClick" 
+      > 
+        <el-table-column 
+          prop="code" 
+          label="代号" 
+          width="140" 
+          header-align="center" 
+          align="center" 
+          show-overflow-tooltip 
+        /> 
+        <el-table-column 
+          prop="spec" 
+          label="名称" 
+          width="200" 
+          header-align="center" 
+          show-overflow-tooltip 
+        /> 
+        <el-table-column 
+          prop="remark" 
+          label="备注" 
+          width="100" 
+          header-align="center" 
+          align="center" 
+          show-overflow-tooltip 
+        /> 
+      </el-table> 
+    </div> 
+
     <template #footer>
       <div class="flex justify-end">
         <pagination
@@ -66,9 +114,14 @@
 import { ref, reactive, watch, onMounted, computed } from "vue";
 import { useDebounceFn, useWindowSize } from "@vueuse/core";
 import DataProjectAPI, { DataProjectTable } from "@/api/module_data/project";
+import DataBomAPI, { DataBomTable, DataBomPageQuery } from "@/api/module_data/bom";
 
 const props = defineProps({
   modelValue: {
+    type: Boolean,
+    default: false,
+  },
+  showBomTable: {
     type: Boolean,
     default: false,
   },
@@ -80,6 +133,104 @@ const isVisible = computed({
   get: () => props.modelValue,
   set: (val) => emit("update:modelValue", val),
 });
+
+// 可选功能：BOM预览
+const projectHover = reactive({
+  visible: false,
+  loading: false,
+  locked: false,
+  children: [] as DataBomTable[],
+  currentProjectCode: "",
+});
+
+const hoverTimer = ref<ReturnType<typeof setTimeout> | null>(null);
+
+// 鼠标进入项目行
+async function handleProjectMouseEnter(row: DataProjectTable) {
+  if (!props.showBomTable) return;
+  if (projectHover.locked) return;
+
+  // 清除之前的定时器
+  if (hoverTimer.value) clearTimeout(hoverTimer.value);
+
+  // 设置新的定时器，悬停 500ms 后再请求数据并展示面板
+  hoverTimer.value = setTimeout(async () => {
+      projectHover.visible = true;
+      projectHover.loading = true;
+      projectHover.currentProjectCode = row.code || "";
+
+      try {
+        const res = await DataBomAPI.listProjectBoms(row.code || "");
+        
+        if (projectHover.currentProjectCode === row.code) {
+          // 限制预览数量为前100条
+          projectHover.children = (res.data.data || []).slice(0, 100);
+        }
+      } catch (error) {
+      console.error("Fetch project BOMs error:", error);
+    } finally {
+      if (projectHover.currentProjectCode === row.code) {
+        projectHover.loading = false;
+      }
+    }
+  }, 500); // 延时 500ms
+}
+
+// 鼠标离开项目行
+function handleProjectMouseLeave() {
+  if (!props.showBomTable) return;
+
+  // 如果鼠标在 500ms 内离开了，取消显示请求
+  if (hoverTimer.value) {
+    clearTimeout(hoverTimer.value);
+    hoverTimer.value = null;
+  }
+
+  setTimeout(() => {
+    if (!projectHover.locked) {
+      projectHover.visible = false;
+    }
+  }, 100);
+}
+
+// 鼠标离开悬浮面板
+function handleProjectHoverPanelLeave() {
+  projectHover.locked = false;
+  projectHover.visible = false;
+}
+
+// 点击悬浮面板中的BOM行
+async function handleHoverBomRowClick(row: DataBomTable) {
+  if (!row?.code) return;
+  
+  try {
+    projectLoading.value = true;
+    // 1. 获取被点击记录的 first_code 和 code
+    const clickedCode = row.code;
+    const clickedFirstCode = row.first_code;
+
+    // 2. 调用后端递归查询接口，查询 first_code 相等且是 code 后代的记录
+    const res = await DataBomAPI.listRecursiveBoms(clickedCode, clickedFirstCode);
+    const recursiveData = res.data.data || [];
+
+    // 3. 返回数据给父组件
+    emit("select", {
+      ...allProjects.value.find(p => p.code === projectHover.currentProjectCode),
+      root_bom_code: clickedCode,
+      parent_code: row.parent_code,
+      recursive_data: recursiveData // 携带递归查询到的全量后代数据
+    });
+    
+    isVisible.value = false;
+    projectHover.visible = false;
+    projectHover.locked = false;
+  } catch (error) {
+    console.error("Fetch recursive BOMs error:", error);
+    ElMessage.error("获取后代数据失败");
+  } finally {
+    projectLoading.value = false;
+  }
+}
 
 // 动态计算分页条数
 const { height: windowHeight } = useWindowSize();
@@ -148,6 +299,7 @@ const handleProjectSearch = useDebounceFn(() => {
 
 // 选择项目
 function handleSelectProject(project: DataProjectTable) {
+  if (props.showBomTable) return; // 如果启用了BOM预览，禁用直接点击项目选择
   emit("select", project);
   isVisible.value = false;
 }
@@ -170,4 +322,23 @@ onMounted(async () => {
   padding-top: 0;
   padding-bottom: 20px;
 }
+
+.project-hover-panel { 
+  position: fixed; 
+  top: 110px; 
+  right: calc(40% + 16px); 
+  width: 460px; 
+  max-width: calc(60% - 32px); 
+  padding: 10px; 
+  border: 1px solid var(--el-border-color); 
+  border-radius: 10px; 
+  background: var(--el-bg-color); 
+  box-shadow: var(--el-box-shadow-light); 
+  z-index: 9999; 
+  pointer-events: auto; 
+} 
+
+.project-hover-panel :deep(.el-table__inner-wrapper) { 
+  border-radius: 8px; 
+} 
 </style>

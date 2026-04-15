@@ -4,60 +4,28 @@
     <!-- 内容区域 -->
     <el-card class="data-table">
       <template #header>
-        <!-- <div class="card-header">
-          <span>
-            BOM路线关联列表
-            <el-tooltip content="BOM路线关联列表">
-              <QuestionFilled class="w-4 h-4 mx-1" />
-            </el-tooltip>
-          </span>
-        </div> -->
-
-        <!-- 搜索区域 -->
-        <div class="search-container">
-          <el-form
-            ref="queryFormRef"
-            :model="queryFormData"
-            label-suffix=":"
-            :inline="true"
-            @submit.prevent="handleQuery"
-          >
-            <!-- 查询、重置、展开/收起按钮 -->
-            <el-form-item>
-              <!-- <el-button
-                v-hasPerm="['module_produce:bomroute:query']"
-                type="primary"
-                icon="search"
-                @click="handleQuery"
-              >
-                查询
-              </el-button>
-              <el-button
-                v-hasPerm="['module_produce:bomroute:query']"
-                icon="refresh"
-                @click="handleResetQuery"
-              >
-                重置
-              </el-button> -->
-              <el-button type="info" plain icon="Expand" @click="toggleAllExpansion(true)">
-                展开
-              </el-button>
-              <el-button type="info" plain icon="Fold" @click="toggleAllExpansion(false)">
-                收起
-              </el-button>
-              <el-button
-                v-hasPerm="['module_produce:bomroute:create']"
-                type="warning"
-                icon="FolderChecked"
-                @click="handleBatchSaveCraftRoute"
-              >
-                保存
-              </el-button>
-              <el-button type="primary" icon="Collection" @click="handleOpenProjectDrawer">
-                项目
-              </el-button>
-            </el-form-item>
-          </el-form>
+        <div class="flex-x-between">
+          <div class="flex-x-start">
+            <el-button type="info" plain icon="Expand" @click="toggleAllExpansion(true)">
+              展开
+            </el-button>
+            <el-button type="info" plain icon="Fold" @click="toggleAllExpansion(false)">
+              收起
+            </el-button>
+          </div>
+          <div class="flex-x-end">
+            <el-button
+              v-hasPerm="['module_produce:bomroute:create']"
+              type="warning"
+              icon="FolderChecked"
+              @click="handleBatchSaveCraftRoute"
+            >
+              保存
+            </el-button>
+            <el-button type="primary" icon="Collection" @click="handleOpenProjectDrawer">
+              项目
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -88,15 +56,6 @@
           label="代号"
           prop="code"
           min-width="260"
-          header-align="center"
-          show-overflow-tooltip
-        />
-        <el-table-column
-          fixed="left"
-          label="ID"
-          prop="id"
-          min-width="80"
-          align="center"
           header-align="center"
           show-overflow-tooltip
         />
@@ -146,6 +105,15 @@
           show-overflow-tooltip
         />
         <el-table-column
+          fixed="right"
+          label="ID"
+          prop="id"
+          min-width="70"
+          align="center"
+          header-align="center"
+          show-overflow-tooltip
+        />
+        <el-table-column
           label="工艺路线"
           prop="craft_route"
           min-width="370"
@@ -177,7 +145,11 @@
     </el-card>
 
     <!-- 项目选择抽屉 -->
-    <ProjectSelectDrawer v-model="projectDrawerVisible" @select="handleSelectProject" />
+    <ProjectSelectDrawer 
+      v-model="projectDrawerVisible" 
+      :show-bom-table="true"
+      @select="handleSelectProject" 
+    />
   </div>
 </template>
 
@@ -192,29 +164,34 @@ import { ElMessage } from "element-plus";
 import ProduceBomRouteAPI, {
   ProduceBomRoutePageQuery,
 } from "@/api/module_produce/bomroute";
-import DataBomAPI, { DataBomTable } from "@/api/module_data/bom";
-import { DataProjectTable } from "@/api/module_data/project";
+import { DataBomTable } from "@/api/module_data/bom";
 import ProjectSelectDrawer from "@/views/module_data/ProjectSelectDrawer.vue";
-import ProduceCraftRouteAPI from "@/api/module_produce/craftroute";
+import ProduceCraftRouteAPI, { CraftRouteView } from "@/api/module_produce/craftroute";
 import { convertToTree } from "@/views/module_data/utils";
 
 const tableRef = ref();
-const total = ref(0);
 const selectIds = ref<number[]>([]);
 const selectionRows = ref<any[]>([]);
 const loading = ref(false);
 
+// 扩展 DataBomTable 类型，包含工艺路线字段
+interface DataBomWithRoute extends DataBomTable {
+  craft_route?: number;
+}
+
 // 分页表单
-const pageTableData = ref<DataBomTable[]>([]);
+const pageTableData = ref<DataBomWithRoute[]>([]);
 
 // 工艺路线下拉选项
-const craftRouteOptions = ref<any[]>([]);
+const craftRouteOptions = ref<CraftRouteView[]>([]);
 
 // 项目选择相关
 const projectDrawerVisible = ref(false);
 
 // 分页查询参数
-type QueryFormData = ProduceBomRoutePageQuery & { parent_code?: string };
+type QueryFormData = ProduceBomRoutePageQuery & { 
+  parent_code?: string;
+};
 const queryFormData = reactive<QueryFormData>({
   page_no: 1,
   page_size: 10,
@@ -222,19 +199,21 @@ const queryFormData = reactive<QueryFormData>({
 
 // 加载表格数据
 // 全量缓存
-const allBoms = ref<DataBomTable[]>([]);
+const allBoms = ref<DataBomWithRoute[]>([]);
 const allBomRoutes = ref<any[]>([]);
 const selectedRootBomCode = ref<string | undefined>(undefined);
 
-function syncCraftRouteToTree(nodes: any[]) {
-  if (!nodes) return;
-  nodes.forEach((node: any) => {
-    const routeRecord = allBomRoutes.value.find((r: any) => r.bom_id === node.id);
-    if (routeRecord) {
-      node.craft_route = routeRecord.route;
-    }
-    if (node.children && node.children.length > 0) {
-      syncCraftRouteToTree(node.children);
+function syncCraftRouteToFullList() {
+  if (!allBoms.value || allBoms.value.length === 0) return;
+  
+  // 建立 route 映射 Map，用于快速查找
+  const routeMap = new Map(allBomRoutes.value.map(r => [r.bom_id, r.route]));
+
+  // 直接在扁平列表上同步数据，这样后续生成的树也会带上这些值
+  allBoms.value.forEach((node) => {
+    const route = routeMap.get(node.id);
+    if (route !== undefined) {
+      node.craft_route = route;
     }
   });
 }
@@ -245,70 +224,40 @@ async function ensureAllBomRoutesLoaded() {
   allBomRoutes.value = routeRes.data.data || [];
 }
 
-function collectSubtreeByRootCode(list: any[], rootCode: string) {
-  const childrenByParentCode: Record<string, any[]> = {};
-  list.forEach((item: any) => {
-    const key = item.parent_code || "";
-    if (!childrenByParentCode[key]) childrenByParentCode[key] = [];
-    childrenByParentCode[key].push(item);
-  });
-
-  const results: any[] = [];
-  const visited = new Set<any>();
-  const roots = list.filter((item: any) => item.code === rootCode);
-  const queue: any[] = [...roots];
-
-  while (queue.length > 0) {
-    const node = queue.shift();
-    const visitKey = node?.id ?? `${node?.code}|${node?.parent_code}|${node?.borrow ?? ""}`;
-    if (visited.has(visitKey)) continue;
-    visited.add(visitKey);
-    results.push(node);
-    const children = childrenByParentCode[node.code] || [];
-    children.forEach((child: any) => queue.push(child));
-  }
-  return results;
-}
-
 async function loadingData() {
   if (!selectedRootBomCode.value && !queryFormData.parent_code) {
     pageTableData.value = [];
-    total.value = 0;
     return;
   }
 
   ElMessage.info("正在更新数据... ...请稍后");
   loading.value = true;
   try {
-    await Promise.all([ensureAllBomsLoaded(), ensureAllBomRoutesLoaded()]);
+    await ensureAllBomRoutesLoaded();
+    
+    // 1. 同步工艺路线到扁平列表 (源数据同步)
+    syncCraftRouteToFullList();
 
-    allBoms.value.forEach((bom: any) => {
-      const routeRecord = allBomRoutes.value.find((r: any) => r.bom_id === bom.id);
-      if (routeRecord) {
-        bom.craft_route = routeRecord.route;
-      }
-    });
-
-    let displayNodes = [];
-    if (selectedRootBomCode.value) {
-      displayNodes = collectSubtreeByRootCode(allBoms.value as any[], selectedRootBomCode.value);
-    } else {
-      displayNodes = allBoms.value;
-    }
-
+    // 2. 直接转换为树形结构，不再进行过滤
     const { tree } = convertToTree(
-      displayNodes,
-      selectedRootBomCode.value ? undefined : queryFormData.parent_code,
+      allBoms.value, 
+      selectedRootBomCode.value ? undefined : queryFormData.parent_code, 
       selectedRootBomCode.value
     );
-    syncCraftRouteToTree(tree);
+
+    // 3. 渲染页面
     pageTableData.value = tree;
-    total.value = tree.length;
   } catch (error: any) {
     console.error(error);
   } finally {
     loading.value = false;
   }
+}
+
+// 查询（重置页码后获取数据）
+async function handleQuery() {
+  queryFormData.page_no = 1;
+  loadingData();
 }
 
 // 展开/收起所有行
@@ -324,36 +273,28 @@ function toggleAllExpansion(expanded: boolean) {
   toggle(pageTableData.value);
 }
 
-// 查询（重置页码后获取数据）
-async function handleQuery() {
-  queryFormData.page_no = 1;
-  loadingData();
-}
-
-async function ensureAllBomsLoaded() {
-  if (allBoms.value.length > 0) return;
-  const res = await DataBomAPI.listDataBomNoProcure();
-  allBoms.value = res.data.data || [];
-}
-
 // 打开项目选择抽屉
 async function handleOpenProjectDrawer() {
   projectDrawerVisible.value = true;
 }
 
 // 选择项目
-function handleSelectProject(project: DataProjectTable) {
-  selectedRootBomCode.value = undefined;
-  queryFormData.parent_code = project.code;
-  projectDrawerVisible.value = false;
-  allBoms.value = [];
-  handleQuery();
+function handleSelectProject(project: any) {
+  // 仅处理从预览面板选中的逻辑（带有递归数据）
+  if (project.recursive_data && project.root_bom_code) {
+    queryFormData.parent_code = project.code;
+    projectDrawerVisible.value = false;
+    selectedRootBomCode.value = project.root_bom_code;
+    // 直接注入数据，不再有全量拉取逻辑
+    allBoms.value = project.recursive_data;
+    handleQuery();
+  }
 }
 
 // 加载工艺路线下拉选项
 async function loadCraftRouteOptions() {
   try {
-    const response = await ProduceCraftRouteAPI.getAllProduceCraftRoute();
+    const response = await ProduceCraftRouteAPI.getCraftRouteViewList({});
     craftRouteOptions.value = response.data.data || [];
   } catch (error: any) {
     console.error(error);
@@ -383,68 +324,57 @@ function isSubset(subset: number[], superset: number[]): boolean {
   return subset.every((id) => superset.includes(id));
 }
 
-// 获取所有祖先节点
-function getAllAncestors(node: any, allNodes: any[]): any[] {
-  const ancestors: any[] = [];
-  let currentParentCode = node.parent_code;
-  while (currentParentCode) {
-    const parent = allNodes.find((n) => n.code === currentParentCode);
-    if (parent) {
-      ancestors.push(parent);
-      currentParentCode = parent.parent_code;
-    } else {
-      break;
-    }
-  }
-  return ancestors;
-}
-
-// 获取所有后代节点
-function getAllDescendants(node: any, allNodes: any[]): any[] {
-  const descendants: any[] = [];
-  const children = allNodes.filter((n) => n.parent_code === node.code);
-  for (const child of children) {
-    descendants.push(child);
-    descendants.push(...getAllDescendants(child, allNodes));
-  }
-  return descendants;
-}
-
-function updateTreeCraftRouteById(nodes: any[], bomId: number, craftRoute: any): boolean {
-  for (const node of nodes || []) {
-    if (node.id === bomId) {
-      node.craft_route = craftRoute;
-      return true;
-    }
+// 递归遍历树并执行回调
+function traverseTree(nodes: any[], callback: (node: any) => void) {
+  if (!nodes || nodes.length === 0) return;
+  nodes.forEach((node) => {
+    callback(node);
     if (node.children && node.children.length > 0) {
-      const updated = updateTreeCraftRouteById(node.children, bomId, craftRoute);
-      if (updated) return true;
+      traverseTree(node.children, callback);
     }
-  }
-  return false;
+  });
+}
+
+// 获取树节点 ID 映射 Map
+function getTreeNodesMap(nodes: any[]) {
+  const map = new Map<number, any>();
+  traverseTree(nodes, (node) => {
+    if (node.id) map.set(node.id, node);
+  });
+  return map;
 }
 
 // 工艺路线变更处理（仅更新表格数据，不保存数据库）
 function handleCraftRouteChange(row: any) {
   const craftRoute = row.craft_route;
-  const bom = (allBoms.value as any[]).find((item: any) => item.id === row.id);
-  if (bom) {
-    bom.craft_route = craftRoute;
-  }
-  if (row.id) {
-    updateTreeCraftRouteById(pageTableData.value as any[], row.id, craftRoute);
-  }
+  
+  // 1. 建立 ID 映射 Map，用于全量数据和树形数据的快速访问
+  const bomMap = new Map(allBoms.value.map(item => [item.id, item]));
+  const treeMap = getTreeNodesMap(pageTableData.value);
 
+  // 2. 更新当前行及其在全量列表中的映射
+  const targetFull = bomMap.get(row.id);
+  if (targetFull) targetFull.craft_route = craftRoute;
+  
+  const targetTree = treeMap.get(row.id);
+  if (targetTree) targetTree.craft_route = craftRoute;
+
+  // 3. 批量更新勾选项
   if (!row.id || !selectIds.value.includes(row.id)) return;
 
-  (selectionRows.value as any[]).forEach((selectedRow: any) => {
+  selectionRows.value.forEach((selectedRow) => {
     if (!selectedRow?.id || selectedRow.id === row.id) return;
+    
+    // 更新全量列表映射
+    const bomInFullList = bomMap.get(selectedRow.id);
+    if (bomInFullList) bomInFullList.craft_route = craftRoute;
+    
+    // 更新树形数据映射
+    const bomInTree = treeMap.get(selectedRow.id);
+    if (bomInTree) bomInTree.craft_route = craftRoute;
+    
+    // 更新勾选行引用（Vue 响应式）
     selectedRow.craft_route = craftRoute;
-    const selectedBom = (allBoms.value as any[]).find((item: any) => item.id === selectedRow.id);
-    if (selectedBom) {
-      selectedBom.craft_route = craftRoute;
-    }
-    updateTreeCraftRouteById(pageTableData.value as any[], selectedRow.id, craftRoute);
   });
 }
 
@@ -456,8 +386,7 @@ async function handleBatchSaveCraftRoute() {
       return;
     }
 
-    // 1. 获取当前显示的所有节点
-    const targetNodes = collectSubtreeByRootCode(allBoms.value as any[], selectedRootBomCode.value);
+    const targetNodes = allBoms.value;
     if (targetNodes.length === 0) {
       ElMessage.warning("暂无数据可保存");
       return;
@@ -465,61 +394,50 @@ async function handleBatchSaveCraftRoute() {
 
     loading.value = true;
 
-    // 2. 收集所有涉及到的工艺路线代码（用于校验）
+    // 1. 建立索引 Map 以加速访问
+    const bomMapByCode = new Map<string, any>();
+    const childrenMap = new Map<string, any[]>();
+    targetNodes.forEach(node => {
+      if (node.code) {
+        bomMapByCode.set(node.code, node);
+        if (node.parent_code) {
+          if (!childrenMap.has(node.parent_code)) childrenMap.set(node.parent_code, []);
+          childrenMap.get(node.parent_code)!.push(node);
+        }
+      }
+    });
+
+    // 2. 收集所有涉及到的工艺路线代码
     const relevantRoutes = new Set<number>();
     targetNodes.forEach((node: any) => {
       if (node.craft_route) relevantRoutes.add(Number(node.craft_route));
-
-      // 收集所有祖先和后代的工艺路线
-      const ancestors = getAllAncestors(node, allBoms.value);
-      ancestors.forEach((a) => {
-        if (a.craft_route) relevantRoutes.add(Number(a.craft_route));
-      });
-      const descendants = getAllDescendants(node, allBoms.value);
-      descendants.forEach((d) => {
-        if (d.craft_route) relevantRoutes.add(Number(d.craft_route));
-      });
     });
 
-    // 3. 预取所有涉及到的工艺路线明细（并行请求以提高效率）
+    // 3. 预取所有涉及到的工艺路线明细
     await Promise.all(Array.from(relevantRoutes).map((r) => getRouteCrafts(r)));
 
-    // 4. 执行校验逻辑
+    // 4. 执行校验逻辑：仅校验父子层级关系，减少冗余计算
     for (const node of targetNodes) {
       const nodeRoute = Number(node.craft_route || 0);
       const nodeCrafts = await getRouteCrafts(nodeRoute);
 
-      // 规则 A：递归校验所有父节点是否涵盖当前节点的工艺路线
-      const ancestors = getAllAncestors(node, allBoms.value);
-      for (const ancestor of ancestors) {
-        const ancestorRoute = Number(ancestor.craft_route || 0);
-        if (ancestorRoute) {
-          const ancestorCrafts = await getRouteCrafts(ancestorRoute);
-          if (!isSubset(nodeCrafts, ancestorCrafts)) {
-            ElMessage.error(
-              `校验失败：父节点 [${ancestor.id}] 工艺路线未包含子节点 [${node.id}]`
-            );
-            loading.value = false;
-            return;
-          }
-        } else if (nodeRoute > 0) {
-          // 如果子节点有工艺但父节点没设
-          ElMessage.error(`校验失败：父节点 [${ancestor.id}] 未设置工艺路线，无法包含子节点`);
-          loading.value = false;
-          return;
-        }
-      }
-
-      // 规则 B：递归校验所有子节点是否被当前节点的工艺路线包含
-      const descendants = getAllDescendants(node, allBoms.value);
-      for (const descendant of descendants) {
-        const descendantRoute = Number(descendant.craft_route || 0);
-        if (descendantRoute) {
-          const descendantCrafts = await getRouteCrafts(descendantRoute);
-          if (!isSubset(descendantCrafts, nodeCrafts)) {
-            ElMessage.error(
-              `校验失败：子节点 [${descendant.id}] 工艺路线未被父节点 [${node.id}] 包含`
-            );
+      // 规则：子节点工艺路线必须是父节点工艺路线的子集
+      if (node.parent_code) {
+        const parent = bomMapByCode.get(node.parent_code);
+        if (parent) {
+          const parentRoute = Number(parent.craft_route || 0);
+          if (parentRoute) {
+            const parentCrafts = await getRouteCrafts(parentRoute);
+            if (!isSubset(nodeCrafts, parentCrafts)) {
+              ElMessage.error(
+                `校验失败：零件 [${node.code}] 的工艺路线未包含在父零件 [${parent.code}] 中`
+              );
+              loading.value = false;
+              return;
+            }
+          } else if (nodeRoute > 0) {
+            // 子节点有工艺但父节点没设（且父节点在本次处理范围内）
+            ElMessage.error(`校验失败：父零件 [${parent.code}] 未设置工艺路线，无法包含子零件 [${node.code}]`);
             loading.value = false;
             return;
           }
@@ -527,45 +445,44 @@ async function handleBatchSaveCraftRoute() {
       }
     }
 
-    // 5. 收集所有发生变化的节点（不论是否勾选，去掉自动包含祖先的逻辑）
+    // 5. 收集发生变化的节点
     const data: { bom_id: number; route: number }[] = [];
-    targetNodes.forEach((node: any) => {
-      const bomId = node.id;
-      const currentRoute = node.craft_route;
-      // 从原始数据中查找旧的工艺路线
-      const originalRecord = allBomRoutes.value.find((r: any) => r.bom_id === bomId);
-      const originalRoute = originalRecord ? originalRecord.route : undefined;
+    const originalRouteMap = new Map(allBomRoutes.value.map(r => [r.bom_id, r.route]));
 
-      // 如果当前路线与原始路线不同，则需要保存
+    targetNodes.forEach((node: any) => {
+      const currentRoute = node.craft_route;
+      const originalRoute = originalRouteMap.get(node.id);
+
       if (currentRoute !== originalRoute) {
         data.push({
-          bom_id: bomId,
+          bom_id: node.id,
           route: currentRoute,
         });
       }
     });
-
+    
     if (data.length === 0) {
       ElMessage.info("数据未发生变化，无需保存");
       loading.value = false;
       return;
     }
 
-    await ProduceBomRouteAPI.upsertBatchProduceBomRoute(data);
-
-    // 6. 保存成功后，更新本地缓存的原始数据
-    data.forEach((item) => {
-      const existing = allBomRoutes.value.find((r: any) => r.bom_id === item.bom_id);
-      if (existing) {
-        existing.route = item.route;
-      } else {
-        allBomRoutes.value.push({ bom_id: item.bom_id, route: item.route });
-      }
-    });
-
-    ElMessage.success(`保存成功，共更新 ${data.length} 条记录`);
-  } catch (error: any) {
+    const res = await ProduceBomRouteAPI.upsertBatchProduceBomRoute(data);
+    // console.log(res)
+    if (res.data.code === 0) {
+      // 6. 更新本地缓存
+      data.forEach((item) => {
+        const existing = allBomRoutes.value.find((r: any) => r.bom_id === item.bom_id);
+        if (existing) {
+          existing.route = item.route;
+        } else {
+          allBomRoutes.value.push({ bom_id: item.bom_id, route: item.route });
+        }
+      });
+     }
+   } catch (error: any) {
     console.error(error);
+    ElMessage.error("保存过程中发生错误，请查看控制台");
   } finally {
     loading.value = false;
   }

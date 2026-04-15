@@ -45,32 +45,71 @@ class DataBomCRUD(CRUDBase[DataBomModel, DataBomCreateSchema, DataBomUpdateSchem
         返回:
         - Sequence[DataBomModel]: 模型实例序列
         """
-        # 如果指定了递归查询
-        if search and search.get("recursive") and search.get("parent_code"):
-            parent_code = search["parent_code"][1] # 获取元组中的值 ('eq', value)
-            return await self.list_bom_recursive_crud(parent_code=parent_code)
+        if search:
+            # 提取递归查询标志并从搜索字典中移除
+            recursive = search.pop("recursive", False)
+            # 如果指定了递归查询
+            if recursive:
+                parent_code = search.get("parent_code")
+                code = search.get("code")
+                first_code = search.get("first_code")
+                
+                # 处理可能存在的元组包装 (例如 ('eq', value))
+                if isinstance(parent_code, (list, tuple)): parent_code = parent_code[1]
+                if isinstance(code, (list, tuple)): code = code[1]
+                if isinstance(first_code, (list, tuple)): first_code = first_code[1]
+                
+                if parent_code or code:
+                    return await self.list_bom_recursive_crud(
+                        code=code, 
+                        parent_code=parent_code, 
+                        first_code=first_code
+                    )
             
         return await self.list(search=search, order_by=order_by, preload=preload)
 
-    async def list_bom_recursive_crud(self, parent_code: str) -> Sequence[DataBomModel]:
+    async def list_bom_recursive_crud(self, code: str | None = None, first_code: str | None = None, parent_code: str | None = None) -> Sequence[DataBomModel]:
         """
         递归获取所有后代BOM
+        
+        参数:
+        - code: str | None - 起始BOM代号
+        - first_code: str | None - 根BOM代号（可选，用于限定范围）
+        - parent_code: str | None - 父级代号（可选，用于从父级开始递归）
         """
         from sqlalchemy import text
         
+        # 初始查询条件
+        where_clause = ""
+        params = {}
+        
+        if code:
+            where_clause = "code = :code"
+            params["code"] = code
+        elif parent_code:
+            where_clause = "parent_code = :parent_code"
+            params["parent_code"] = parent_code
+        else:
+            return []
+
+        if first_code:
+            where_clause += " AND first_code = :first_code"
+            params["first_code"] = first_code
+
         # 使用递归CTE查询所有后代
-        # 注意：这里假设 code 字段在树结构中是唯一的逻辑标识符
-        sql = text("""
+        sql_str = f"""
             WITH RECURSIVE descendants AS (
-                SELECT * FROM data_bom WHERE parent_code = :parent_code
-                UNION ALL
+                SELECT * FROM data_bom WHERE {where_clause}
+                UNION
                 SELECT b.* FROM data_bom b
                 JOIN descendants d ON b.parent_code = d.code
+                {"WHERE b.first_code = :first_code" if first_code else ""}
             )
-            SELECT * FROM descendants
-        """)
-        
-        result = await self.auth.db.execute(sql, {"parent_code": parent_code})
+            SELECT DISTINCT * FROM descendants WHERE procure = 0
+        """
+            
+        sql = text(sql_str)
+        result = await self.auth.db.execute(sql, params)
         # 将结果转换为模型对象列表
         rows = result.fetchall()
         # 获取列名映射

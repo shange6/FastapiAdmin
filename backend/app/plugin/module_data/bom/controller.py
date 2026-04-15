@@ -87,6 +87,54 @@ async def get_bom_list_controller(
     return SuccessResponse(data=result_list, msg="查询BOM清单列表成功")
 
 @DataBomRouter.get(
+    "/list/project/{code}",
+    summary="按项目代号查询第一层级BOM清单列表",
+    description="按项目代号查询第一层级BOM清单列表（非递归）"
+)
+async def get_bom_project_list_controller(
+    code: str = Path(..., description="项目代号"),
+    auth: AuthSchema = Depends(AuthPermission(["module_data:bom:query"]))
+) -> JSONResponse:
+    """
+    按项目代号查询第一层级BOM清单列表接口
+    
+    参数:
+    - code: str - 项目代号
+    - auth: AuthSchema - 认证信息
+    
+    返回:
+    - JSONResponse - 包含BOM清单列表的JSON响应
+    """
+    result_list = await DataBomService.list_bom_by_project_service(auth=auth, code=code)
+    log.info(f"按项目代号查询第一层级BOM清单列表成功: {code}")
+    return SuccessResponse(data=result_list, msg="查询项目第一层级BOM清单列表成功")
+
+@DataBomRouter.get(
+    "/list/recursive/{code}",
+    summary="按代号递归查询所有后代BOM列表",
+    description="按代号递归查询所有子层级BOM列表（包含自身）"
+)
+async def get_bom_recursive_list_controller(
+    code: str = Path(..., description="BOM代号"),
+    first_code: str | None = Query(None, description="根BOM代号"),
+    auth: AuthSchema = Depends(AuthPermission(["module_data:bom:query"]))
+) -> JSONResponse:
+    """
+    按代号递归查询所有后代BOM列表接口
+    
+    参数:
+    - code: str - BOM代号
+    - first_code: str | None - 根BOM代号（可选）
+    - auth: AuthSchema - 认证信息
+    
+    返回:
+    - JSONResponse - 包含递归BOM清单列表的JSON响应
+    """
+    result_list = await DataBomService.list_bom_recursive_service(auth=auth, code=code, first_code=first_code)
+    log.info(f"按代号递归查询BOM清单列表成功: code={code}, first_code={first_code}")
+    return SuccessResponse(data=result_list, msg="递归查询BOM清单列表成功")
+
+@DataBomRouter.get(
     "/list/no-procure",
     summary="查询不需要采购的BOM清单列表",
     description="查询不需要采购的BOM清单列表"

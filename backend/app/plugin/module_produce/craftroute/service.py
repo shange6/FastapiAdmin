@@ -84,7 +84,7 @@ class ProduceCraftRouteService:
             craft_sql = (
                 text(
                     """
-                    SELECT id, name, has_child
+                    SELECT id, name, has_child, parent_id
                     FROM produce_craft
                     WHERE id IN :craft_ids
                     """
@@ -94,7 +94,7 @@ class ProduceCraftRouteService:
             craft_result = await session.execute(craft_sql, {"craft_ids": route_craft_ids})
             craft_rows = craft_result.fetchall()
             craft_map: dict[int, dict] = {
-                int(row[0]): {"id": int(row[0]), "name": row[1], "has_child": row[2]}
+                int(row[0]): {"id": int(row[0]), "name": row[1], "has_child": row[2], "parent_id": row[3]}
                 for row in craft_rows
             }
 
@@ -132,7 +132,7 @@ class ProduceCraftRouteService:
                     if pid is None:
                         continue
                     children_cache.setdefault(pid, []).append(
-                        {"id": int(row[0]), "name": row[1], "has_child": row[3]}
+                        {"id": int(row[0]), "name": row[1], "parent_id": pid, "has_child": row[3]}
                     )
                 for pid in ids_to_load:
                     children_cache.setdefault(pid, [])
@@ -145,25 +145,25 @@ class ProduceCraftRouteService:
                 visited.add(craft_id)
                 craft = craft_map.get(craft_id)
                 if not craft:
-                    expanded_crafts.append({"craft_id": craft_id, "craft_name": None, "craft_has_child": None})
+                    expanded_crafts.append({"craft_id": craft_id, "craft_name": None, "craft_has_child": None, "parent_id": None})
                     return
                 has_child = bool(craft.get("has_child"))
                 if not has_child:
                     expanded_crafts.append(
-                        {"craft_id": craft_id, "craft_name": craft.get("name"), "craft_has_child": craft.get("has_child")}
+                        {"craft_id": craft_id, "craft_name": craft.get("name"), "craft_has_child": craft.get("has_child"), "parent_id": craft.get("parent_id")}
                     )
                     return
                 await ensure_children_loaded([craft_id])
                 children = children_cache.get(craft_id, [])
                 if not children:
                     expanded_crafts.append(
-                        {"craft_id": craft_id, "craft_name": craft.get("name"), "craft_has_child": craft.get("has_child")}
+                        {"craft_id": craft_id, "craft_name": craft.get("name"), "craft_has_child": craft.get("has_child"), "parent_id": craft.get("parent_id")}
                     )
                     return
                 for child in children:
                     child_id = int(child["id"])
                     if child_id not in craft_map:
-                        craft_map[child_id] = {"id": child_id, "name": child.get("name"), "has_child": child.get("has_child")}
+                        craft_map[child_id] = {"id": child_id, "name": child.get("name"), "has_child": child.get("has_child"), "parent_id": child.get("parent_id")}
                     await expand_craft(child_id, visited)
 
             for cid in deduped_craft_ids:
@@ -185,6 +185,7 @@ class ProduceCraftRouteService:
                         "craft_id": cid_int,
                         "craft_name": craft.get("craft_name"),
                         "craft_has_child": craft.get("craft_has_child"),
+                        "parent_id": craft.get("parent_id"),
                     }
                 )
 

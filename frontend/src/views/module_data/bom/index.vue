@@ -5,68 +5,13 @@
     <el-card class="data-table">
       <template #header>
         <!-- 搜索区域 -->
-        <div class="search-container">
-          <el-form
-            ref="queryFormRef"
-            :model="queryFormData"
-            label-suffix=":"
-            :inline="true"
-            @submit.prevent="handleQuery"
-          >
-            <el-form-item label="代号" prop="code">
-              <el-input
-                v-model="queryFormData.code"
-                placeholder="请输入代号"
-                clearable
-                style="width: 100px"
-              />
-            </el-form-item>
-            <el-form-item label="名称" prop="spec">
-              <el-input
-                v-model="queryFormData.spec"
-                placeholder="请输入名称"
-                clearable
-                style="width: 100px"
-              />
-            </el-form-item>
-            <el-form-item label="材质" prop="material">
-              <el-input
-                v-model="queryFormData.material"
-                placeholder="请输入材质"
-                clearable
-                style="width: 100px"
-              />
-            </el-form-item>
-            <el-form-item label="备注" prop="remark">
-              <el-input
-                v-model="queryFormData.remark"
-                placeholder="请输入备注"
-                clearable
-                style="width: 100px"
-              />
-            </el-form-item>
-            <!-- 查询、重置、展开/收起按钮 -->
-            <el-form-item>
-              <el-button
-                v-hasPerm="['module_data:bom:query']"
-                icon="refresh"
-                @click="handleResetQuery"
-              >
-                重置
-              </el-button>
-              <div>&nbsp;&nbsp;</div>
-              <el-button type="info" plain icon="Expand" @click="toggleAllExpansion(true)">
-                展开
-              </el-button>
-              <el-button type="info" plain icon="Fold" @click="toggleAllExpansion(false)">
-                收起
-              </el-button>
-              <el-button type="primary" icon="Collection" @click="handleOpenProjectDrawer">
-                项目
-              </el-button>
-            </el-form-item>
-          </el-form>
-        </div>
+        <BomSearch
+          v-model="queryFormData"
+          @search="handleQuery"
+          @reset="handleResetQuery"
+          @toggle-expand="toggleAllExpansion"
+          @open-project="handleOpenProjectDrawer"
+        />
       </template>
 
       <!-- 表格区域：系统配置列表 -->
@@ -83,6 +28,11 @@
         <template #empty>
           <el-empty :image-size="80" description="暂无数据" />
         </template>
+        <el-table-column
+          type="selection"
+          min-width="40"
+          align="center"
+        />
         <el-table-column
           label="代号"
           prop="code"
@@ -251,10 +201,11 @@ import ImportModal from "@/components/CURD/ImportModal.vue";
 import DataBomAPI, { DataBomQuery, DataBomTable } from "@/api/module_data/bom";
 import { DataProjectTable } from "@/api/module_data/project";
 import ProjectSelectDrawer from "../ProjectSelectDrawer.vue";
-import { convertToTree } from "../utils";
+import BomSearch from "../BomSearch.vue";
+import { getMatchedBomsWithParents, convertToTree } from "../utils";
+import { nextTick } from "vue"; // 确保引入了 nextTick
 
 const tableRef = ref();
-const queryFormRef = ref();
 const loading = ref(false);
 
 // 项目选择相关
@@ -360,48 +311,48 @@ function toggleAllExpansion(expanded: boolean) {
   toggle(pageTableData.value);
 }
 
-// 加载/过滤表格数据
+/**
+ * 加载/过滤表格数据
+ * 仅包含 UI 关联逻辑：提取搜索词、控制 Loading、控制表格展开
+ */
 async function loadingData() {
   const codeSearch = queryFormData.code?.toLowerCase() || "";
   const specSearch = queryFormData.spec?.toLowerCase() || "";
   const materialSearch = queryFormData.material?.toLowerCase() || "";
   const remarkSearch = queryFormData.remark?.toLowerCase() || "";
 
+  // UI 逻辑：判断是否处于搜索状态，用于后续自动展开
+  const isSearching = !!(codeSearch || specSearch || materialSearch || remarkSearch);
+
   loading.value = true;
   try {
-    // 3. 本地过滤逻辑
-    const filtered = allBoms.value.filter((item) => {
-      const matchCode = !codeSearch || item.code?.toLowerCase().includes(codeSearch);
-      const matchSpec = !specSearch || item.spec?.toLowerCase().includes(specSearch);
-      const matchMaterial =
-        !materialSearch || item.material?.toLowerCase().includes(materialSearch);
-      const matchRemark = !remarkSearch || item.remark?.toLowerCase().includes(remarkSearch);
-      return matchCode && matchSpec && matchMaterial && matchRemark;
-    });
+    // 1. 调用业务逻辑：获取匹配项及其完整父路径
+    // 将 rootCode 传入，内部会自动处理根节点的强制包含和路径补全
+    const matchedList = getMatchedBomsWithParents(
+      allBoms.value, 
+      (item) => {
+        const matchCode = !codeSearch || item.code?.toLowerCase().includes(codeSearch);
+        const matchSpec = !specSearch || item.spec?.toLowerCase().includes(specSearch);
+        const matchMaterial = !materialSearch || item.material?.toLowerCase().includes(materialSearch);
+        const matchRemark = !remarkSearch || item.remark?.toLowerCase().includes(remarkSearch);
+        return matchCode && matchSpec && matchMaterial && matchRemark;
+      },
+      currentProjectCode.value // 传入根节点代号
+    );
 
-    // 4. 为了保证树形结构的完整性，需要补充匹配节点的父节点
-    const matchedCodes = new Set(filtered.map((item) => item.code));
-    const finalBoms = new Set(filtered);
-
-    // 递归寻找所有匹配项的父节点
-    const addParents = (bom: any) => {
-      if (bom.parent_code) {
-        const parent = allBoms.value.find((p) => p.code === bom.parent_code);
-        if (parent && !matchedCodes.has(parent.code)) {
-          finalBoms.add(parent);
-          matchedCodes.add(parent.code);
-          addParents(parent);
-        }
-      }
-    };
-
-    filtered.forEach(addParents);
-
-    // 5. 重新转换为树形结构展示
-    const { tree } = convertToTree(Array.from(finalBoms), currentProjectCode.value);
+    // 2. 转换为树形结构
+    const { tree } = convertToTree(matchedList, currentProjectCode.value);
+    
+    // 3. 渲染页面
     pageTableData.value = tree;
+
+    // 4. UI 交互：搜索时自动展开所有节点以便查看
+    if (isSearching) {
+      await nextTick();
+      toggleAllExpansion(true);
+    }
   } catch (error: any) {
-    console.error(error);
+    console.error("过滤BOM数据失败:", error);
   } finally {
     loading.value = false;
   }
@@ -433,7 +384,11 @@ async function handleQuery() {
 
 // 重置查询
 async function handleResetQuery() {
-  queryFormRef.value.resetFields();
+  queryFormData.code = undefined;
+  queryFormData.spec = undefined;
+  queryFormData.material = undefined;
+  queryFormData.remark = undefined;
+  queryFormData.status = undefined;
   // 不再清空 allBoms 缓存，利用本地数据恢复表格，减少后端请求
   loadingData();
 }

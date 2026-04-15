@@ -23,7 +23,32 @@ class DataBomService:
     """
     BOM清单服务层
     """
+
+    # BOM 字段与 Excel 表头的映射关系
+    BOM_HEADER_MAPPING = {
+        'id': '主键ID',
+        'parent_code': '父代号（关联data_project.code）',
+        'code': '代号',
+        'spec': '名称',
+        'count': '数量',
+        'material': '材质',
+        'unit_mass': '单重',
+        'total_mass': '总重',
+        'remark': '备注',
+        'uuid': 'UUID全局唯一标识',
+        'status': '是否启用(0:启用 1:禁用)',
+        'description': '备注/描述',
+        'created_time': '创建时间',
+        'updated_time': '更新时间',
+        'created_id': '创建人ID',
+        'updated_id': '更新人ID',
+    }
     
+    @classmethod
+    def _to_dict(cls, obj) -> dict:
+        """统一模型转字典方法"""
+        return DataBomOutSchema.model_validate(obj).model_dump()
+
     @classmethod
     async def detail_bom_service(cls, auth: AuthSchema, id: int) -> dict:
         """
@@ -39,7 +64,7 @@ class DataBomService:
         obj = await DataBomCRUD(auth).get_by_id_bom_crud(id=id)
         if not obj:
             raise CustomException(msg="该数据不存在")
-        return DataBomOutSchema.model_validate(obj).model_dump()
+        return cls._to_dict(obj)
     
     @classmethod
     async def list_bom_service(cls, auth: AuthSchema, search: DataBomQueryParam | None = None, order_by: list[dict] | None = None) -> list[dict]:
@@ -56,7 +81,7 @@ class DataBomService:
         """
         search_dict = search.__dict__ if search else None
         obj_list = await DataBomCRUD(auth).list_bom_crud(search=search_dict, order_by=order_by)
-        return [DataBomOutSchema.model_validate(obj).model_dump() for obj in obj_list]
+        return [cls._to_dict(obj) for obj in obj_list]
 
     @classmethod
     async def list_bom_no_procure_service(cls, auth: AuthSchema) -> list[dict]:
@@ -71,7 +96,40 @@ class DataBomService:
         """
         search_dict = {"procure": False}
         obj_list = await DataBomCRUD(auth).list_bom_crud(search=search_dict, order_by=[{"id": "asc"}])
-        return [DataBomOutSchema.model_validate(obj).model_dump() for obj in obj_list]
+        return [cls._to_dict(obj) for obj in obj_list]
+
+    @classmethod
+    async def list_bom_by_project_service(cls, auth: AuthSchema, code: str) -> list[dict]:
+        """
+        按项目代号查询第一层级BOM清单列表（非递归）
+
+        参数:
+        - auth: AuthSchema - 认证信息
+        - code: str - 项目代号
+
+        返回:
+        - list[dict] - 第一层级BOM数据列表
+        """
+        # 仅查询 parent_code 等于项目代号的记录，不再进行递归
+        search_dict = {"parent_code": code}
+        obj_list = await DataBomCRUD(auth).list_bom_crud(search=search_dict, order_by=[{"id": "asc"}])
+        return [cls._to_dict(obj) for obj in obj_list]
+
+    @classmethod
+    async def list_bom_recursive_service(cls, auth: AuthSchema, code: str, first_code: str | None = None) -> list[dict]:
+        """
+        按代号递归查询所有后代BOM列表
+
+        参数:
+        - auth: AuthSchema - 认证信息
+        - code: str - BOM代号
+        - first_code: str | None - 根BOM代号
+
+        返回:
+        - list[dict] - 递归BOM数据列表
+        """
+        obj_list = await DataBomCRUD(auth).list_bom_recursive_crud(code=code, first_code=first_code)
+        return [cls._to_dict(obj) for obj in obj_list]
 
     @classmethod
     async def page_bom_service(cls, auth: AuthSchema, page_no: int, page_size: int, search: DataBomQueryParam | None = None, order_by: list[dict] | None = None) -> dict:
@@ -112,7 +170,7 @@ class DataBomService:
         - dict - 创建结果
         """
         obj = await DataBomCRUD(auth).create_bom_crud(data=data)
-        return DataBomOutSchema.model_validate(obj).model_dump()
+        return cls._to_dict(obj)
     
     @classmethod
     async def update_bom_service(cls, auth: AuthSchema, id: int, data: DataBomUpdateSchema) -> dict:
@@ -132,10 +190,8 @@ class DataBomService:
         if not obj:
             raise CustomException(msg='更新失败，该数据不存在')
         
-        # 检查唯一性约束
-            
         obj = await DataBomCRUD(auth).update_bom_crud(id=id, data=data)
-        return DataBomOutSchema.model_validate(obj).model_dump()
+        return cls._to_dict(obj)
     
     @classmethod
     async def delete_bom_service(cls, auth: AuthSchema, ids: list[int]) -> None:
@@ -149,12 +205,18 @@ class DataBomService:
         返回:
         - None
         """
-        if len(ids) < 1:
+        if not ids:
             raise CustomException(msg='删除失败，删除对象不能为空')
-        for id in ids:
-            obj = await DataBomCRUD(auth).get_by_id_bom_crud(id=id)
-            if not obj:
-                raise CustomException(msg=f'删除失败，ID为{id}的数据不存在')
+        
+        # 优化：一次性查询所有要删除的对象，减少数据库交互
+        search_dict = {"id": ("in", ids)}
+        obj_list = await DataBomCRUD(auth).list_bom_crud(search=search_dict)
+        
+        if len(obj_list) != len(ids):
+            found_ids = [obj.id for obj in obj_list]
+            missing_ids = set(ids) - set(found_ids)
+            raise CustomException(msg=f'删除失败，ID为 {list(missing_ids)} 的数据不存在')
+            
         await DataBomCRUD(auth).delete_bom_crud(ids=ids)
     
     @classmethod
@@ -182,24 +244,6 @@ class DataBomService:
         返回:
         - bytes - 导出的Excel文件内容
         """
-        mapping_dict = {
-            'id': '主键ID',
-            'parent_code': '父代号（关联data_project.code）',
-            'code': '代号',
-            'spec': '名称',
-            'count': '数量',
-            'material': '材质',
-            'unit_mass': '单重',
-            'total_mass': '总重',
-            'remark': '备注',
-            'uuid': 'UUID全局唯一标识',
-            'status': '是否启用(0:启用 1:禁用)',
-            'description': '备注/描述',
-            'created_time': '创建时间',
-            'updated_time': '更新时间',
-            'created_id': '创建人ID',
-            'updated_id': '更新人ID',
-        }
         # 复制数据并转换状态
         data = obj_list.copy()
         for item in data:
@@ -212,7 +256,7 @@ class DataBomService:
             else:
                 item["created_id"] = "未知"
 
-        return ExcelUtil.export_list2excel(list_data=data, mapping_dict=mapping_dict)
+        return ExcelUtil.export_list2excel(list_data=data, mapping_dict=cls.BOM_HEADER_MAPPING)
 
     @classmethod
     async def batch_import_bom_service(cls, auth: AuthSchema, file: UploadFile, update_support: bool = False) -> str:
@@ -227,24 +271,8 @@ class DataBomService:
         返回:
         - str - 导入结果信息
         """
-        header_dict = {
-            '主键ID': 'id',
-            '父代号（关联data_project.code）': 'parent_code',
-            '代号': 'code',
-            '名称': 'spec',
-            '数量': 'count',
-            '材质': 'material',
-            '单重': 'unit_mass',
-            '总重': 'total_mass',
-            '备注': 'remark',
-            'UUID全局唯一标识': 'uuid',
-            '是否启用(0:启用 1:禁用)': 'status',
-            '备注/描述': 'description',
-            '创建时间': 'created_time',
-            '更新时间': 'updated_time',
-            '创建人ID': 'created_id',
-            '更新人ID': 'updated_id',
-        }
+        # 反转映射关系用于导入
+        reverse_header_dict = {v: k for k, v in cls.BOM_HEADER_MAPPING.items()}
 
         try:
             # 读取Excel文件
@@ -256,46 +284,37 @@ class DataBomService:
                 raise CustomException(msg="导入文件为空")
 
             # 检查表头是否完整
-            missing_headers = [header for header in header_dict.keys() if header not in df.columns]
+            missing_headers = [header for header in reverse_header_dict.keys() if header not in df.columns]
             if missing_headers:
                 raise CustomException(msg=f"导入文件缺少必要的列: {', '.join(missing_headers)}")
 
             # 重命名列名
-            df.rename(columns=header_dict, inplace=True)
-            
-            # 验证必填字段
+            df.rename(columns=reverse_header_dict, inplace=True)
             
             error_msgs = []
             success_count = 0
             count = 0
             
+            bom_crud = DataBomCRUD(auth)
             for _index, row in df.iterrows():
                 count += 1
                 try:
-                    data = {
-                        "id": row['id'],
-                        "parent_code": row['parent_code'],
-                        "code": row['code'],
-                        "spec": row['spec'],
-                        "count": row['count'],
-                        "material": row['material'],
-                        "unit_mass": row['unit_mass'],
-                        "total_mass": row['total_mass'],
-                        "remark": row['remark'],
-                        "uuid": row['uuid'],
-                        "status": row['status'],
-                        "description": row['description'],
-                        "created_time": row['created_time'],
-                        "updated_time": row['updated_time'],
-                        "created_id": row['created_id'],
-                        "updated_id": row['updated_id'],
-                    }
-                    # 使用CreateSchema做校验后入库
-                    create_schema = DataBomCreateSchema.model_validate(data)
+                    data = row.to_dict()
+                    # 清理 NaN 值
+                    data = {k: (None if pd.isna(v) else v) for k, v in data.items()}
                     
-                    # 检查唯一性约束
+                    # 检查是否已存在（如果支持更新）
+                    existing_obj = None
+                    if update_support and data.get('id'):
+                        existing_obj = await bom_crud.get_by_id_bom_crud(id=int(data['id']))
+
+                    if existing_obj:
+                        update_schema = DataBomUpdateSchema.model_validate(data)
+                        await bom_crud.update_bom_crud(id=existing_obj.id, data=update_schema)
+                    else:
+                        create_schema = DataBomCreateSchema.model_validate(data)
+                        await bom_crud.create_bom_crud(data=create_schema)
                     
-                    await DataBomCRUD(auth).create_bom_crud(data=create_schema)
                     success_count += 1
                 except Exception as e:
                     error_msgs.append(f"第{count}行: {str(e)}")
@@ -318,30 +337,9 @@ class DataBomService:
         返回:
         - bytes - Excel文件的二进制数据
         """
-        header_list = [
-            '主键ID',
-            '父代号（关联data_project.code）',
-            '代号',
-            '名称',
-            '数量',
-            '材质',
-            '单重',
-            '总重',
-            '备注',
-            'UUID全局唯一标识',
-            '是否启用(0:启用 1:禁用)',
-            '备注/描述',
-            '创建时间',
-            '更新时间',
-            '创建人ID',
-            '更新人ID',
-        ]
-        selector_header_list = []
-        option_list = []
-        
-        
+        header_list = list(cls.BOM_HEADER_MAPPING.values())
         return ExcelUtil.get_excel_template(
             header_list=header_list,
-            selector_header_list=selector_header_list,
-            option_list=option_list
+            selector_header_list=[],
+            option_list=[]
         )

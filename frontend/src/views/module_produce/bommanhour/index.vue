@@ -4,55 +4,20 @@
     <!-- 内容区域 -->
     <el-card class="data-table">
       <template #header>
-        <!-- <div class="card-header">
-          <span>
-            BOM工时关联列表
-            <el-tooltip content="BOM工时关联列表">
-              <QuestionFilled class="w-4 h-4 mx-1" />
-            </el-tooltip>
-          </span>
-        </div> -->
-
-        <!-- 搜索区域 -->
-        <div v-show="visible" class="search-container">
-          <el-form
-            ref="queryFormRef"
-            :model="queryFormData"
-            label-suffix=":"
-            :inline="true"
-            @submit.prevent="handleQuery"
-          >
-            <el-form-item label="代号" prop="code">
-              <el-input
-                v-model="queryFormData.code"
-                placeholder="请输入代号"
-                clearable
-                @keyup.enter="handleQuery"
-              />
-            </el-form-item>
-            <el-form-item label="名称" prop="spec">
-              <el-input
-                v-model="queryFormData.spec"
-                placeholder="请输入名称"
-                clearable
-                @keyup.enter="handleQuery"
-              />
-            </el-form-item>
-            <!-- 查询、重置、展开/收起按钮 -->
-            <el-form-item>
-              <el-button type="primary" :icon="Search" @click="handleQuery">查询</el-button>
-              <el-button :icon="Refresh" @click="handleResetQuery">重置</el-button>
-              <el-button type="info" plain :icon="Expand" @click="toggleAllExpansion(true)">
-                展开
-              </el-button>
-              <el-button type="info" plain :icon="Fold" @click="toggleAllExpansion(false)">
-                收起
-              </el-button>
-              <el-button type="primary" :icon="Collection" @click="handleOpenProjectDrawer">
-                项目
-              </el-button>
-            </el-form-item>
-          </el-form>
+        <div class="flex-x-between">
+          <div class="flex-x-start">
+            <el-button type="info" plain :icon="Expand" @click="toggleAllExpansion(true)">
+              展开
+            </el-button>
+            <el-button type="info" plain :icon="Fold" @click="toggleAllExpansion(false)">
+              收起
+            </el-button>
+          </div>
+          <div class="flex-x-end">
+            <el-button type="primary" :icon="Collection" @click="handleOpenProjectDrawer">
+              项目
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -146,8 +111,15 @@
           header-align="center"
           fixed="right"
         >
-          <template #default="scope">
-            <span>{{ scope.row.route_code }}</span>
+          <template #default="{ row }">
+            <el-tooltip placement="top" effect="dark">
+              <template #content>
+                <div>{{ row.route_name || getRouteName(row.route_code) || '暂无路线名称' }}</div>
+              </template>
+              <span style="font-size: 14px; cursor: pointer">
+                {{ row.route_code }}
+              </span>
+            </el-tooltip>
           </template>
         </el-table-column>
         <el-table-column
@@ -164,7 +136,7 @@
               <template #content>
                 <div v-if="Array.isArray(row.manhour) && row.manhour.length > 0">
                   <div v-for="(item, index) in row.manhour" :key="index">
-                    {{ item.craft_name }}：{{ item.manhour }}
+                    {{ item.craft_name }}：{{ item.id }}：{{ item.manhour }}
                   </div>
                 </div>
                 <div v-else>暂无工时</div>
@@ -203,7 +175,11 @@
     </el-card>
 
     <!-- 项目选择抽屉 -->
-    <ProjectSelectDrawer v-model="projectDrawerVisible" @select="handleSelectProject" />
+    <ProjectSelectDrawer 
+      v-model="projectDrawerVisible" 
+      :show-bom-table="true"
+      @select="handleSelectProject" 
+    />
 
     <el-dialog
       v-model="manhourDialogVisible"
@@ -294,18 +270,11 @@ defineOptions({
 import { ref, reactive, onMounted, computed } from "vue";
 import { ElMessage } from "element-plus";
 import {
-  QuestionFilled,
   Expand,
   Fold,
   Collection,
-  Refresh,
-  Search,
 } from "@element-plus/icons-vue";
-import ProduceBomRouteAPI, {
-  ProduceBomRoutePageQuery,
-  ProduceBomRouteTable,
-  ProduceBomRouteForm,
-} from "@/api/module_produce/bomroute";
+import ProduceBomRouteAPI from "@/api/module_produce/bomroute";
 import DataBomAPI, { DataBomTable } from "@/api/module_data/bom";
 import { DataProjectTable } from "@/api/module_data/project";
 import ProjectSelectDrawer from "@/views/module_data/ProjectSelectDrawer.vue";
@@ -313,10 +282,7 @@ import ProduceCraftRouteAPI from "@/api/module_produce/craftroute";
 import ProduceBomManhourAPI from "@/api/module_produce/bommanhour";
 import { convertToTree } from "@/views/module_data/utils";
 
-const visible = ref(true);
 const tableRef = ref();
-const queryFormRef = ref();
-const dataFormRef = ref();
 const total = ref(0);
 const selectIds = ref<number[]>([]);
 const selectionRows = ref<any[]>([]);
@@ -326,7 +292,7 @@ const manhourDialogVisible = ref(false);
 const manhourLoading = ref(false);
 const manhourBom = ref<any | null>(null);
 const manhourSteps = ref<
-  { key: string; label: string; craft_id: number; manhour: number | null }[]
+  { id?: number; key: string; label: string; craft_id: number; manhour: number | null }[]
 >([]);
 
 const manhourStepGroups = computed(() => {
@@ -369,39 +335,9 @@ const tableColumns = ref([
   { prop: "operation", label: "操作", show: true },
 ]);
 
-// 详情表单
-const detailFormData = ref<ProduceBomRouteTable>({});
-
-// 分页查询参数
-type QueryFormData = ProduceBomRoutePageQuery & {
-  parent_code?: string;
-  code?: string;
-  spec?: string;
-};
-const queryFormData = reactive<QueryFormData>({
-  page_no: 1,
-  page_size: 10,
-  code: undefined,
-  spec: undefined,
-});
-
-// 编辑表单
-const formData = reactive<ProduceBomRouteForm>({
-  bom_id: undefined,
-  route: undefined,
-});
-
-// 弹窗状态
-const dialogVisible = reactive({
-  title: "",
-  visible: false,
-  type: "create" as "create" | "update" | "detail",
-});
-
-// 表单验证规则
-const rules = reactive({
-  bom_id: [{ required: false, message: "请输入BOMID", trigger: "blur" }],
-  route: [{ required: false, message: "请输入工艺路线", trigger: "blur" }],
+// 查询参数
+const queryFormData = reactive({
+  parent_code: undefined as string | undefined,
 });
 
 // 加载表格数据
@@ -409,27 +345,29 @@ const rules = reactive({
 const allBoms = ref<DataBomTable[]>([]);
 const allBomRoutes = ref<any[]>([]);
 const selectedRootBomCode = ref<string | undefined>(undefined);
-const routeCraftIdsCache = new Map<number, number[]>();
+const routeCraftItemsCache = new Map<number, any[]>();
 
 function getRouteName(routeCode: any) {
   const matched = (craftRouteOptions.value || []).find((opt: any) => opt.route_code === routeCode);
   return matched?.route_name;
 }
 
-function syncCraftRouteToTree(nodes: any[]) {
-  if (!nodes) return;
-  nodes.forEach((node: any) => {
-    const routeRecord = allBomRoutes.value.find((r: any) => r.bom_id === node.id);
-    if (routeRecord) {
-      node.route_code = routeRecord.route;
-      node.route_name = getRouteName(routeRecord.route);
-      node.craft_route = routeRecord.route;
+function syncCraftRouteToFullList() {
+  if (!allBoms.value || allBoms.value.length === 0) return;
+  
+  // 建立 route 映射 Map，用于快速查找
+  const routeMap = new Map(allBomRoutes.value.map(r => [r.bom_id, r.route]));
+
+  // 直接在扁平列表上同步数据，这样后续生成的树也会带上这些值
+  allBoms.value.forEach((node: any) => {
+    const route = routeMap.get(node.id);
+    if (route !== undefined) {
+      node.route_code = route;
+      node.route_name = getRouteName(route);
+      node.craft_route = route;
     } else {
       node.route_code = undefined;
       node.route_name = undefined;
-    }
-    if (node.children && node.children.length > 0) {
-      syncCraftRouteToTree(node.children);
     }
   });
 }
@@ -442,7 +380,7 @@ async function ensureAllBomRoutesLoaded() {
 
 async function ensureRouteCraftIdsLoaded(routeCodes: number[]) {
   const unique = Array.from(new Set(routeCodes.filter((r) => Number.isFinite(r) && r > 0)));
-  const missing = unique.filter((r) => !routeCraftIdsCache.has(r));
+  const missing = unique.filter((r) => !routeCraftItemsCache.has(r));
   if (missing.length === 0) return;
 
   const results = await Promise.all(
@@ -450,44 +388,16 @@ async function ensureRouteCraftIdsLoaded(routeCodes: number[]) {
       try {
         const res = await ProduceCraftRouteAPI.detailProduceCraftRoute(routeCode);
         const items = res.data?.data?.items || [];
-        const craftIds = items
-          .map((i: any) => Number(i?.craft_id))
-          .filter((id: number) => Number.isFinite(id) && id > 0);
-        return { routeCode, craftIds };
+        return { routeCode, items };
       } catch {
-        return { routeCode, craftIds: [] as number[] };
+        return { routeCode, items: [] as any[] };
       }
     })
   );
 
-  results.forEach(({ routeCode, craftIds }) => {
-    routeCraftIdsCache.set(routeCode, craftIds);
+  results.forEach(({ routeCode, items }) => {
+    routeCraftItemsCache.set(routeCode, items);
   });
-}
-
-function collectSubtreeByRootCode(list: any[], rootCode: string) {
-  const childrenByParentCode: Record<string, any[]> = {};
-  list.forEach((item: any) => {
-    const key = item.parent_code || "";
-    if (!childrenByParentCode[key]) childrenByParentCode[key] = [];
-    childrenByParentCode[key].push(item);
-  });
-
-  const results: any[] = [];
-  const visited = new Set<any>();
-  const roots = list.filter((item: any) => item.code === rootCode);
-  const queue: any[] = [...roots];
-
-  while (queue.length > 0) {
-    const node = queue.shift();
-    const visitKey = node?.id ?? `${node?.code}|${node?.parent_code}|${node?.borrow ?? ""}`;
-    if (visited.has(visitKey)) continue;
-    visited.add(visitKey);
-    results.push(node);
-    const children = childrenByParentCode[node.code] || [];
-    children.forEach((child: any) => queue.push(child));
-  }
-  return results;
 }
 
 async function loadingData() {
@@ -500,40 +410,12 @@ async function loadingData() {
   ElMessage.info("正在更新数据... ...请稍后");
   loading.value = true;
   try {
-    await Promise.all([ensureAllBomsLoaded(), ensureAllBomRoutesLoaded()]);
+    await ensureAllBomRoutesLoaded();
+    
+    // 1. 同步工艺路线到扁平列表 (源数据同步)
+    syncCraftRouteToFullList();
 
-    allBoms.value.forEach((bom: any) => {
-      const routeRecord = allBomRoutes.value.find((r: any) => r.bom_id === bom.id);
-      if (routeRecord) {
-        bom.route_code = routeRecord.route;
-        bom.route_name = getRouteName(routeRecord.route);
-        bom.craft_route = routeRecord.route;
-      } else {
-        bom.route_code = undefined;
-        bom.route_name = undefined;
-      }
-    });
-
-    let displayNodes = [];
-    if (selectedRootBomCode.value) {
-      displayNodes = collectSubtreeByRootCode(allBoms.value as any[], selectedRootBomCode.value);
-    } else {
-      displayNodes = allBoms.value;
-    }
-
-    // 前端过滤
-    if (queryFormData.code) {
-      const codeLower = queryFormData.code.toLowerCase();
-      displayNodes = displayNodes.filter((node: any) =>
-        node.code?.toLowerCase().includes(codeLower)
-      );
-    }
-    if (queryFormData.spec) {
-      const specLower = queryFormData.spec.toLowerCase();
-      displayNodes = displayNodes.filter((node: any) =>
-        node.spec?.toLowerCase().includes(specLower)
-      );
-    }
+    let displayNodes = [...allBoms.value];
 
     const bomIds = Array.from(
       new Set(
@@ -556,12 +438,14 @@ async function loadingData() {
       });
     }
 
+    // 2. 直接转换为树形结构
     const { tree } = convertToTree(
       displayNodes,
       selectedRootBomCode.value ? undefined : queryFormData.parent_code,
       selectedRootBomCode.value
     );
-    syncCraftRouteToTree(tree);
+
+    // 3. 渲染页面
     pageTableData.value = tree;
     total.value = tree.length;
   } catch (error: any) {
@@ -571,26 +455,9 @@ async function loadingData() {
   }
 }
 
-async function ensureAllBomsLoaded() {
-  if (allBoms.value.length > 0) return;
-  const res = await DataBomAPI.listDataBomNoProcure();
-  allBoms.value = res.data.data || [];
-}
-
-// 查询（重置页码后获取数据）
+// 查询（获取数据）
 async function handleQuery() {
-  queryFormData.page_no = 1;
-  loadingData();
-}
-
-// 重置查询
-async function handleResetQuery() {
-  queryFormData.parent_code = undefined;
-  queryFormData.code = undefined;
-  queryFormData.spec = undefined;
-  selectedRootBomCode.value = undefined;
-  allBoms.value = [];
-  handleQuery();
+  await loadingData();
 }
 
 // 展开/收起所有行
@@ -612,28 +479,16 @@ async function handleOpenProjectDrawer() {
 }
 
 // 选择项目
-function handleSelectProject(project: DataProjectTable) {
-  selectedRootBomCode.value = undefined;
-  queryFormData.parent_code = project.code;
-  projectDrawerVisible.value = false;
-  allBoms.value = [];
-  handleQuery();
-}
-
-// 定义初始表单数据常量
-const initialFormData: ProduceBomRouteForm = {
-  bom_id: undefined,
-  route: undefined,
-};
-
-// 重置表单
-async function resetForm() {
-  if (dataFormRef.value) {
-    dataFormRef.value.resetFields();
-    dataFormRef.value.clearValidate();
+function handleSelectProject(project: any) {
+  // 仅处理从预览面板选中的逻辑（带有递归数据）
+  if (project.recursive_data && project.root_bom_code) {
+    queryFormData.parent_code = project.code;
+    projectDrawerVisible.value = false;
+    selectedRootBomCode.value = project.root_bom_code;
+    // 直接注入数据，不再有全量拉取逻辑
+    allBoms.value = project.recursive_data;
+    handleQuery();
   }
-  // 完全重置 formData 为初始状态
-  Object.assign(formData, initialFormData);
 }
 
 // 加载工艺路线下拉选项
@@ -666,65 +521,33 @@ async function handleSelectionChange(selection: any) {
   selectionRows.value = selection;
 }
 
-// 关闭弹窗
-async function handleCloseDialog() {
-  dialogVisible.visible = false;
-  resetForm();
-}
-
-// 打开弹窗
-async function handleOpenDialog(type: "create" | "update" | "detail", id?: number) {
-  dialogVisible.type = type;
-  if (id) {
-    const response = await ProduceBomRouteAPI.detailProduceBomRoute(id);
-    if (type === "detail") {
-      dialogVisible.title = "详情";
-      Object.assign(detailFormData.value, response.data.data);
-    } else if (type === "update") {
-      dialogVisible.title = "修改";
-      Object.assign(formData, response.data.data);
-    }
-  } else {
-    dialogVisible.title = "新增";
-    formData.bom_id = undefined;
-    formData.route = undefined;
-  }
-  dialogVisible.visible = true;
-}
-
-// 提交表单（防抖）
-async function handleSubmit() {
-  // 表单校验
-  dataFormRef.value.validate(async (valid: any) => {
-    if (valid) {
-      loading.value = true;
-      const submitData = { ...formData };
-      try {
-        if (dialogVisible.type === "create") {
-          await ProduceBomRouteAPI.createProduceBomRoute(submitData);
-          ElMessage.success("新增成功");
-        } else if (dialogVisible.type === "update") {
-          await ProduceBomRouteAPI.updateProduceBomRoute(submitData.id as number, submitData);
-          ElMessage.success("修改成功");
-        }
-        handleCloseDialog();
-        loadingData();
-      } catch (error: any) {
-        console.error(error);
-      } finally {
-        loading.value = false;
-      }
-    }
-  });
-}
-
+// 检查工时是否完整
 function isManhourComplete(row: any) {
   const routeCode = Number(row.route_code);
   if (!routeCode) return false;
-  const craftIds = routeCraftIdsCache.get(routeCode) || [];
-  if (craftIds.length === 0) return false;
-  const recorded = (row.manhour || []).map((m: any) => m.craft_id);
-  return craftIds.every((id) => recorded.includes(id));
+  const craftItems = routeCraftItemsCache.get(routeCode) || [];
+  if (craftItems.length === 0) return false;
+
+  const recorded = row.manhour || [];
+  const recordedCount = recorded.length;
+
+  // 计算最小值
+  let min = 0;
+  const parentGroups = new Set<number>();
+  craftItems.forEach((item: any) => {
+    if (item.parent_id === null || item.parent_id === undefined || item.parent_id === 0) {
+      // 没有父工艺的元素，最小值+1
+      min += 1;
+    } else {
+      // 有父工艺的元素，按父工艺ID去重，每组计为一次 min+1
+      parentGroups.add(Number(item.parent_id));
+    }
+  });
+  min += parentGroups.size;
+
+  // 计算最大值
+  const max = craftItems.length;
+  return recordedCount >= min && recordedCount <= max;
 }
 
 async function handleOpenManhourDialog(row: any) {
@@ -752,6 +575,7 @@ async function handleOpenManhourDialog(row: any) {
         label: s.craft_name,
         craft_id: Number(s.craft_id),
         manhour: match ? Number(match.manhour) : null,
+        id: match ? match.id : undefined
       };
     });
   } catch (err) {

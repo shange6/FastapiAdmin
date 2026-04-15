@@ -2,28 +2,20 @@
   <div class="app-container">
     <el-card class="data-table">
       <template #header>
-        <div class="card-header">
-          <span>
-            BOM工单表
-            <el-tooltip content="BOM工单列表">
-              <QuestionFilled class="w-4 h-4 mx-1" />
-            </el-tooltip>
-          </span>
-        </div>
-
-        <div v-show="visible" class="search-container">
-          <el-form
-            :model="queryFormData"
-            label-suffix=":"
-            :inline="true"
-            @submit.prevent="handleQuery"
-          >
-            <el-form-item>
-              <el-button type="primary" :icon="Collection" @click="handleOpenProjectDrawer">
-                选择项目
-              </el-button>
-            </el-form-item>
-          </el-form>
+        <div class="flex-x-between">
+          <div class="flex-x-start">
+            <!-- <el-button type="info" plain :icon="Expand" @click="toggleAllExpansion(true)">
+              展开
+            </el-button>
+            <el-button type="info" plain :icon="Fold" @click="toggleAllExpansion(false)">
+              收起
+            </el-button> -->
+          </div>
+          <div class="flex-x-end">
+            <el-button type="primary" :icon="Collection" @click="handleOpenProjectDrawer">
+              项目
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -42,14 +34,6 @@
           <el-empty :image-size="80" description="暂无数据" />
         </template>
         <el-table-column type="selection" min-width="40" align="center" />
-        <el-table-column
-          label="单号"
-          prop="no"
-          min-width="70"
-          align="center"
-          header-align="center"
-          show-overflow-tooltip
-        />
         <el-table-column
           label="代号"
           prop="code"
@@ -100,9 +84,17 @@
           show-overflow-tooltip
         />
         <el-table-column
+          label="单号"
+          prop="no"
+          min-width="70"
+          align="center"
+          header-align="center"
+          fixed="right"
+          show-overflow-tooltip
+        />
+        <el-table-column
           label="工艺路线"
           min-width="330"
-          align="center"
           header-align="center"
           fixed="right"
         >
@@ -129,7 +121,12 @@
                 <div v-else>暂无工时</div>
               </template>
               <span style="font-size: 16px; cursor: pointer">
-                <span v-if="Array.isArray(row.manhour) && row.manhour.length > 0" style="color: green">✔</span>
+                <span
+                  v-if="isManhourComplete(row)"
+                  style="color: green"
+                >
+                  ✔
+                </span>
                 <span v-else style="color: red">✖</span>
               </span>
             </el-tooltip>
@@ -152,52 +149,11 @@
     </el-card>
 
     <!-- 项目选择抽屉 -->
-    <el-drawer v-model="projectDrawerVisible" title="选择项目" direction="rtl" size="40%">
-      <div class="project-drawer-content">
-        <el-input
-          v-model="projectSearch"
-          placeholder="搜索项目名称、代号或合同编号"
-          prefix-icon="Search"
-          clearable
-          class="mb-4"
-          @input="debouncedFetch"
-        />
-        <el-table
-          v-loading="projectLoading"
-          :data="projectList"
-          border
-          stripe
-          height="calc(100vh - 220px)"
-          style="width: 100%"
-          highlight-current-row
-          @row-click="handleProjectRowClick"
-        >
-          <el-table-column
-            prop="code"
-            label="项目代号"
-            width="150"
-            align="center"
-            show-overflow-tooltip
-          />
-          <el-table-column prop="name" label="项目名称" header-align="center" show-overflow-tooltip />
-          <el-table-column
-            prop="no"
-            label="合同编号"
-            width="150"
-            align="center"
-            show-overflow-tooltip
-          />
-        </el-table>
-        <div class="mt-4 flex justify-end">
-          <pagination
-            v-model:total="projectTotal"
-            v-model:page="projectQuery.page_no"
-            v-model:limit="projectQuery.page_size"
-            @pagination="fetchProjects"
-          />
-        </div>
-      </div>
-    </el-drawer>
+    <ProjectSelectDrawer 
+      v-model="projectDrawerVisible" 
+      :show-bom-table="false"
+      @select="handleSelectProject" 
+    />
 
     <!-- 排产弹窗 -->
     <el-dialog
@@ -314,14 +270,17 @@
 
 <script setup lang="ts">
 defineOptions({
-  name: "ProduceBomOrder",
+  name: "ProduceOrder",
   inheritAttrs: false,
 });
 
 import { ref, reactive, onMounted, computed } from "vue";
-import { useDebounceFn } from "@vueuse/core";
 import { ElMessage } from "element-plus";
-import { QuestionFilled, Collection } from "@element-plus/icons-vue";
+import {
+  Expand,
+  Fold,
+  Collection,
+} from "@element-plus/icons-vue";
 import ProduceBomRouteAPI from "@/api/module_produce/bomroute";
 import DataBomAPI, { DataBomTable } from "@/api/module_data/bom";
 import DataProjectAPI, { DataProjectTable } from "@/api/module_data/project";
@@ -332,6 +291,7 @@ import ProduceCraftAPI from "@/api/module_produce/craft";
 import PositionAPI from "@/api/module_system/position";
 import UserAPI, { UserInfo } from "@/api/module_system/user";
 import { convertToTree } from "@/views/module_data/utils";
+import ProjectSelectDrawer from "@/views/module_data/ProjectSelectDrawer.vue";
 
 /**
  * 接口与类型定义
@@ -355,7 +315,6 @@ interface CraftCacheItem {
 /**
  * 状态声明
  */
-const visible = ref(true);
 const tableRef = ref();
 const total = ref(0);
 const loading = ref(false);
@@ -389,7 +348,6 @@ const queryFormData = reactive({
   parent_code: undefined as string | undefined,
 });
 
-// 项目选择
 const projectDrawerVisible = ref(false);
 const projectLoading = ref(false);
 const projectList = ref<DataProjectTable[]>([]);
@@ -399,6 +357,75 @@ const projectQuery = reactive({
   page_no: 1,
   page_size: 20,
 });
+const routeCraftItemsCache = new Map<number, any[]>();
+
+
+// 展开/收起所有行
+function toggleAllExpansion(expanded: boolean) {
+  const toggle = (nodes: any[]) => {
+    nodes.forEach((node: any) => {
+      tableRef.value?.toggleRowExpansion(node, expanded);
+      if (node.children) {
+        toggle(node.children);
+      }
+    });
+  };
+  toggle(pageTableData.value);
+}
+
+// 选择项目
+function handleSelectProject(project: any) {
+  if (!project) return;
+  
+  // 1. 如果是从预览面板选中的逻辑（带有递归数据）
+  if (project.recursive_data && project.root_bom_code) {
+    queryFormData.parent_code = project.code;
+    selectedProjectCode.value = project.code;
+    projectDrawerVisible.value = false;
+    selectedRootBomCode.value = project.root_bom_code;
+    // 直接注入数据，不再有全量拉取逻辑
+    allBoms.value = project.recursive_data;
+    handleQuery();
+  } else {
+    // 2. 如果是直接点击项目选中的逻辑
+    queryFormData.parent_code = project.code;
+    selectedProjectCode.value = project.code;
+    selectedRootBomCode.value = undefined;
+    projectDrawerVisible.value = false;
+    // 清空数据，触发后续 fetch
+    allBoms.value = [];
+    handleQuery();
+  }
+}
+
+// 检查工时是否完整
+function isManhourComplete(row: any) {
+  const routeCode = Number(row.route_code);
+  if (!routeCode) return false;
+  const craftItems = routeCraftItemsCache.get(routeCode) || [];
+  if (craftItems.length === 0) return false;
+
+  const recorded = row.manhour || [];
+  const recordedCount = recorded.length;
+
+  // 计算最小值
+  let min = 0;
+  const parentGroups = new Set<number>();
+  craftItems.forEach((item: any) => {
+    if (item.parent_id === null || item.parent_id === undefined || item.parent_id === 0) {
+      // 没有父工艺的元素，最小值+1
+      min += 1;
+    } else {
+      // 有父工艺的元素，按父工艺ID去重，每组计为一次 min+1
+      parentGroups.add(Number(item.parent_id));
+    }
+  });
+  min += parentGroups.size;
+
+  // 计算最大值
+  const max = craftItems.length;
+  return recordedCount >= min && recordedCount <= max;
+}
 
 /**
  * 辅助工具函数
@@ -499,9 +526,22 @@ async function ensureAllBomRoutesLoaded() {
 }
 
 async function ensureAllBomsLoaded() {
+  // 如果已经有数据了，说明可能是从预览面板选中的（带有递归数据），不再重复拉取
   if (allBoms.value.length > 0) return;
-  const res = await DataBomAPI.listDataBomNoProcure();
-  allBoms.value = res.data.data || [];
+
+  const projectCode = selectedProjectCode.value || queryFormData.parent_code;
+  if (!projectCode) {
+    allBoms.value = [];
+    return;
+  }
+
+  try {
+    const res = await DataBomAPI.listProjectBoms(projectCode);
+    allBoms.value = res.data.data || [];
+  } catch (error) {
+    console.error("Fetch all boms error:", error);
+    allBoms.value = [];
+  }
 }
 
 async function ensureRouteCraftIdsLoaded(routeCodes: number[]) {
@@ -627,7 +667,6 @@ async function loadingData() {
 }
 
 async function handleQuery() {
-  queryFormData.page_no = 1;
   await loadingData();
 }
 
@@ -642,25 +681,11 @@ async function fetchProjects() {
       page_size: projectQuery.page_size,
       keyword: projectSearch.value || undefined,
     } as any);
-    projectList.value = res.data.data.items || [];
+    projectList.value = (res.data.data.items as DataProjectTable[]) || [];
     projectTotal.value = res.data.data.total || 0;
   } finally {
     projectLoading.value = false;
   }
-}
-
-const debouncedFetch = useDebounceFn(() => {
-  projectQuery.page_no = 1;
-  fetchProjects();
-}, 300);
-
-async function handleProjectRowClick(row: DataProjectTable) {
-  if (!row?.code) return;
-  selectedProjectCode.value = row.code;
-  selectedRootBomCode.value = undefined;
-  queryFormData.parent_code = row.code;
-  projectDrawerVisible.value = false;
-  await loadingData();
 }
 
 async function handleOpenProjectDrawer() {

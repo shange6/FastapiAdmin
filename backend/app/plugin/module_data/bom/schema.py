@@ -96,7 +96,24 @@ class DataBomQueryParam:
         updated_time: Optional[list[DateTimeStr]] = Query(None, description="更新时间范围", examples=["2025-01-01 00:00:00", "2025-12-31 23:59:59"]),
         recursive: bool = Query(False, description="是否递归查询后代"),
     ) -> None:
-        # 是否递归查询
+        self.parent_code = parent_code
+        self.first_code = first_code
+        self.code = code
+        self.spec = spec
+        self.count = count
+        self.material = material
+        self.unit_mass = unit_mass
+        self.total_mass = total_mass
+        self.remark = remark
+        self.borrow = borrow
+        self.procure = procure
+        self.noimage = noimage
+        self.figure = figure
+        self.status = status
+        self.created_id = created_id
+        self.updated_id = updated_id
+        self.created_time = created_time
+        self.updated_time = updated_time
         self.recursive = recursive
         # 精确查询字段
         if parent_code:
