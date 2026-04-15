@@ -1,0 +1,82 @@
+# -*- coding: utf-8 -*-
+
+from pydantic import BaseModel, ConfigDict, Field
+from fastapi import Query
+from datetime import datetime
+from app.core.validator import DateTimeStr
+from app.core.validator import DateTimeStr
+from app.common.enums import QueueEnum
+from app.core.base_schema import BaseSchema, UserBySchema
+
+class ProduceMakeCreateSchema(BaseModel):
+    """
+    制造流程主新增模型
+    """
+    bom_id: int = Field(default=..., description='BOMID')
+    order_no: str = Field(default=..., description='单号')
+    project_code: str = Field(default=..., description='项目代码')
+    current_sort: int = Field(default=..., description='工艺序号')
+    current_craft_id: int = Field(default=..., description='工艺ID')
+    status: str = Field(default="0", description='状态 0=待生产 1=生产中 2=已完成 3=已取消 4=已暂停')
+    description: str | None = Field(default=None, max_length=255, description='备注/描述')
+
+
+class ProduceMakeUpdateSchema(ProduceMakeCreateSchema):
+    """
+    制造流程主更新模型
+    """
+    ...
+
+
+class ProduceMakeOutSchema(ProduceMakeCreateSchema, BaseSchema, UserBySchema):
+    """
+    制造流程主响应模型
+    """
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProduceMakeQueryParam:
+    """制造流程主查询参数"""
+
+    def __init__(
+        self,
+        bom_id: int | None = Query(None, description="BOMID"),
+        order_no: str | None = Query(None, description="单号"),
+        project_code: str | None = Query(None, description="项目代码"),
+        current_sort: int | None = Query(None, description="工艺序号"),
+        current_craft_id: int | None = Query(None, description="工艺ID"),
+        status: str | None = Query(None, description="状态 0=待生产 1=生产中 2=已完成 3=已取消 4=已暂停"),
+        created_id: int | None = Query(None, description="创建人ID"),
+        updated_id: int | None = Query(None, description="更新人ID"),
+        created_time: list[DateTimeStr] | None = Query(None, description="创建时间范围", examples=["2025-01-01 00:00:00", "2025-12-31 23:59:59"]),
+        updated_time: list[DateTimeStr] | None = Query(None, description="更新时间范围", examples=["2025-01-01 00:00:00", "2025-12-31 23:59:59"]),
+    ) -> None:
+        # 精确查询字段
+        if bom_id:
+            self.bom_id = (QueueEnum.eq.value, bom_id)
+        # 精确查询字段
+        if order_no:
+            self.order_no = (QueueEnum.eq.value, order_no)
+        # 精确查询字段
+        if project_code:
+            self.project_code = (QueueEnum.eq.value, project_code)
+        # 精确查询字段
+        if current_sort:
+            self.current_sort = (QueueEnum.eq.value, current_sort)
+        # 精确查询字段
+        if current_craft_id:
+            self.current_craft_id = (QueueEnum.eq.value, current_craft_id)
+        # 精确查询字段
+        if status:
+            self.status = (QueueEnum.eq.value, status)
+        # 精确查询字段
+        if created_id:
+            self.created_id = (QueueEnum.eq.value, created_id)
+        # 精确查询字段
+        if updated_id:
+            self.updated_id = (QueueEnum.eq.value, updated_id)
+        # 时间范围查询
+        if created_time and len(created_time) == 2:
+            self.created_time = (QueueEnum.between.value, (created_time[0], created_time[1]))
+        if updated_time and len(updated_time) == 2:
+            self.updated_time = (QueueEnum.between.value, (updated_time[0], updated_time[1]))

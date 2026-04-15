@@ -283,7 +283,7 @@ CREATE TABLE `produce_bom_manhour` (
 DROP TABLE IF EXISTS `produce_order`;
 CREATE TABLE `produce_order` (
   `no` varchar(32) NOT NULL COMMENT '单号',
-  `bom_id` int NOT NULL COMMENT 'BOM ID',
+  `bom_id` int NOT NULL COMMENT 'BOMID',
   `craft_id` int NOT NULL COMMENT '子工艺ID',
   `man_hour` int NOT NULL DEFAULT 0 COMMENT '工时',  
   `plan_count` int NOT NULL DEFAULT 1 COMMENT '计划数量',
@@ -314,8 +314,8 @@ CREATE TABLE `produce_order` (
   KEY `ix_order_created_id` (`created_id`),
   KEY `ix_order_updated_id` (`updated_id`),
   
-  CONSTRAINT `fk_order_bom` FOREIGN KEY (`bom_id`) REFERENCES `data_bom` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_order_craft` FOREIGN KEY (`craft_id`) REFERENCES `produce_craft` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_order_bom_id` FOREIGN KEY (`bom_id`) REFERENCES `data_bom` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_order_craft_id` FOREIGN KEY (`craft_id`) REFERENCES `produce_craft` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_order_created_id` FOREIGN KEY (`created_id`) REFERENCES `sys_user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_order_updated_id` FOREIGN KEY (`updated_id`) REFERENCES `sys_user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_order_plan_user` FOREIGN KEY (`plan_user`) REFERENCES `sys_user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -323,10 +323,70 @@ CREATE TABLE `produce_order` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='工单表';
 
 
+-- =============================================
+-- 八、制造过程主表
+-- =============================================
+DROP TABLE IF EXISTS `produce_make`;
+CREATE TABLE `produce_make` (
+  `bom_id` int NOT NULL COMMENT 'BOMID',
+  `order_no` varchar(32) NOT NULL COMMENT '单号',
+  `project_code` varchar(64) NOT NULL COMMENT '项目代码',
+  `current_sort` int DEFAULT 1 COMMENT '工艺序号',
+  `current_craft_id` int NOT NULL COMMENT '工艺ID',
+  
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '主键ID',  
+  `uuid` varchar(64) NOT NULL DEFAULT (UUID()) COMMENT 'UUID',
+  `status` varchar(10) NOT NULL DEFAULT '0' COMMENT '状态 0=待生产 1=生产中 2=已完成 3=已取消 4=已暂停',
+  `description` text NULL COMMENT '备注/描述',
+  `created_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `created_id` int NULL COMMENT '创建人ID',
+  `updated_id` int NULL COMMENT '更新人ID',
+  
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `ix_make_bom_id` (`bom_id`),
+  KEY `ix_make_order_no` (`order_no`),
+  KEY `ix_make_project_code` (`project_code`),
+  KEY `ix_make_current_sort` (`current_sort`),
+  KEY `ix_make_current_craft_id` (`current_craft_id`),
+  CONSTRAINT `fk_make_bom_id` FOREIGN KEY (`bom_id`) REFERENCES `data_bom` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_make_created_id` FOREIGN KEY (`created_id`) REFERENCES `sys_user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_make_updated_id` FOREIGN KEY (`updated_id`) REFERENCES `sys_user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='制造流程主表';
 
 
+-- =============================================
+-- 九、制造流程执行明细
+-- =============================================
+DROP TABLE IF EXISTS `produce_make_flow`;
+CREATE TABLE `produce_make_flow` (
+  `make_id` int NOT NULL COMMENT '制造ID',
+  `bom_id` int NOT NULL COMMENT 'BOMID',
+  `user_id` int NOT NULL COMMENT '用户ID',
+  `sort` int NOT NULL COMMENT '工艺序号',
+  `craft_id` int NOT NULL COMMENT '工艺ID',
+  `end_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '完工时间',
 
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '主键ID',  
+  `uuid` varchar(64) NOT NULL DEFAULT (UUID()) COMMENT 'UUID',
+  `status` varchar(10) NOT NULL DEFAULT '0' COMMENT '状态 0=待生产 1=生产中 2=已完成 3=已取消 4=已暂停',
+  `description` text NULL COMMENT '备注/描述',
+  `created_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `created_id` int NULL COMMENT '创建人ID',
+  `updated_id` int NULL COMMENT '更新人ID',
 
+  PRIMARY KEY (`id`),
+  KEY `ix_flow_make_id` (`make_id`),
+  KEY `ix_flow_user_id` (`user_id`),
+  KEY `ix_flow_craft_id` (`craft_id`),
+  CONSTRAINT `fk_flow_make_id` FOREIGN KEY (`make_id`) REFERENCES `produce_make` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_flow_bom_id` FOREIGN KEY (`bom_id`) REFERENCES `data_bom` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_flow_user_id` FOREIGN KEY (`user_id`) REFERENCES `sys_user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_flow_craft_id` FOREIGN KEY (`craft_id`) REFERENCES `produce_craft` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_flow_created_id` FOREIGN KEY (`created_id`) REFERENCES `sys_user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_flow_updated_id` FOREIGN KEY (`updated_id`) REFERENCES `sys_user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='制造流程执行表';
 
 
 
