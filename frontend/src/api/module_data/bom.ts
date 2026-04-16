@@ -175,6 +175,7 @@ export interface DataBomTable extends BaseType {
   created_by?: CommonType;
   updated_by?: CommonType;
   children?: DataBomTable[];
+  dai_count?: number;
 }
 
 // 新增/修改/详情表单参数

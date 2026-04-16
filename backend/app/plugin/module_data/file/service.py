@@ -105,5 +105,8 @@ class DataFileService:
         if not project:
             await project_crud.create(data=payload.project)
             result.project_added = 1
+        else:
+            # 如果项目已存在，同步更新项目名称和编号，并记录更新人
+            await project_crud.update(id=project.id, data=payload.project)
 
         return result

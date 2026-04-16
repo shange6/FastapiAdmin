@@ -84,6 +84,33 @@ const ProduceMakeAPI = {
       headers: { "Content-Type": "multipart/form-data" },
     });
   },
+
+  // 根据BOM ID同步更新制造流程主
+  syncProduceMakeByBom(bom_id: number) {
+    return request<ApiResponse<{ updated_count: number; bom_ids: number[] }>>({
+      url: `${API_PATH}/sync/produce/make/${bom_id}`,
+      method: "post",
+    });
+  },
+
+  // 提交制造流程执行记录
+  submitProduceMakeFlow(body: ProduceMakeFlowForm) {
+    return request<ApiResponse>({
+      url: `${API_PATH}/flow/submit`,
+      method: "post",
+      data: body,
+    });
+  },
+
+  // 按单号和工艺ID统计待办数量
+  summaryProduceMakeByOrders(order_nos: string[], craft_id: number) {
+    return request<ApiResponse<Record<string, number>>>({
+      url: `${API_PATH}/summary/by_orders`,
+      method: "post",
+      data: order_nos,
+      params: { craft_id },
+    });
+  },
 };
 
 export default ProduceMakeAPI;
@@ -93,7 +120,7 @@ export default ProduceMakeAPI;
 // ------------------------------
 
 // 列表查询参数
-export interface ProduceMakePageQuery extends PageQuery {
+export interface ProduceMakePageQuery extends Partial<PageQuery> {
   bom_id?: string;
   order_no?: string;
   project_code?: string;
@@ -126,4 +153,14 @@ export interface ProduceMakeForm extends BaseFormType {
   project_code?: string;
   current_sort?: string;
   current_craft_id?: string;
+}
+
+// 制造流程执行记录表单
+export interface ProduceMakeFlowForm {
+  make_id: number;
+  bom_id: number;
+  user_id: number;
+  sort: number;
+  craft_id: number;
+  end_time?: string;
 }

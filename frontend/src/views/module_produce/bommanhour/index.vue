@@ -178,6 +178,7 @@
     <ProjectSelectDrawer 
       v-model="projectDrawerVisible" 
       :show-bom-table="true"
+      :show-order-column="false"
       @select="handleSelectProject" 
     />
 

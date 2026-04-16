@@ -26,6 +26,7 @@ class DataProjectOutSchema(DataProjectCreateSchema, BaseSchema, UserBySchema):
     """
     项目信息响应模型
     """
+    dai_count: int | None = Field(default=0, description='待办数量')
     model_config = ConfigDict(from_attributes=True)
 
 

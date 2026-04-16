@@ -4,8 +4,8 @@ from typing import Sequence
 
 from app.core.base_crud import CRUDBase
 from app.api.v1.module_system.auth.schema import AuthSchema
-from .model import ProduceMakeModel
-from .schema import ProduceMakeCreateSchema, ProduceMakeUpdateSchema, ProduceMakeOutSchema
+from .model import ProduceMakeModel, ProduceMakeFlowModel
+from .schema import ProduceMakeCreateSchema, ProduceMakeUpdateSchema, ProduceMakeOutSchema, ProduceMakeFlowCreateSchema
 
 
 class ProduceMakeCRUD(CRUDBase[ProduceMakeModel, ProduceMakeCreateSchema, ProduceMakeUpdateSchema]):
@@ -121,3 +121,28 @@ class ProduceMakeCRUD(CRUDBase[ProduceMakeModel, ProduceMakeCreateSchema, Produc
             out_schema=ProduceMakeOutSchema,
             preload=preload
         )
+
+
+class ProduceMakeFlowCRUD(CRUDBase[ProduceMakeFlowModel, ProduceMakeFlowCreateSchema, ProduceMakeFlowCreateSchema]):
+    """制造流程执行数据层"""
+
+    def __init__(self, auth: AuthSchema) -> None:
+        """
+        初始化CRUD数据层
+        
+        参数:
+        - auth (AuthSchema): 认证信息模型
+        """
+        super().__init__(model=ProduceMakeFlowModel, auth=auth)
+
+    async def create_flow_crud(self, data: ProduceMakeFlowCreateSchema) -> ProduceMakeFlowModel | None:
+        """
+        创建执行记录
+        
+        参数:
+        - data (ProduceMakeFlowCreateSchema): 创建模型
+        
+        返回:
+        - ProduceMakeFlowModel | None: 模型实例或None
+        """
+        return await self.create(data=data)

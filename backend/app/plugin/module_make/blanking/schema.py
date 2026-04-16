@@ -8,6 +8,8 @@ from app.core.validator import DateTimeStr
 from app.common.enums import QueueEnum
 from app.core.base_schema import BaseSchema, UserBySchema
 
+import json
+
 class ProduceMakeCreateSchema(BaseModel):
     """
     制造流程主新增模型
@@ -80,3 +82,45 @@ class ProduceMakeQueryParam:
             self.created_time = (QueueEnum.between.value, (created_time[0], created_time[1]))
         if updated_time and len(updated_time) == 2:
             self.updated_time = (QueueEnum.between.value, (updated_time[0], updated_time[1]))
+
+
+class ProduceMakePaginationQueryParam:
+    """制造流程主分页查询参数(可选分页)"""
+
+    def __init__(
+        self,
+        page_no: int | None = Query(default=None, description="当前页码", ge=1),
+        page_size: int | None = Query(default=None, description="每页数量", ge=1, le=1000),
+        order_by: str | None = Query(
+            default=None,
+            description="排序字段,格式:[{'field1': 'asc'}, {'field2': 'desc'}]",
+        ),
+    ) -> None:
+        self.page_no = page_no
+        self.page_size = page_size
+        if order_by:
+            try:
+                self.order_by = json.loads(order_by)
+            except ValueError:
+                self.order_by = [{"updated_time": "desc"}]
+        else:
+            self.order_by = [{"updated_time": "desc"}]
+
+
+class ProduceMakeFlowCreateSchema(BaseModel):
+    """
+    制造流程执行记录新增模型
+    """
+    make_id: int = Field(default=..., description='制造ID')
+    bom_id: int = Field(default=..., description='BOMID')
+    user_id: int = Field(default=..., description='用户ID')
+    sort: int = Field(default=..., description='工艺序号')
+    craft_id: int = Field(default=..., description='工艺ID')
+    end_time: datetime = Field(default_factory=datetime.now, description='完工时间')
+
+
+class ProduceMakeFlowOutSchema(ProduceMakeFlowCreateSchema, BaseSchema, UserBySchema):
+    """
+    制造流程执行记录响应模型
+    """
+    model_config = ConfigDict(from_attributes=True)

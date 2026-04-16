@@ -42,7 +42,7 @@ class DataProjectService:
         return DataProjectOutSchema.model_validate(obj).model_dump()
     
     @classmethod
-    async def list_project_service(cls, auth: AuthSchema, search: DataProjectQueryParam | None = None, order_by: list[dict] | None = None) -> list[dict]:
+    async def list_project_service(cls, auth: AuthSchema, search: DataProjectQueryParam | None = None, order_by: list[dict] | None = None, show_dai: int | None = None) -> list[dict]:
         """
         列表查询
         
@@ -50,6 +50,7 @@ class DataProjectService:
         - auth: AuthSchema - 认证信息
         - search: DataProjectQueryParam | None - 查询参数
         - order_by: list[dict] | None - 排序参数
+        - show_dai: int | None - 指定工艺ID，统计该工艺下的待办数量
         
         返回:
         - list[dict] - 数据列表
@@ -57,10 +58,29 @@ class DataProjectService:
         search_dict = search.__dict__ if search else None
         order_by_list = order_by or [{'id': 'desc'}]
         obj_list = await DataProjectCRUD(auth).list_project_crud(search=search_dict, order_by=order_by_list)
-        return [DataProjectOutSchema.model_validate(obj).model_dump() for obj in obj_list]
+        
+        # 1. 预先获取待办统计，减少循环查询
+        counts = {}
+        if show_dai:
+            from sqlalchemy import text
+            count_res = await auth.db.execute(
+                text("SELECT project_code, COUNT(*) as cnt FROM produce_make WHERE current_craft_id = :craft_id GROUP BY project_code"),
+                {"craft_id": show_dai}
+            )
+            counts = {row[0]: row[1] for row in count_res.fetchall()}
+
+        # 2. 组装结果
+        results = []
+        for obj in obj_list:
+            item = DataProjectOutSchema.model_validate(obj).model_dump()
+            if show_dai:
+                item['dai_count'] = counts.get(obj.code, 0)
+            results.append(item)
+            
+        return results
 
     @classmethod
-    async def page_project_service(cls, auth: AuthSchema, page_no: int, page_size: int, search: DataProjectQueryParam | None = None, order_by: list[dict] | None = None) -> dict:
+    async def page_project_service(cls, auth: AuthSchema, page_no: int, page_size: int, search: DataProjectQueryParam | None = None, order_by: list[dict] | None = None, show_dai: int | None = None) -> dict:
         """
         分页查询（数据库分页）
         
@@ -70,6 +90,7 @@ class DataProjectService:
         - page_size: int - 每页数量
         - search: DataProjectQueryParam | None - 查询参数
         - order_by: list[dict] | None - 排序参数
+        - show_dai: int | None - 指定工艺ID，统计该工艺下的待办数量
         
         返回:
         - dict - 分页查询结果
@@ -83,6 +104,18 @@ class DataProjectService:
             order_by=order_by_list,
             search=search_dict
         )
+        
+        if show_dai and result.get('items'):
+            from sqlalchemy import text
+            codes = [item['code'] for item in result['items']]
+            count_res = await auth.db.execute(
+                text("SELECT project_code, COUNT(*) as cnt FROM produce_make WHERE current_craft_id = :craft_id AND project_code IN :codes GROUP BY project_code"),
+                {"craft_id": show_dai, "codes": tuple(codes)}
+            )
+            counts = {row[0]: row[1] for row in count_res.fetchall()}
+            for item in result['items']:
+                item['dai_count'] = counts.get(item['code'], 0)
+                
         return result
     
     @classmethod

@@ -377,15 +377,18 @@ CREATE TABLE `produce_make_flow` (
   `updated_id` int NULL COMMENT '更新人ID',
 
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_flow_bom_make_sort_craft` (`bom_id`,`make_id`,`sort`,`craft_id`),
+  KEY `ix_flow_bom_id` (`bom_id`),
   KEY `ix_flow_make_id` (`make_id`),
   KEY `ix_flow_user_id` (`user_id`),
   KEY `ix_flow_craft_id` (`craft_id`),
-  CONSTRAINT `fk_flow_make_id` FOREIGN KEY (`make_id`) REFERENCES `produce_make` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  KEY `ix_flow_end_time` (`end_time`),
   CONSTRAINT `fk_flow_bom_id` FOREIGN KEY (`bom_id`) REFERENCES `data_bom` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_flow_make_id` FOREIGN KEY (`make_id`) REFERENCES `produce_make` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_flow_user_id` FOREIGN KEY (`user_id`) REFERENCES `sys_user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_flow_craft_id` FOREIGN KEY (`craft_id`) REFERENCES `produce_craft` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_flow_created_id` FOREIGN KEY (`created_id`) REFERENCES `sys_user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_flow_updated_id` FOREIGN KEY (`updated_id`) REFERENCES `sys_user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_flow_updated_id` FOREIGN KEY (`updated_id`) REFERENCES `sys_user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='制造流程执行表';
 
 

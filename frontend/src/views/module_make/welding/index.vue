@@ -131,7 +131,7 @@
       v-model="projectDrawerVisible" 
       :show-bom-table="true"
       :show-order-column="true"
-      :show_dai="1"
+      :show_dai="2"
       @select="handleSelectProject" 
     />
 
@@ -277,7 +277,7 @@ async function loadCraftMap() {
     res.data.data?.forEach((item: ProduceCraftTable) => {
       if (item.id) {
         map.set(item.id, item.name);
-        if (item.name === "下料") {
+        if (item.name === "铆焊") {
           blankingCraftId.value = item.id;
         }
       }

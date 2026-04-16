@@ -21,3 +21,19 @@ class ProduceMakeModel(ModelMixin, UserMixin):
     current_sort: Mapped[int | None] = mapped_column(Integer, nullable=True, comment='工艺序号')
     current_craft_id: Mapped[int | None] = mapped_column(Integer, nullable=True, comment='工艺ID')
 
+
+class ProduceMakeFlowModel(ModelMixin, UserMixin):
+    """
+    制造流程执行表
+    """
+    __tablename__: str = 'produce_make_flow'
+    __table_args__: dict[str, str] = {'comment': '制造流程执行表'}
+    __loader_options__: list[str] = ["created_by", "updated_by"]
+
+    make_id: Mapped[int] = mapped_column(Integer, nullable=False, comment='制造ID')
+    bom_id: Mapped[int] = mapped_column(Integer, nullable=False, comment='BOMID')
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False, comment='用户ID')
+    sort: Mapped[int] = mapped_column(Integer, nullable=False, comment='工艺序号')
+    craft_id: Mapped[int] = mapped_column(Integer, nullable=False, comment='工艺ID')
+    end_time: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, nullable=False, comment='完工时间')
+

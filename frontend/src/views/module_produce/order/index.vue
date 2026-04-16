@@ -4,12 +4,6 @@
       <template #header>
         <div class="flex-x-between">
           <div class="flex-x-start">
-            <!-- <el-button type="info" plain :icon="Expand" @click="toggleAllExpansion(true)">
-              展开
-            </el-button>
-            <el-button type="info" plain :icon="Fold" @click="toggleAllExpansion(false)">
-              收起
-            </el-button> -->
           </div>
           <div class="flex-x-end">
             <el-button type="primary" :icon="Collection" @click="handleOpenProjectDrawer">
@@ -287,6 +281,7 @@ import DataProjectAPI, { DataProjectTable } from "@/api/module_data/project";
 import ProduceCraftRouteAPI from "@/api/module_produce/craftroute";
 import ProduceBomManhourAPI from "@/api/module_produce/bommanhour";
 import ProduceOrderAPI from "@/api/module_produce/order";
+import ProduceMakeAPI from "@/api/module_make/blanking";
 import ProduceCraftAPI from "@/api/module_produce/craft";
 import PositionAPI from "@/api/module_system/position";
 import UserAPI, { UserInfo } from "@/api/module_system/user";
@@ -801,6 +796,17 @@ async function handleConfirmManhourDialog() {
     await ProduceOrderAPI.upsertBatchProduceOrder({ items: items as any });
     manhourDialogVisible.value = false;
     ElMessage.success("工单保存成功");
+
+    try {
+      const syncResult = await ProduceMakeAPI.syncProduceMakeByBom(bomId);
+      if (syncResult.data?.data?.updated_count) {
+        ElMessage.success(`同步更新制造流程主成功：更新了 ${syncResult.data.data.updated_count} 条数据`);
+      }
+    } catch (syncError) {
+      console.error("同步制造流程主失败:", syncError);
+      ElMessage.warning("工单保存成功，但同步更新制造流程主失败");
+    }
+
     await loadingData();
   } finally {
     manhourLoading.value = false;

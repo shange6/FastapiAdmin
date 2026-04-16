@@ -49,19 +49,19 @@
       <el-form-item>
         <el-button
           v-hasPerm="['module_data:bom:query']"
-          icon="refresh"
+          :icon="Refresh"
           @click="$emit('reset')"
         >
           重置
         </el-button>
         <div>&nbsp;&nbsp;</div>
-        <el-button type="info" plain icon="Expand" @click="$emit('toggle-expand', true)">
+        <el-button type="info" plain :icon="Expand" @click="$emit('toggle-expand', true)">
           展开
         </el-button>
-        <el-button type="info" plain icon="Fold" @click="$emit('toggle-expand', false)">
+        <el-button type="info" plain :icon="Fold" @click="$emit('toggle-expand', false)">
           收起
         </el-button>
-        <el-button v-if="showProjectBtn" type="primary" icon="Collection" @click="$emit('open-project')">
+        <el-button v-if="showProjectBtn" type="primary" :icon="Collection" @click="$emit('open-project')">
           项目
         </el-button>
         <slot name="extra"></slot>
@@ -71,6 +71,7 @@
 </template>
 
 <script setup lang="ts">
+import { Expand, Fold, Refresh, Collection } from "@element-plus/icons-vue";
 import type { DataBomQuery } from "@/api/module_data/bom";
 
 // 1. 先定义清楚类型结构

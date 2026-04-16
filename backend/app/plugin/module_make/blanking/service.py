@@ -10,12 +10,14 @@ from app.core.exceptions import CustomException
 from app.core.logger import log
 from app.utils.excel_util import ExcelUtil
 
-from .crud import ProduceMakeCRUD
+from .crud import ProduceMakeCRUD, ProduceMakeFlowCRUD
 from .schema import (
     ProduceMakeCreateSchema,
     ProduceMakeUpdateSchema,
     ProduceMakeOutSchema,
-    ProduceMakeQueryParam
+    ProduceMakeQueryParam,
+    ProduceMakeFlowCreateSchema,
+    ProduceMakeFlowOutSchema
 )
 
 
@@ -59,30 +61,44 @@ class ProduceMakeService:
         return [ProduceMakeOutSchema.model_validate(obj).model_dump() for obj in obj_list]
 
     @classmethod
-    async def page_blanking_service(cls, auth: AuthSchema, page_no: int, page_size: int, search: ProduceMakeQueryParam | None = None, order_by: list[dict] | None = None) -> dict:
+    async def page_blanking_service(cls, auth: AuthSchema, page_no: int | None = None, page_size: int | None = None, search: ProduceMakeQueryParam | None = None, order_by: list[dict] | None = None) -> dict:
         """
-        分页查询（数据库分页）
+        查询制造流程主列表（支持分页和全量）
         
         参数:
         - auth: AuthSchema - 认证信息
-        - page_no: int - 页码
-        - page_size: int - 每页数量
+        - page_no: int | None - 页码
+        - page_size: int | None - 每页数量
         - search: ProduceMakeQueryParam | None - 查询参数
         - order_by: list[dict] | None - 排序参数
         
         返回:
-        - dict - 分页查询结果
+        - dict - 查询结果
         """
         search_dict = search.__dict__ if search else {}
         order_by_list = order_by or [{'id': 'asc'}]
-        offset = (page_no - 1) * page_size
-        result = await ProduceMakeCRUD(auth).page_blanking_crud(
-            offset=offset,
-            limit=page_size,
-            order_by=order_by_list,
-            search=search_dict
-        )
-        return result
+        
+        if page_no is not None and page_size is not None:
+            # 分页查询
+            offset = (page_no - 1) * page_size
+            result = await ProduceMakeCRUD(auth).page_blanking_crud(
+                offset=offset,
+                limit=page_size,
+                order_by=order_by_list,
+                search=search_dict
+            )
+            return result
+        else:
+            # 全量查询
+            obj_list = await ProduceMakeCRUD(auth).list_blanking_crud(
+                search=search_dict,
+                order_by=order_by_list
+            )
+            items = [ProduceMakeOutSchema.model_validate(obj).model_dump() for obj in obj_list]
+            return {
+                "items": items,
+                "total": len(items)
+            }
     
     @classmethod
     async def create_blanking_service(cls, auth: AuthSchema, data: ProduceMakeCreateSchema) -> dict:
@@ -318,3 +334,201 @@ class ProduceMakeService:
             selector_header_list=selector_header_list,
             option_list=option_list
         )
+
+    @classmethod
+    async def sync_produce_make_by_bom_service(cls, auth: AuthSchema, bom_id: int) -> dict:
+        """
+        根据BOM ID同步更新: 自己及所有后代共用当前BOM的工单号并同步至produce_make表
+        """
+        from app.core.database import async_db_session
+        from sqlalchemy import text
+        
+        async with async_db_session() as session:
+            # 1. 获取当前根节点BOM的基本信息
+            bom_result = await session.execute(
+                text("SELECT code, parent_code FROM data_bom WHERE id = :bom_id"),
+                {"bom_id": bom_id}
+            )
+            bom_row = bom_result.fetchone()
+            if not bom_row:
+                raise CustomException(msg=f"BOM不存在: {bom_id}")
+
+            current_root_code = bom_row[0]
+            # 这里的 project_code 取根节点的 parent_code
+            project_code = bom_row[1]
+
+            # 2. 【核心步】获取当前BOM自己的工单号 (用于后续全员赋值)
+            order_result = await session.execute(
+                text("SELECT no FROM produce_order WHERE bom_id = :bom_id LIMIT 1"),
+                {"bom_id": bom_id}
+            )
+            order_row = order_result.fetchone()
+            if not order_row:
+                raise CustomException(msg=f"当前BOM(ID:{bom_id})尚未生成工单，无法执行同步")
+            
+            shared_order_no = order_row[0] # 这就是我们要共享给后代的唯一工单号
+
+            # 3. 递归获取所有后代及自己
+            tree_result = await session.execute(
+                text("""
+                    WITH RECURSIVE bom_tree AS (
+                        SELECT id, code, parent_code FROM data_bom WHERE id = :bom_id
+                        UNION ALL
+                        SELECT d.id, d.code, d.parent_code FROM data_bom d
+                        INNER JOIN bom_tree bt ON d.parent_code = bt.code
+                    )
+                    SELECT id FROM bom_tree
+                """),
+                {"bom_id": bom_id}
+            )
+            all_bom_ids = [row[0] for row in tree_result.fetchall()]
+
+            # 4. 批量获取工艺路线映射
+            route_result = await session.execute(
+                text("SELECT bom_id, route FROM produce_bom_route WHERE bom_id IN :bom_ids"),
+                {"bom_ids": tuple(all_bom_ids)}
+            )
+            bom_route_map = {row[0]: row[1] for row in route_result.fetchall()}
+
+            # 5. 批量获取路线对应的第一道工序 (父工艺)
+            unique_routes = list(set(bom_route_map.values()))
+            craft_ids_by_route = {}
+            if unique_routes:
+                craft_result = await session.execute(
+                    text("SELECT route, craft_id FROM produce_craft_route WHERE route IN :routes AND sort = 1"),
+                    {"routes": tuple(unique_routes)}
+                )
+                craft_ids_by_route = {row[0]: row[1] for row in craft_result.fetchall()}
+
+            # 6. 循环处理
+            updated_count = 0
+            for desc_bom_id in all_bom_ids:
+                route = bom_route_map.get(desc_bom_id)
+                if not route: continue # 无工艺路线的零件不入制造表
+                
+                craft_id = craft_ids_by_route.get(route)
+                if not craft_id: continue
+
+                # 检查是否存在记录
+                exist_result = await session.execute(
+                    text("SELECT id FROM produce_make WHERE bom_id = :bom_id"),
+                    {"bom_id": desc_bom_id}
+                )
+                exist_row = exist_result.fetchone()
+
+                if exist_row:
+                    # 更新逻辑：强制赋值根节点的共享工单号
+                    await session.execute(
+                        text("""
+                            UPDATE produce_make
+                            SET project_code = :project_code,
+                                current_craft_id = :craft_id,
+                                current_sort = 1,
+                                order_no = :order_no,
+                                updated_id = :user_id
+                            WHERE bom_id = :bom_id
+                        """),
+                        {
+                            "bom_id": desc_bom_id,
+                            "project_code": project_code,
+                            "craft_id": craft_id,
+                            "order_no": shared_order_no,
+                            "user_id": auth.user.id
+                        }
+                    )
+                else:
+                    # 插入逻辑：强制赋值根节点的共享工单号
+                    await session.execute(
+                        text("""
+                            INSERT INTO produce_make 
+                            (bom_id, project_code, current_craft_id, current_sort, status, order_no, created_id, updated_id)
+                            VALUES (:bom_id, :project_code, :craft_id, 1, '0', :order_no, :user_id, :user_id)
+                        """),
+                        {
+                            "bom_id": desc_bom_id,
+                            "project_code": project_code,
+                            "craft_id": craft_id,
+                            "order_no": shared_order_no,
+                            "user_id": auth.user.id
+                        }
+                    )
+                updated_count += 1
+
+            await session.commit()
+            return {"updated_count": updated_count, "shared_order_no": shared_order_no}
+
+    @classmethod
+    async def summary_make_by_orders_service(cls, auth: AuthSchema, order_nos: list[str], craft_id: int) -> dict:
+        """
+        按单号和工艺ID统计待办数量
+        
+        参数:
+        - auth: AuthSchema - 认证信息
+        - order_nos: list[str] - 单号列表
+        - craft_id: int - 工艺ID
+        
+        返回:
+        - dict - {order_no: count}
+        """
+        from sqlalchemy import text
+        if not order_nos:
+            return {}
+            
+        res = await auth.db.execute(
+            text("SELECT order_no, COUNT(*) as cnt FROM produce_make WHERE order_no IN :nos AND current_craft_id = :cid GROUP BY order_no"),
+            {"nos": tuple(order_nos), "cid": craft_id}
+        )
+        return {row[0]: row[1] for row in res.fetchall()}
+
+    @classmethod
+    async def submit_blanking_flow_service(cls, auth: AuthSchema, data: ProduceMakeFlowCreateSchema) -> dict:
+        """
+        提交制造流程执行记录，并自动流转 produce_make 表的当前工序
+        """
+        from sqlalchemy import text
+        from loguru import logger
+
+        # 1. 检查是否存在重复记录
+        exist = await auth.db.execute(
+            text("SELECT id FROM produce_make_flow WHERE make_id=:m AND bom_id=:b AND sort=:s AND craft_id=:c"),
+            {"m": data.make_id, "b": data.bom_id, "s": data.sort, "c": data.craft_id}
+        )
+        if exist.fetchone():
+            raise CustomException(msg="该记录已提交，请勿重复操作")
+
+        # 2. 获取当前工序和工艺路线
+        res = await auth.db.execute(
+            text("""
+                SELECT m.current_sort, r.route 
+                FROM produce_make m 
+                LEFT JOIN produce_bom_route r ON m.bom_id = r.bom_id 
+                WHERE m.id = :id
+            """), {"id": data.make_id}
+        )
+        row = res.fetchone()
+        if not row:
+            raise CustomException(msg="未找到制造记录")
+        
+        cur_sort, route_id = row
+        next_sort, next_craft_id = 0, 0 # 默认最后一道工序后置为0
+
+        # 3. 寻找下一工序
+        if route_id:
+            next_res = await auth.db.execute(
+                text("SELECT sort, craft_id FROM produce_craft_route WHERE route=:r AND sort=:s"),
+                {"r": route_id, "s": cur_sort + 1}
+            )
+            next_row = next_res.fetchone()
+            if next_row:
+                next_sort, next_craft_id = next_row
+
+        # 4. 执行更新
+        obj = await ProduceMakeFlowCRUD(auth).create_flow_crud(data=data)
+        await auth.db.execute(
+            text("UPDATE produce_make SET current_sort=:s, current_craft_id=:c, updated_id=:u WHERE id=:id"),
+            {"s": next_sort, "c": next_craft_id, "u": auth.user.id, "id": data.make_id}
+        )
+        
+        logger.info(f"工序流转: make_id={data.make_id}, next_sort={next_sort}, next_craft={next_craft_id}")
+        await auth.db.commit()
+        return ProduceMakeFlowOutSchema.model_validate(obj).model_dump()

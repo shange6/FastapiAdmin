@@ -45,18 +45,20 @@ async def get_project_detail_controller(
     description="查询所有项目信息列表（不分页）"
 )
 async def get_project_all_list_controller(
+    show_dai: int | None = Query(None, description="指定工艺ID，统计该工艺下的待办数量"),
     auth: AuthSchema = Depends(AuthPermission(["module_data:project:query"]))
 ) -> JSONResponse:
     """
     查询所有项目信息列表接口（不分页）
     
     参数:
+    - show_dai: int | None - 指定工艺ID
     - auth: AuthSchema - 认证信息
     
     返回:
     - JSONResponse - 包含项目信息列表的JSON响应
     """
-    result_list = await DataProjectService.list_project_service(auth=auth)
+    result_list = await DataProjectService.list_project_service(auth=auth, show_dai=show_dai)
     log.info("查询所有项目信息列表成功")
     return SuccessResponse(data=result_list, msg="查询所有项目信息列表成功")
 
@@ -68,6 +70,7 @@ async def get_project_all_list_controller(
 async def get_project_list_controller(
     page: PaginationQueryParam = Depends(),
     search: DataProjectQueryParam = Depends(),
+    show_dai: int | None = Query(None, description="指定工艺ID，统计该工艺下的待办数量"),
     auth: AuthSchema = Depends(AuthPermission(["module_data:project:query"]))
 ) -> JSONResponse:
     """
@@ -76,6 +79,7 @@ async def get_project_list_controller(
     参数:
     - page: PaginationQueryParam - 分页参数
     - search: DataProjectQueryParam - 查询参数
+    - show_dai: int | None - 指定工艺ID
     - auth: AuthSchema - 认证信息
     
     返回:
@@ -86,7 +90,8 @@ async def get_project_list_controller(
         page_no=page.page_no if page.page_no is not None else 1,
         page_size=page.page_size if page.page_size is not None else 10,
         search=search,
-        order_by=page.order_by
+        order_by=page.order_by,
+        show_dai=show_dai
     )
     log.info("查询项目信息列表成功")
     return SuccessResponse(data=result_dict, msg="查询项目信息列表成功")

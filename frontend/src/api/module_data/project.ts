@@ -13,10 +13,11 @@ const DataProjectAPI = {
   },
 
   // 查询所有项目信息列表（不分页）
-  getAllDataProject() {
+  getAllDataProject(params?: { show_dai?: number }) {
     return request<ApiResponse<DataProjectTable[]>>({
       url: `${API_PATH}/list/all`,
       method: "get",
+      params: params,
     });
   },
 
@@ -108,6 +109,7 @@ export interface DataProjectPageQuery extends PageQuery {
   keyword?: string;
   created_time?: string[];
   updated_time?: string[];
+  show_dai?: number;
 }
 
 // 列表展示项
@@ -117,6 +119,7 @@ export interface DataProjectTable extends BaseType {
   no?: string;
   created_by?: CommonType;
   updated_by?: CommonType;
+  dai_count?: number;
 }
 
 // 新增/修改/详情表单参数

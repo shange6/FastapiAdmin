@@ -12,7 +12,13 @@ from app.core.logger import log
 from app.core.base_schema import BatchSetAvailable
 
 from .service import ProduceMakeService
-from .schema import ProduceMakeCreateSchema, ProduceMakeUpdateSchema, ProduceMakeQueryParam
+from .schema import (
+    ProduceMakeCreateSchema, 
+    ProduceMakeUpdateSchema, 
+    ProduceMakeQueryParam, 
+    ProduceMakePaginationQueryParam,
+    ProduceMakeFlowCreateSchema
+)
 
 ProduceMakeRouter = APIRouter(prefix='/blanking', tags=["制造流程主模块"]) 
 
@@ -45,15 +51,15 @@ async def get_blanking_detail_controller(
     description="查询制造流程主列表"
 )
 async def get_blanking_list_controller(
-    page: PaginationQueryParam = Depends(),
+    page: ProduceMakePaginationQueryParam = Depends(),
     search: ProduceMakeQueryParam = Depends(),
     auth: AuthSchema = Depends(AuthPermission(["module_make:blanking:query"]))
 ) -> JSONResponse:
     """
-    查询制造流程主列表接口（数据库分页）
+    查询制造流程主列表接口（支持分页和全量）
     
     参数:
-    - page: PaginationQueryParam - 分页参数
+    - page: ProduceMakePaginationQueryParam - 分页参数
     - search: ProduceMakeQueryParam - 查询参数
     - auth: AuthSchema - 认证信息
     
@@ -62,8 +68,8 @@ async def get_blanking_list_controller(
     """
     result_dict = await ProduceMakeService.page_blanking_service(
         auth=auth,
-        page_no=page.page_no if page.page_no is not None else 1,
-        page_size=page.page_size if page.page_size is not None else 10,
+        page_no=page.page_no,
+        page_size=page.page_size,
         search=search,
         order_by=page.order_by
     )
@@ -235,3 +241,75 @@ async def export_blanking_template_controller() -> StreamingResponse:
         media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         headers={'Content-Disposition': 'attachment; filename=produce_make_template.xlsx'}
     )
+
+@ProduceMakeRouter.post(
+    "/summary/by_orders",
+    summary="按单号和工艺ID统计待办数量",
+    description="从produce_make表中统计指定单号和工艺ID的记录数"
+)
+async def summary_make_by_orders_controller(
+    order_nos: list[str] = Body(..., description="单号列表"),
+    craft_id: int = Query(..., description="工艺ID"),
+    auth: AuthSchema = Depends(AuthPermission(["module_make:blanking:query"]))
+) -> JSONResponse:
+    """
+    按单号和工艺ID统计待办数量接口
+    
+    参数:
+    - order_nos: list[str] - 单号列表
+    - craft_id: int - 工艺ID
+    - auth: AuthSchema - 认证信息
+    
+    返回:
+    - JSONResponse - 包含统计结果的JSON响应
+    """
+    result = await ProduceMakeService.summary_make_by_orders_service(auth=auth, order_nos=order_nos, craft_id=craft_id)
+    return SuccessResponse(data=result, msg="查询成功")
+
+
+@ProduceMakeRouter.post(
+    "/sync/produce/make/{bom_id}",
+    summary="根据BOM ID同步更新制造流程主",
+    description="根据BOM ID同步更新produce_make表"
+)
+async def sync_produce_make_by_bom_controller(
+    bom_id: int = Path(..., description="BOM ID"),
+    auth: AuthSchema = Depends(AuthPermission(["module_make:blanking:update"]))
+) -> JSONResponse:
+    """
+    根据BOM ID同步更新制造流程主接口
+
+    参数:
+    - bom_id: int - BOM ID
+    - auth: AuthSchema - 认证信息
+
+    返回:
+    - JSONResponse - 包含更新结果的JSON响应
+    """
+    result = await ProduceMakeService.sync_produce_make_by_bom_service(auth=auth, bom_id=bom_id)
+    log.info(f"根据BOM ID同步更新制造流程主成功: {bom_id}")
+    return SuccessResponse(data=result, msg="同步更新制造流程主成功")
+
+
+@ProduceMakeRouter.post(
+    "/flow/submit",
+    summary="提交制造流程执行记录",
+    description="向produce_make_flow表添加一条记录"
+)
+async def submit_blanking_flow_controller(
+    data: ProduceMakeFlowCreateSchema,
+    auth: AuthSchema = Depends(AuthPermission(["module_make:blanking:update"]))
+) -> JSONResponse:
+    """
+    提交制造流程执行记录接口
+
+    参数:
+    - data: ProduceMakeFlowCreateSchema - 提交数据
+    - auth: AuthSchema - 认证信息
+
+    返回:
+    - JSONResponse - 包含提交结果的JSON响应
+    """
+    result = await ProduceMakeService.submit_blanking_flow_service(auth=auth, data=data)
+    log.info(f"提交制造流程执行记录成功: {data.make_id}")
+    return SuccessResponse(data=result, msg="提交成功")

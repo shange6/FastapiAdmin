@@ -28,23 +28,40 @@
         @cell-mouse-leave="handleProjectMouseLeave"
       >
         <el-table-column
-          prop="code"
-          label="项目代号"
-          width="150"
+          v-if="show_dai !== false && show_dai !== 0"
+          prop="dai_count"
+          label="待"
+          min-width="50"
           align="center"
           header-align="center"
           show-overflow-tooltip
-        />
+        >
+          <template #default="scope">
+            <span :style="{ color: scope.row.dai_count > 0 ? 'red' : 'green' }">
+              {{ scope.row.dai_count }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="code"
+          label="项目代号"
+          min-width="120"
+          align="center"
+          header-align="center"
+          show-overflow-tooltip
+        >
+        </el-table-column>
         <el-table-column
           prop="name"
           label="项目名称"
+          min-width="180"
           header-align="center"
           show-overflow-tooltip
         />
         <el-table-column
           prop="no"
           label="合同编号"
-          width="150"
+          min-width="100"
           align="center"
           header-align="center"
           show-overflow-tooltip
@@ -59,22 +76,48 @@
       @mouseenter="projectHover.locked = true" 
       @mouseleave="handleProjectHoverPanelLeave" 
     > 
-      <el-skeleton v-if="projectHover.loading" :rows="6" animated /> 
-      <el-empty v-else-if="projectHover.children.length === 0" description="无数据" /> 
+      <div v-if="projectHover.loading" style="height: 360px; padding: 20px; box-sizing: border-box;">
+        <el-skeleton :rows="8" animated /> 
+      </div>
+      <el-empty v-else-if="projectHover.children.length === 0" description="无数据" style="height: 360px; box-sizing: border-box;" /> 
       <el-table 
         v-else 
         :data="projectHover.children" 
         border 
         stripe 
-        height="360" 
-        style="width: 100%" 
+        height="360"
+        :style="{ width: (showOrderColumn ? 440 : 360) + 'px' }"
         highlight-current-row 
         @row-click="handleHoverBomRowClick" 
       > 
+        <el-table-column
+          v-if="show_dai !== false && show_dai !== 0"
+          prop="dai_count"
+          label="待"
+          min-width="50"
+          align="center"
+          header-align="center"
+          show-overflow-tooltip
+        >
+          <template #default="scope">
+            <span :style="{ color: scope.row.dai_count > 0 ? 'red' : 'green' }">
+              {{ scope.row.dai_count }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column 
+          v-if="showOrderColumn"
+          prop="no" 
+          label="单号" 
+          width="80" 
+          header-align="center" 
+          align="center" 
+          show-overflow-tooltip 
+        /> 
         <el-table-column 
           prop="code" 
           label="代号" 
-          width="140" 
+          width="160" 
           header-align="center" 
           align="center" 
           show-overflow-tooltip 
@@ -84,14 +127,6 @@
           label="名称" 
           width="200" 
           header-align="center" 
-          show-overflow-tooltip 
-        /> 
-        <el-table-column 
-          prop="remark" 
-          label="备注" 
-          width="100" 
-          header-align="center" 
-          align="center" 
           show-overflow-tooltip 
         /> 
       </el-table> 
@@ -113,8 +148,11 @@
 <script setup lang="ts">
 import { ref, reactive, watch, onMounted, computed } from "vue";
 import { useDebounceFn, useWindowSize } from "@vueuse/core";
+import { ElMessage } from "element-plus";
 import DataProjectAPI, { DataProjectTable } from "@/api/module_data/project";
 import DataBomAPI, { DataBomTable, DataBomPageQuery } from "@/api/module_data/bom";
+import ProduceOrderAPI from "@/api/module_produce/order";
+import ProduceMakeAPI from "@/api/module_make/blanking";
 
 const props = defineProps({
   modelValue: {
@@ -123,6 +161,14 @@ const props = defineProps({
   },
   showBomTable: {
     type: Boolean,
+    default: false,
+  },
+  showOrderColumn: {
+    type: Boolean,
+    default: false,
+  },
+  show_dai: {
+    type: [Boolean, Number],
     default: false,
   },
 });
@@ -163,8 +209,39 @@ async function handleProjectMouseEnter(row: DataProjectTable) {
         const res = await DataBomAPI.listProjectBoms(row.code || "");
         
         if (projectHover.currentProjectCode === row.code) {
-          // 限制预览数量为前100条
-          projectHover.children = (res.data.data || []).slice(0, 100);
+          const boms = (res.data.data || []).slice(0, 100);
+          
+          if (props.showOrderColumn) {
+            const bomIds = boms.map(b => Number(b.id)).filter(id => id > 0);
+            if (bomIds.length > 0) {
+              // 获取工单号
+              const orderRes = await ProduceOrderAPI.summaryBatchProduceOrder({ bom_ids: bomIds });
+              const orderMap = orderRes.data?.data || {};
+              boms.forEach(b => {
+                if (b.id) {
+                  b.no = orderMap[String(b.id)] || "";
+                }
+              });
+
+              // 如果需要显示待办数量统计
+              if (props.show_dai !== false && props.show_dai !== 0) {
+                const orderNos = boms.map(b => b.no).filter(no => !!no);
+                if (orderNos.length > 0) {
+                  // 根据单号和指定的工艺ID统计待办 (默认为1:下料)
+                  const craftId = typeof props.show_dai === "number" ? props.show_dai : 1;
+                  const daiRes = await ProduceMakeAPI.summaryProduceMakeByOrders(orderNos as string[], craftId);
+                  const daiMap = daiRes.data?.data || {};
+                  boms.forEach(b => {
+                    if (b.no) {
+                      b.dai_count = daiMap[b.no] || 0;
+                    }
+                  });
+                }
+              }
+            }
+          }
+
+          projectHover.children = boms;
         }
       } catch (error) {
       console.error("Fetch project BOMs error:", error);
@@ -252,6 +329,23 @@ const projectQuery = reactive({
   page_size: calculatePageSize(),
 });
 
+// 监听抽屉显示状态，打开时强制刷新数据以获取最新待办统计
+watch(isVisible, (val) => {
+  if (val) {
+    fetchProjects(true);
+  }
+});
+
+// 监听 show_dai 变化，重新加载数据
+watch(() => props.show_dai, () => {
+  if (isVisible.value) {
+    fetchProjects(true);
+  } else {
+    // 即使抽屉没打开，也要清空缓存，保证下次打开时获取的是对应工艺的统计
+    allProjects.value = [];
+  }
+});
+
 // 监听窗口高度变化，动态调整分页条数
 watch(windowHeight, () => {
   projectQuery.page_size = calculatePageSize();
@@ -261,12 +355,16 @@ watch(windowHeight, () => {
 });
 
 // 获取项目列表
-async function fetchProjects() {
+async function fetchProjects(force = false) {
   projectLoading.value = true;
   try {
-    // 1. 如果缓存为空，则从后端拉取全量数据（不分页新接口）
-    if (allProjects.value.length === 0) {
-      const response = await DataProjectAPI.getAllDataProject();
+    // 1. 如果缓存为空或强制刷新，则从后端拉取全量数据
+    if (allProjects.value.length === 0 || force) {
+      const params: any = {};
+      if (props.show_dai !== false && props.show_dai !== 0) {
+        params.show_dai = Number(props.show_dai);
+      }
+      const response = await DataProjectAPI.getAllDataProject(params);
       allProjects.value = response.data.data || [];
     }
 
@@ -327,7 +425,7 @@ onMounted(async () => {
   position: fixed; 
   top: 110px; 
   right: calc(40% + 16px); 
-  width: 460px; 
+  width: auto; 
   max-width: calc(60% - 32px); 
   padding: 10px; 
   border: 1px solid var(--el-border-color); 
@@ -340,5 +438,5 @@ onMounted(async () => {
 
 .project-hover-panel :deep(.el-table__inner-wrapper) { 
   border-radius: 8px; 
-} 
+}
 </style>
