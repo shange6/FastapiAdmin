@@ -145,9 +145,28 @@
     <!-- 项目选择抽屉 -->
     <ProjectSelectDrawer 
       v-model="projectDrawerVisible" 
-      :show-bom-table="false"
+      :show-bom-table="true"
+      :show-order-column="true"
+      :show_dai="1"
       @select="handleSelectProject" 
-    />
+      logicType="missorder"
+    >
+      <template #dai-project>
+        <el-table-column prop="dai_project" label="待" width="60" align="center">
+          <template #default="{ row }">
+            <b :style="{ color: row.dai_project > 0 ? 'red' : 'green' }">{{ row.dai_project }}</b>
+          </template>
+        </el-table-column>
+      </template>
+
+      <template #dai-bom>
+        <el-table-column prop="dai_bom" label="待" width="60" align="center">
+          <template #default="{ row }">
+            <b :style="{ color: row.dai_bom > 0 ? 'red' : 'green' }">{{ row.dai_bom }}</b>
+          </template>
+        </el-table-column>
+      </template>
+    </ProjectSelectDrawer>
 
     <!-- 排产弹窗 -->
     <el-dialog
@@ -336,6 +355,8 @@ const allBoms = ref<DataBomTable[]>([]);
 const allBomRoutes = ref<any[]>([]);
 const selectedRootBomCode = ref<string | undefined>(undefined);
 const selectedProjectCode = ref<string | undefined>(undefined);
+const selectedProjectId = ref<number | undefined>(undefined);
+const selectedFirstBomId = ref<number | undefined>(undefined);
 
 const queryFormData = reactive({
   page_no: 1,
@@ -378,6 +399,8 @@ function handleSelectProject(project: any) {
     selectedProjectCode.value = project.code;
     projectDrawerVisible.value = false;
     selectedRootBomCode.value = project.root_bom_code;
+    selectedProjectId.value = project.id;
+    selectedFirstBomId.value = project.first_id;
     // 直接注入数据，不再有全量拉取逻辑
     allBoms.value = project.recursive_data;
     handleQuery();
@@ -386,6 +409,8 @@ function handleSelectProject(project: any) {
     queryFormData.parent_code = project.code;
     selectedProjectCode.value = project.code;
     selectedRootBomCode.value = undefined;
+    selectedProjectId.value = project.id;
+    selectedFirstBomId.value = undefined;
     projectDrawerVisible.value = false;
     // 清空数据，触发后续 fetch
     allBoms.value = [];
@@ -773,6 +798,8 @@ async function handleConfirmManhourDialog() {
     .map((s) => {
       const uid = s.tag ? getUserIdByName(s.tag) : undefined;
       return {
+        project_id: selectedProjectId.value,
+        first_id: selectedFirstBomId.value,
         no: existingNo,
         bom_id: bomId,
         craft_id: s.craft_id,

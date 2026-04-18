@@ -323,6 +323,8 @@ CREATE TABLE `produce_bom_manhour` (
 DROP TABLE IF EXISTS `produce_order`;
 CREATE TABLE `produce_order` (
   `no` varchar(32) NOT NULL COMMENT '单号',
+  `project_id` int NOT NULL COMMENT '项目ID',
+  `first_id` int NOT NULL COMMENT '部件ID',
   `bom_id` int NOT NULL COMMENT 'BOMID',
   `craft_id` int NOT NULL COMMENT '子工艺ID',
   `man_hour` int NOT NULL DEFAULT 0 COMMENT '工时',  
@@ -345,22 +347,18 @@ CREATE TABLE `produce_order` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_order_uuid` (`uuid`),
   UNIQUE KEY `uk_order_bom_craft` (`bom_id`,`craft_id`),
+  KEY `ix_project_id` (`project_id`),
+  KEY `ix_first_id` (`first_id`),
   KEY `ix_order_no` (`no`),
   KEY `ix_bom_id` (`bom_id`),
   KEY `ix_craft_id` (`craft_id`),
-  -- KEY `ix_order_status` (`status`),
-  -- KEY `ix_order_created_time` (`created_time`),
-  -- KEY `ix_order_updated_time` (`updated_time`),
-  -- KEY `ix_order_created_id` (`created_id`),
-  -- KEY `ix_order_updated_id` (`updated_id`),
-  
-  CONSTRAINT `fk_order_bom_id` FOREIGN KEY (`bom_id`) REFERENCES `data_bom` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_order_craft_id` FOREIGN KEY (`craft_id`) REFERENCES `produce_craft` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_order_created_id` FOREIGN KEY (`created_id`) REFERENCES `sys_user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_order_updated_id` FOREIGN KEY (`updated_id`) REFERENCES `sys_user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_order_bom` FOREIGN KEY (`bom_id`) REFERENCES `data_bom` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_order_craft` FOREIGN KEY (`craft_id`) REFERENCES `produce_craft` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_order_plan_user` FOREIGN KEY (`plan_user`) REFERENCES `sys_user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_order_real_user` FOREIGN KEY (`real_user`) REFERENCES `sys_user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='工单表';
+  CONSTRAINT `fk_order_real_user` FOREIGN KEY (`real_user`) REFERENCES `sys_user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_order_created_id` FOREIGN KEY (`created_id`) REFERENCES `sys_user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_order_updated_id` FOREIGN KEY (`updated_id`) REFERENCES `sys_user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='生产工单';
 
 
 -- =============================================

@@ -147,6 +147,30 @@ async def summary_missing_manhour_count_by_first_id_controller(
     result = await ProduceBomManhourService.summary_missing_manhour_count_by_first_id_service(auth=auth, first_id=first_id)
     return SuccessResponse(data=result, msg="查询成功")
 
+@ProduceBomManhourRouter.get(
+    "/summary/missing/order/count/by-project-id/{project_id}",
+    summary="根据项目ID统计缺失工单数量",
+    description="根据项目ID统计缺失工单数量（工时记录数-工单记录数），返回差额"
+)
+async def summary_missing_order_count_by_project_id_controller(
+    project_id: int = Path(..., description="项目ID"),
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:query"]))
+) -> JSONResponse:
+    result = await ProduceBomManhourService.summary_missing_order_count_by_project_id_service(auth=auth, project_id=project_id)
+    return SuccessResponse(data=result, msg="查询成功")
+
+@ProduceBomManhourRouter.get(
+    "/summary/missing/order/count/by-first-id/{first_id}",
+    summary="根据first_id统计缺失工单数量",
+    description="根据点击的BOM的ID统计缺失工单数量（工时记录数-工单记录数），返回差额"
+)
+async def summary_missing_order_count_by_first_id_controller(
+    first_id: int = Path(..., description="BOM ID"),
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:query"]))
+) -> JSONResponse:
+    result = await ProduceBomManhourService.summary_missing_order_count_by_first_id_service(auth=auth, first_id=first_id)
+    return SuccessResponse(data=result, msg="查询成功")
+
 @ProduceBomManhourRouter.post(
     "/summary/batch",
     summary="批量查询BOM工时汇总",

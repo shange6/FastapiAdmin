@@ -128,6 +128,8 @@ export interface ProduceOrderPageQuery extends PageQuery {
 
 // 列表展示项
 export interface ProduceOrderTable extends BaseType {
+  project_id?: number;
+  first_id?: number;
   bom_id?: number;
   craft_id?: number;
   man_hour?: number;
@@ -145,6 +147,8 @@ export interface ProduceOrderTable extends BaseType {
 
 // 新增/修改/详情表单参数
 export interface ProduceOrderForm extends BaseFormType {
+  project_id?: number;
+  first_id?: number;
   bom_id?: number;
   craft_id?: number;
   man_hour?: number;

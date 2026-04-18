@@ -87,7 +87,7 @@ interface Props {
   showBomTable?: boolean;
   showOrderColumn?: boolean;
   show_dai?: boolean | number;
-  logicType?: 'production' | 'quality' | 'missroute' | 'missmanhour'; // 通过此参数指定逻辑
+  logicType?: 'production' | 'quality' | 'missroute' | 'missmanhour' | 'missorder'; // 通过此参数指定逻辑
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -151,6 +151,10 @@ async function fetchProjects(force = false) {
         case 'missmanhour':
           allProjects.value = await DaiService.getMissingManhourProjectList(params);
           break;
+        
+        case 'missorder':
+          allProjects.value = await DaiService.getMissingOrderProjectList(params);
+          break;
                     
         default:
           // 兜底逻辑：如果没有匹配项，执行默认获取
@@ -189,6 +193,9 @@ async function loadBomPreviewData(row: any) {
         break;
       case 'missmanhour':
         projectHover.children = await DaiService.getMissingManhourBomPreview(row.code);
+        break;
+      case 'missorder':
+        projectHover.children = await DaiService.getMissingOrderBomPreview(row.code);
         break;
       case 'quality':
         // 预留质量逻辑位置

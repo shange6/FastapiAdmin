@@ -14,6 +14,8 @@ class ProduceOrderCreateSchema(BaseModel):
     工单新增模型
     """
     no: str | None = Field(default=None, description='单号')
+    project_id: int | None = Field(default=None, description='项目ID')
+    first_id: int | None = Field(default=None, description='部件ID')
     bom_id: int = Field(default=..., description='BOM ID')
     craft_id: int = Field(default=..., description='子工艺ID')
     man_hour: int = Field(default=..., description='工时')
@@ -102,6 +104,8 @@ class ProduceOrderSummaryBatchSchema(BaseModel):
 
 class ProduceOrderUpsertItemSchema(BaseModel):
     no: str | None = Field(default=None, description="单号")
+    project_id: int | None = Field(default=None, description="项目ID")
+    first_id: int | None = Field(default=None, description="部件ID")
     bom_id: int = Field(default=..., description="BOM ID")
     craft_id: int = Field(default=..., description="子工艺ID")
     man_hour: int = Field(default=..., description="工时")
