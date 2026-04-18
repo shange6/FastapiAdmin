@@ -209,7 +209,7 @@ class Dxf2List(object):
         for insert in msp.query("INSERT"):
             # 提取并清洗属性文本
             attr_texts = [self._clean_text(attr.dxf.text) for attr in insert.attribs]
-            if not any(attr_texts): continue    # 过滤全空属性            
+            if not any(s.strip() for s in attr_texts): continue    # 过滤全空属性
             match len(attr_texts):
                 case 8: # 零件明细行                    
                     pos = insert.dxf.insert
@@ -230,6 +230,7 @@ class Dxf2List(object):
             self.log_add(f"文件数[{self.file_count}]与页面数[{len(mtexts)}]不符")
         for mtext in mtexts:
             chunks = self._clean_text(mtext.dxf.text).replace(":", "").replace("：", "").split()
+            print(chunks)
             for chunk in chunks:    # 按空格分割后的字符串
                 for label, attr_name in self.project_keys.items():
                     if label in chunk:

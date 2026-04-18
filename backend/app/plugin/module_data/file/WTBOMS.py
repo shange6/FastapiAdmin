@@ -46,10 +46,10 @@ class WTBOMS():
                 "parent_code",  # 父代号
                 "code",         # 物料编码
                 "spec",         # 物料规格
-                # "count",        # 数量
-                # "material",     # 材质
-                # "unit_mass",    # 单重
-                # "total_mass",   # 总重
+                "count",        # 数量
+                "material",     # 材质
+                "unit_mass",    # 单重
+                "total_mass",   # 总重
                 "remark",       # 备注
                 # "x",            # x坐标
                 # "y"             # y坐标

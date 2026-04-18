@@ -185,15 +185,15 @@ class ProduceBomRouteService:
             log.info(f"[getMissingRouteBomPreview] 已配置路线数量 (configured_count): {configured_count}")
             log.info(f"[getMissingRouteBomPreview] SQL: SELECT COUNT(*) FROM produce_bom_route WHERE first_id = {first_id}")
 
-            # 3. 统计该项目下所有 BOM 数量（通过 project_code 匹配，排除外购件 procure = 1）
+            # 3. 统计该 BOM 分支下所有 BOM 数量（通过 first_code 匹配，排除外购件 procure = 1）
             total_sql = text("""
                 SELECT COUNT(*) FROM data_bom 
-                WHERE project_code = :project_code AND procure = 0
+                WHERE first_code = :bom_code AND procure = 0
             """)
-            total_result = await session.execute(total_sql, {"project_code": project_code})
+            total_result = await session.execute(total_sql, {"bom_code": bom_code})
             total_count = total_result.scalar() or 0
-            log.info(f"[getMissingRouteBomPreview] 项目下BOM总数 (total_count, 排除外购): {total_count}")
-            log.info(f"[getMissingRouteBomPreview] SQL: SELECT COUNT(*) FROM data_bom WHERE project_code = '{project_code}' AND procure = 0")
+            log.info(f"[getMissingRouteBomPreview] BOM分支下BOM总数 (total_count, 排除外购): {total_count}")
+            log.info(f"[getMissingRouteBomPreview] SQL: SELECT COUNT(*) FROM data_bom WHERE first_code = '{bom_code}' AND procure = 0")
 
             missing_count = total_count - configured_count
             log.info(f"[getMissingRouteBomPreview] 差额计算: {total_count} - {configured_count} = {missing_count}")
