@@ -355,6 +355,7 @@ const allBoms = ref<DataBomTable[]>([]);
 const allBomRoutes = ref<any[]>([]);
 const selectedRootBomCode = ref<string | undefined>(undefined);
 const selectedProjectCode = ref<string | undefined>(undefined);
+const selectedFirstBomCode = ref<string | undefined>(undefined);
 const selectedProjectId = ref<number | undefined>(undefined);
 const selectedFirstBomId = ref<number | undefined>(undefined);
 
@@ -396,7 +397,8 @@ function handleSelectProject(project: any) {
   // 1. 如果是从预览面板选中的逻辑（带有递归数据）
   if (project.recursive_data && project.root_bom_code) {
     queryFormData.parent_code = project.code;
-    selectedProjectCode.value = project.code;
+    selectedProjectCode.value = project.project_code;
+    selectedFirstBomCode.value = project.first_code;
     projectDrawerVisible.value = false;
     selectedRootBomCode.value = project.root_bom_code;
     selectedProjectId.value = project.id;
@@ -408,6 +410,7 @@ function handleSelectProject(project: any) {
     // 2. 如果是直接点击项目选中的逻辑
     queryFormData.parent_code = project.code;
     selectedProjectCode.value = project.code;
+    selectedFirstBomCode.value = undefined;
     selectedRootBomCode.value = undefined;
     selectedProjectId.value = project.id;
     selectedFirstBomId.value = undefined;
@@ -798,8 +801,8 @@ async function handleConfirmManhourDialog() {
     .map((s) => {
       const uid = s.tag ? getUserIdByName(s.tag) : undefined;
       return {
-        project_id: selectedProjectId.value,
-        first_id: selectedFirstBomId.value,
+        project_code: selectedProjectCode.value,
+        first_code: selectedFirstBomCode.value,
         no: existingNo,
         bom_id: bomId,
         craft_id: s.craft_id,

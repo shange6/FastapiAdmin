@@ -10,8 +10,8 @@ class ProduceBomManhourCreateSchema(BaseModel):
     """
     BOM工时关联新增模型
     """
-    project_id: int = Field(default=..., description='项目ID')
-    first_id: int = Field(default=..., description='部件ID')
+    project_code: str = Field(default=..., description='项目编码')
+    first_code: str = Field(default=..., description='一级代号')
     bom_id: int = Field(default=..., description='BOM ID')
     craft_id: int = Field(default=..., description='工序ID')
     manhour: int = Field(default=..., description='工时')
@@ -32,8 +32,8 @@ class ProduceBomManhourOutSchema(ProduceBomManhourCreateSchema, BaseSchema, User
 
 
 class ProduceBomManhourUpsertItemSchema(BaseModel):
-    project_id: int = Field(default=..., description="项目ID")
-    first_id: int = Field(default=..., description="部件ID")
+    project_code: str = Field(default=..., description="项目编码")
+    first_code: str = Field(default=..., description="一级代号")
     bom_id: int = Field(default=..., description="BOM ID")
     craft_id: int = Field(default=..., description="工序ID")
     manhour: int = Field(default=..., description="工时")
@@ -53,12 +53,19 @@ class ProduceBomManhourQueryParam:
 
     def __init__(
         self,
+        project_code: str | None = Query(None, description="项目编码"),
+        first_code: str | None = Query(None, description="一级代号"),
         bom_id: int | None = Query(None, description="BOM ID"),
         craft_id: int | None = Query(None, description="工序ID"),
         manhour: int | None = Query(None, description="工时"),
         created_time: list[DateTimeStr] | None = Query(None, description="创建时间范围", examples=["2025-01-01 00:00:00", "2025-12-31 23:59:59"]),
         updated_time: list[DateTimeStr] | None = Query(None, description="更新时间范围", examples=["2025-01-01 00:00:00", "2025-12-31 23:59:59"]),
     ) -> None:
+        # 精确查询字段
+        if project_code:
+            self.project_code = (QueueEnum.eq.value, project_code)
+        if first_code:
+            self.first_code = (QueueEnum.eq.value, first_code)
         # 精确查询字段
         if bom_id:
             self.bom_id = (QueueEnum.eq.value, bom_id)

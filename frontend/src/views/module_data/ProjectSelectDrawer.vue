@@ -255,6 +255,8 @@ async function handleHoverBomRowClick(row: any) {
       ...project,
       id: project?.id, // 确保传递项目 ID
       first_id: row.id, // 这里的 row.id 是点击的 BOM 的 ID，即 first_id
+      project_code: project?.code,
+      first_code: row.code,
       root_bom_code: row.code,
       parent_code: row.parent_code,
       recursive_data: res.data.data || []

@@ -14,11 +14,10 @@ class ProduceMakeCreateSchema(BaseModel):
     """
     制造流程主新增模型
     """
-    project_id: int | None = Field(default=None, description='项目ID')
-    first_id: int | None = Field(default=None, description='部件ID')
+    project_code: str | None = Field(default=None, description='项目代码')
+    first_code: str | None = Field(default=None, description='一级代号')
     bom_id: int = Field(default=..., description='BOMID')
     order_no: str = Field(default=..., description='单号')
-    project_code: str = Field(default=..., description='项目代码')
     current_sort: int = Field(default=..., description='工艺序号')
     current_craft_id: int = Field(default=..., description='工艺ID')
     status: str = Field(default="0", description='状态 0=待生产 1=生产中 2=已完成 3=已取消 4=已暂停')
@@ -47,6 +46,7 @@ class ProduceMakeQueryParam:
         bom_id: int | None = Query(None, description="BOMID"),
         order_no: str | None = Query(None, description="单号"),
         project_code: str | None = Query(None, description="项目代码"),
+        first_code: str | None = Query(None, description="一级代号"),
         current_sort: int | None = Query(None, description="工艺序号"),
         current_craft_id: int | None = Query(None, description="工艺ID"),
         status: str | None = Query(None, description="状态 0=待生产 1=生产中 2=已完成 3=已取消 4=已暂停"),
@@ -64,6 +64,9 @@ class ProduceMakeQueryParam:
         # 精确查询字段
         if project_code:
             self.project_code = (QueueEnum.eq.value, project_code)
+        # 精确查询字段
+        if first_code:
+            self.first_code = (QueueEnum.eq.value, first_code)
         # 精确查询字段
         if current_sort:
             self.current_sort = (QueueEnum.eq.value, current_sort)
@@ -113,8 +116,8 @@ class ProduceMakeFlowCreateSchema(BaseModel):
     """
     制造流程执行记录新增模型
     """
-    project_id: int | None = Field(default=None, description='项目ID')
-    first_id: int | None = Field(default=None, description='部件ID')
+    project_code: str | None = Field(default=None, description='项目代码')
+    first_code: str | None = Field(default=None, description='一级代号')
     make_id: int = Field(default=..., description='制造ID')
     bom_id: int = Field(default=..., description='BOMID')
     user_id: int = Field(default=..., description='用户ID')

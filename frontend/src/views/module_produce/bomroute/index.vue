@@ -135,6 +135,8 @@ const projectDrawerVisible = ref(false);
 const allBoms = ref<DataBomWithRoute[]>([]);
 const allBomRoutes = ref<any[]>([]);
 const selectedRootBomCode = ref<string | undefined>(undefined);
+const selectedProjectCode = ref<string | undefined>(undefined);
+const selectedFirstBomCode = ref<string | undefined>(undefined);
 const selectedProjectId = ref<number | undefined>(undefined);
 const selectedFirstBomId = ref<number | undefined>(undefined);
 
@@ -205,6 +207,8 @@ function handleSelectProject(project: any) {
     queryFormData.parent_code = project.code;
     projectDrawerVisible.value = false;
     selectedRootBomCode.value = project.root_bom_code;
+    selectedProjectCode.value = project.project_code;
+    selectedFirstBomCode.value = project.first_code;
     selectedProjectId.value = project.id;
     selectedFirstBomId.value = project.first_id;
     // 注入数据时进行断言，确保 ID 安全
@@ -327,8 +331,8 @@ async function handleBatchSaveCraftRoute() {
       .map(node => ({
         bom_id: node.id as number,
         route: node.craft_route as number,
-        project_id: selectedProjectId.value,
-        first_id: selectedFirstBomId.value,
+        project_code: selectedProjectCode.value,
+        first_code: selectedFirstBomCode.value,
       }));
 
     if (dataToUpdate.length === 0) {

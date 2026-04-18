@@ -124,6 +124,7 @@ export interface ProduceMakePageQuery extends Partial<PageQuery> {
   bom_id?: string;
   order_no?: string;
   project_code?: string;
+  first_code?: string;
   current_sort?: string;
   current_craft_id?: string;
   status?: string;
@@ -138,6 +139,7 @@ export interface ProduceMakeTable extends BaseType {
   bom_id?: string;
   order_no?: string;
   project_code?: string;
+  first_code?: string;
   current_sort?: string;
   current_craft_id?: string;
   created_id?: string;
@@ -151,6 +153,7 @@ export interface ProduceMakeForm extends BaseFormType {
   bom_id?: string;
   order_no?: string;
   project_code?: string;
+  first_code?: string;
   current_sort?: string;
   current_craft_id?: string;
 }

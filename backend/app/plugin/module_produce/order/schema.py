@@ -14,8 +14,8 @@ class ProduceOrderCreateSchema(BaseModel):
     工单新增模型
     """
     no: str | None = Field(default=None, description='单号')
-    project_id: int | None = Field(default=None, description='项目ID')
-    first_id: int | None = Field(default=None, description='部件ID')
+    project_code: str | None = Field(default=None, description='项目代码')
+    first_code: str | None = Field(default=None, description='一级代号')
     bom_id: int = Field(default=..., description='BOM ID')
     craft_id: int = Field(default=..., description='子工艺ID')
     man_hour: int = Field(default=..., description='工时')
@@ -48,6 +48,8 @@ class ProduceOrderQueryParam:
 
     def __init__(
         self,
+        project_code: str | None = Query(None, description="项目代码"),
+        first_code: str | None = Query(None, description="一级代号"),
         bom_id: int | None = Query(None, description="BOM ID"),
         craft_id: int | None = Query(None, description="子工艺ID"),
         man_hour: int | None = Query(None, description="工时"),
@@ -61,6 +63,11 @@ class ProduceOrderQueryParam:
         created_time: list[DateTimeStr] | None = Query(None, description="创建时间范围", examples=["2025-01-01 00:00:00", "2025-12-31 23:59:59"]),
         updated_time: list[DateTimeStr] | None = Query(None, description="更新时间范围", examples=["2025-01-01 00:00:00", "2025-12-31 23:59:59"]),
     ) -> None:
+        # 精确查询字段
+        if project_code:
+            self.project_code = (QueueEnum.eq.value, project_code)
+        if first_code:
+            self.first_code = (QueueEnum.eq.value, first_code)
         # 精确查询字段
         if bom_id:
             self.bom_id = (QueueEnum.eq.value, bom_id)
@@ -104,8 +111,8 @@ class ProduceOrderSummaryBatchSchema(BaseModel):
 
 class ProduceOrderUpsertItemSchema(BaseModel):
     no: str | None = Field(default=None, description="单号")
-    project_id: int | None = Field(default=None, description="项目ID")
-    first_id: int | None = Field(default=None, description="部件ID")
+    project_code: str | None = Field(default=None, description="项目代码")
+    first_code: str | None = Field(default=None, description="一级代号")
     bom_id: int = Field(default=..., description="BOM ID")
     craft_id: int = Field(default=..., description="子工艺ID")
     man_hour: int = Field(default=..., description="工时")

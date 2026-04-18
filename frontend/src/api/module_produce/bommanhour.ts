@@ -197,8 +197,8 @@ export interface ProduceBomManhourForm extends BaseFormType {
 }
 
 export interface ProduceBomManhourUpsertItem {
-  project_id?: number;
-  first_id?: number;
+  project_code: string;
+  first_code: string;
   bom_id: number;
   craft_id: number;
   manhour: number;

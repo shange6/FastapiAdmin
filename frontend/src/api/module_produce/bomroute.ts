@@ -79,7 +79,7 @@ const ProduceBomRouteAPI = {
   },
 
   // 批量插入或更新（合并为单条SQL执行）
-  upsertBatchProduceBomRoute(data: { bom_id: number; route: number; project_id?: number; first_id?: number }[]) {
+  upsertBatchProduceBomRoute(data: { bom_id: number; route: number; project_code?: string; first_code?: string }[]) {
     return request<ApiResponse>({
       url: `${API_PATH}/upsert/batch`,
       method: "post",

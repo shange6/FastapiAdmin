@@ -10,6 +10,8 @@ class ProduceBomRouteCreateSchema(BaseModel):
     """
     BOM路线关联新增模型
     """
+    project_code: str = Field(default=..., description='项目编码')
+    first_code: str = Field(default=..., description='一级代号')
     bom_id: int = Field(default=..., description='BOMID')
     route: int = Field(default=..., description='工艺路线')
 

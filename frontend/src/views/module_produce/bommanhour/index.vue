@@ -364,6 +364,8 @@ const queryFormData = reactive({
 const allBoms = ref<DataBomTable[]>([]);
 const allBomRoutes = ref<any[]>([]);
 const selectedRootBomCode = ref<string | undefined>(undefined);
+const selectedProjectCode = ref<string | undefined>(undefined);
+const selectedFirstBomCode = ref<string | undefined>(undefined);
 const selectedProjectId = ref<number | undefined>(undefined);
 const selectedFirstBomId = ref<number | undefined>(undefined);
 const routeCraftItemsCache = new Map<number, any[]>();
@@ -506,6 +508,8 @@ function handleSelectProject(project: any) {
     queryFormData.parent_code = project.code;
     projectDrawerVisible.value = false;
     selectedRootBomCode.value = project.root_bom_code;
+    selectedProjectCode.value = project.project_code;
+    selectedFirstBomCode.value = project.first_code;
     selectedProjectId.value = project.id;
     selectedFirstBomId.value = project.first_id;
     // 直接注入数据，不再有全量拉取逻辑
@@ -620,8 +624,8 @@ async function handleConfirmManhourDialog() {
     const items = manhourSteps.value
       .filter((s) => s.manhour !== null)
       .map((s) => ({
-        project_id: selectedProjectId.value,
-        first_id: selectedFirstBomId.value,
+        project_code: selectedProjectCode.value || "",
+        first_code: selectedFirstBomCode.value || "",
         bom_id: Number(manhourBom.value.id),
         craft_id: s.craft_id,
         manhour: Number(s.manhour),

@@ -15,11 +15,10 @@ class ProduceMakeModel(ModelMixin, UserMixin):
     __table_args__: dict[str, str] = {'comment': '制造流程主'}
     __loader_options__: list[str] = ["created_by", "updated_by"]
 
-    project_id: Mapped[int | None] = mapped_column(Integer, nullable=True, comment='项目ID')
-    first_id: Mapped[int | None] = mapped_column(Integer, nullable=True, comment='部件ID')
+    project_code: Mapped[str | None] = mapped_column(String(64), nullable=True, comment='项目代码')
+    first_code: Mapped[str | None] = mapped_column(String(64), nullable=True, comment='一级代号')
     bom_id: Mapped[int | None] = mapped_column(Integer, nullable=True, comment='BOMID')
     order_no: Mapped[str | None] = mapped_column(String(32), nullable=True, comment='单号')
-    project_code: Mapped[str | None] = mapped_column(String(64), nullable=True, comment='项目代码')
     current_sort: Mapped[int | None] = mapped_column(Integer, nullable=True, comment='工艺序号')
     current_craft_id: Mapped[int | None] = mapped_column(Integer, nullable=True, comment='工艺ID')
 
@@ -32,8 +31,8 @@ class ProduceMakeFlowModel(ModelMixin, UserMixin):
     __table_args__: dict[str, str] = {'comment': '制造流程执行表'}
     __loader_options__: list[str] = ["created_by", "updated_by"]
 
-    project_id: Mapped[int | None] = mapped_column(Integer, nullable=True, comment='项目ID')
-    first_id: Mapped[int | None] = mapped_column(Integer, nullable=True, comment='部件ID')
+    project_code: Mapped[str | None] = mapped_column(String(64), nullable=True, comment='项目代码')
+    first_code: Mapped[str | None] = mapped_column(String(64), nullable=True, comment='一级代号')
     make_id: Mapped[int] = mapped_column(Integer, nullable=False, comment='制造ID')
     bom_id: Mapped[int] = mapped_column(Integer, nullable=False, comment='BOMID')
     user_id: Mapped[int] = mapped_column(Integer, nullable=False, comment='用户ID')

@@ -95,7 +95,7 @@ class ProduceBomRouteService:
         """
         根据项目ID统计缺失路线数量
         逻辑：
-        1. 统计 produce_bom_route 中 project_id = 当前项目ID 的记录数
+        1. 统计 produce_bom_route 中 project_code = 当前项目code 的记录数
         2. 统计该项目下所有BOM后代的总数 (通过 data_bom 的 parent_code 递归获取)
         3. 返回 差额 = 后代总数 - 已配置数
 
@@ -122,11 +122,11 @@ class ProduceBomRouteService:
             log.info(f"[getMissingRouteProjectList] 项目ID: {project_id}, 项目code: {project_code}")
 
             # 2. 统计 produce_bom_route 中该项目已配置的路线数量
-            route_count_sql = text("SELECT COUNT(*) FROM produce_bom_route WHERE project_id = :project_id")
-            route_result = await session.execute(route_count_sql, {"project_id": project_id})
+            route_count_sql = text("SELECT COUNT(*) FROM produce_bom_route WHERE project_code = :project_code")
+            route_result = await session.execute(route_count_sql, {"project_code": project_code})
             configured_count = route_result.scalar() or 0
             log.info(f"[getMissingRouteProjectList] 已配置路线数量 (configured_count): {configured_count}")
-            log.info(f"[getMissingRouteProjectList] SQL: {route_count_sql}; params: {{project_id: {project_id}}}")
+            log.info(f"[getMissingRouteProjectList] SQL: {route_count_sql}; params: {{project_code: {project_code}}}")
 
             # 3. 递归统计该项目下所有 BOM 后代数量
             # 直接统计 first_code 属于该项目根节点的所有 BOM 数量（排除外购件 procure = 1）
@@ -151,7 +151,7 @@ class ProduceBomRouteService:
         根据 first_id（点击的 BOM 的 ID）统计缺失路线数量
         逻辑：
         1. 获取该 first_id 对应的 BOM 信息
-        2. 统计 produce_bom_route 中 first_id = 当前ID 的记录数（已配置数量）
+        2. 统计 produce_bom_route 中 first_code = 当前BOM code 的记录数（已配置数量）
         3. 统计该 BOM 所属项目下所有 BOM 数量（通过 project_code 匹配）
         4. 返回 差额 = 总数 - 已配置数
 
@@ -178,12 +178,12 @@ class ProduceBomRouteService:
             bom_code = bom_row[1]
             log.info(f"[getMissingRouteBomPreview] BOM ID: {first_id}, 项目code: {project_code}, BOM code: {bom_code}")
 
-            # 2. 统计 produce_bom_route 中该 first_id 已配置的路线数量
-            route_count_sql = text("SELECT COUNT(*) FROM produce_bom_route WHERE first_id = :first_id")
-            route_result = await session.execute(route_count_sql, {"first_id": first_id})
+            # 2. 统计 produce_bom_route 中该 first_code 已配置的路线数量
+            route_count_sql = text("SELECT COUNT(*) FROM produce_bom_route WHERE first_code = :bom_code")
+            route_result = await session.execute(route_count_sql, {"bom_code": bom_code})
             configured_count = route_result.scalar() or 0
             log.info(f"[getMissingRouteBomPreview] 已配置路线数量 (configured_count): {configured_count}")
-            log.info(f"[getMissingRouteBomPreview] SQL: SELECT COUNT(*) FROM produce_bom_route WHERE first_id = {first_id}")
+            log.info(f"[getMissingRouteBomPreview] SQL: SELECT COUNT(*) FROM produce_bom_route WHERE first_code = {bom_code}")
 
             # 3. 统计该 BOM 分支下所有 BOM 数量（通过 first_code 匹配，排除外购件 procure = 1）
             total_sql = text("""
@@ -306,7 +306,7 @@ class ProduceBomRouteService:
 
         参数:
         - auth: AuthSchema - 认证信息
-        - data: list - BOM路线关联列表，每项包含 bom_id、route、project_id 和 first_id
+        - data: list - BOM路线关联列表，每项包含 bom_id、route、project_code 和 first_code
 
         返回:
         - dict - 结果
@@ -317,25 +317,25 @@ class ProduceBomRouteService:
             bom_ids = [item["bom_id"] for item in data]
             placeholders = ",".join([f":id{i}" for i in range(len(bom_ids))])
             params = {f"id{i}": bid for i, bid in enumerate(bom_ids)}
-            sql = text(f"SELECT bom_id, `route`, project_id, first_id FROM produce_bom_route WHERE bom_id IN ({placeholders})")
+            sql = text(f"SELECT bom_id, `route`, project_code, first_code FROM produce_bom_route WHERE bom_id IN ({placeholders})")
             result = await session.execute(sql, params)
-            existing = {row[0]: {"route": row[1], "project_id": row[2], "first_id": row[3]} for row in result.fetchall()}
+            existing = {row[0]: {"route": row[1], "project_code": row[2], "first_code": row[3]} for row in result.fetchall()}
             to_insert = []
             to_update = []
             for item in data:
                 bom_id = item["bom_id"]
                 route = item["route"]
-                project_id = item.get("project_id")
-                first_id = item.get("first_id")
+                project_code = item.get("project_code")
+                first_code = item.get("first_code")
                 if bom_id not in existing:
-                    to_insert.append({"bom_id": bom_id, "route": route, "project_id": project_id, "first_id": first_id})
+                    to_insert.append({"bom_id": bom_id, "route": route, "project_code": project_code, "first_code": first_code})
                 elif existing[bom_id]["route"] != route:
-                    to_update.append({"bom_id": bom_id, "route": route, "project_id": project_id, "first_id": first_id})
+                    to_update.append({"bom_id": bom_id, "route": route, "project_code": project_code, "first_code": first_code})
             if to_insert:
-                ins_sql = text("INSERT INTO produce_bom_route (bom_id, `route`, project_id, first_id) VALUES (:bom_id, :route, :project_id, :first_id)")
+                ins_sql = text("INSERT INTO produce_bom_route (bom_id, `route`, project_code, first_code) VALUES (:bom_id, :route, :project_code, :first_code)")
                 await session.execute(ins_sql, to_insert)
             if to_update:
-                upd_sql = text("UPDATE produce_bom_route SET `route` = :route, project_id = :project_id, first_id = :first_id WHERE bom_id = :bom_id")
+                upd_sql = text("UPDATE produce_bom_route SET `route` = :route, project_code = :project_code, first_code = :first_code WHERE bom_id = :bom_id")
                 await session.execute(upd_sql, to_update)
             if to_insert or to_update:
                 await session.commit()

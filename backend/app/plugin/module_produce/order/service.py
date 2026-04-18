@@ -244,8 +244,8 @@ class ProduceOrderService:
 
             payload = {
                 "no": order_no,
-                "project_id": item.project_id,
-                "first_id": item.first_id,
+                "project_code": item.project_code,
+                "first_code": item.first_code,
                 "bom_id": item.bom_id,
                 "craft_id": item.craft_id,
                 "man_hour": item.man_hour,

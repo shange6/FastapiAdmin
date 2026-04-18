@@ -132,8 +132,8 @@ class ProduceBomManhourService:
                 await crud.update_bommanhour_crud(
                     id=int(existed.id),  # type: ignore[arg-type]
                     data=ProduceBomManhourUpdateSchema(
-                        project_id=item.project_id,
-                        first_id=item.first_id,
+                        project_code=item.project_code,
+                        first_code=item.first_code,
                         bom_id=item.bom_id,
                         craft_id=item.craft_id,
                         manhour=item.manhour,
@@ -143,8 +143,8 @@ class ProduceBomManhourService:
             else:
                 await crud.create_bommanhour_crud(
                     data=ProduceBomManhourCreateSchema(
-                        project_id=item.project_id,
-                        first_id=item.first_id,
+                        project_code=item.project_code,
+                        first_code=item.first_code,
                         bom_id=item.bom_id,
                         craft_id=item.craft_id,
                         manhour=item.manhour,
@@ -159,8 +159,8 @@ class ProduceBomManhourService:
         """
         根据项目ID统计缺失工时数量
         逻辑：
-        1. 统计 produce_bom_manhour 中 project_id = 当前项目ID 的不同 BOM ID 记录数 (已配置工时的 BOM 数量)
-        2. 统计 produce_bom_route 中 project_id = 当前项目ID 的不同 BOM ID 记录数 (已配置路线的 BOM 数量)
+        1. 统计 produce_bom_manhour 中 project_code = 当前项目code 的不同 BOM ID 记录数 (已配置工时的 BOM 数量)
+        2. 统计 produce_bom_route 中 project_code = 当前项目code 的不同 BOM ID 记录数 (已配置路线的 BOM 数量)
         3. 返回 差额 = 路线总数 - 工时已配置数
         """
         from sqlalchemy import text
@@ -168,18 +168,26 @@ class ProduceBomManhourService:
         from app.core.logger import log
 
         async with async_db_session() as session:
-            # 1. 统计已配置工时的 BOM 数量 (按 bom_id 去重)
-            configured_sql = text("SELECT COUNT(DISTINCT bom_id) FROM produce_bom_manhour WHERE project_id = :project_id")
-            configured_result = await session.execute(configured_sql, {"project_id": project_id})
+            # 1. 获取项目 code
+            proj_sql = text("SELECT code FROM data_project WHERE id = :project_id")
+            proj_result = await session.execute(proj_sql, {"project_id": project_id})
+            project_row = proj_result.fetchone()
+            if not project_row:
+                return {"project_id": project_id, "missing_count": 0}
+            project_code = project_row[0]
+
+            # 2. 统计已配置工时的 BOM 数量 (按 bom_id 去重)
+            configured_sql = text("SELECT COUNT(DISTINCT bom_id) FROM produce_bom_manhour WHERE project_code = :project_code")
+            configured_result = await session.execute(configured_sql, {"project_code": project_code})
             configured_count = configured_result.scalar() or 0
 
-            # 2. 统计已配置路线的 BOM 数量 (作为工时配置的基数)
-            total_sql = text("SELECT COUNT(DISTINCT bom_id) FROM produce_bom_route WHERE project_id = :project_id")
-            total_result = await session.execute(total_sql, {"project_id": project_id})
+            # 3. 统计已配置路线的 BOM 数量 (作为工时配置的基数)
+            total_sql = text("SELECT COUNT(DISTINCT bom_id) FROM produce_bom_route WHERE project_code = :project_code")
+            total_result = await session.execute(total_sql, {"project_code": project_code})
             total_count = total_result.scalar() or 0
 
             missing_count = total_count - configured_count
-            log.info(f"[getMissingManhourProjectList] 项目ID: {project_id}, 路线总数: {total_count}, 工时已配: {configured_count}, 差额: {missing_count}")
+            log.info(f"[getMissingManhourProjectList] 项目ID: {project_id}, 项目code: {project_code}, 路线总数: {total_count}, 工时已配: {configured_count}, 差额: {missing_count}")
             return {"project_id": project_id, "missing_count": max(0, missing_count)}
 
     @classmethod
@@ -187,8 +195,8 @@ class ProduceBomManhourService:
         """
         根据 first_id（点击的 BOM 的 ID）统计缺失工时数量
         逻辑：
-        1. 统计 produce_bom_manhour 中 first_id = 当前ID 的不同 BOM ID 记录数
-        2. 统计 produce_bom_route 中 first_id = 当前ID 的不同 BOM ID 记录数
+        1. 统计 produce_bom_manhour 中 first_code = 当前BOM code 的不同 BOM ID 记录数
+        2. 统计 produce_bom_route 中 first_code = 当前BOM code 的不同 BOM ID 记录数
         3. 返回 差额 = 路线总数 - 工时已配置数
         """
         from sqlalchemy import text
@@ -196,18 +204,26 @@ class ProduceBomManhourService:
         from app.core.logger import log
 
         async with async_db_session() as session:
-            # 1. 统计已配置工时的 BOM 数量 (按 bom_id 去重)
-            configured_sql = text("SELECT COUNT(DISTINCT bom_id) FROM produce_bom_manhour WHERE first_id = :first_id")
-            configured_result = await session.execute(configured_sql, {"first_id": first_id})
+            # 1. 获取 BOM code
+            bom_sql = text("SELECT code FROM data_bom WHERE id = :first_id")
+            bom_result = await session.execute(bom_sql, {"first_id": first_id})
+            bom_row = bom_result.fetchone()
+            if not bom_row:
+                return {"first_id": first_id, "missing_count": 0}
+            bom_code = bom_row[0]
+
+            # 2. 统计已配置工时的 BOM 数量 (按 bom_id 去重)
+            configured_sql = text("SELECT COUNT(DISTINCT bom_id) FROM produce_bom_manhour WHERE first_code = :bom_code")
+            configured_result = await session.execute(configured_sql, {"bom_code": bom_code})
             configured_count = configured_result.scalar() or 0
 
-            # 2. 统计已配置路线的 BOM 数量 (作为工时配置的基数)
-            total_sql = text("SELECT COUNT(DISTINCT bom_id) FROM produce_bom_route WHERE first_id = :first_id")
-            total_result = await session.execute(total_sql, {"first_id": first_id})
+            # 3. 统计已配置路线的 BOM 数量 (作为工时配置的基数)
+            total_sql = text("SELECT COUNT(DISTINCT bom_id) FROM produce_bom_route WHERE first_code = :bom_code")
+            total_result = await session.execute(total_sql, {"bom_code": bom_code})
             total_count = total_result.scalar() or 0
 
             missing_count = total_count - configured_count
-            log.info(f"[getMissingManhourBomPreview] BOM ID: {first_id}, 路线总数: {total_count}, 工时已配: {configured_count}, 差额: {missing_count}")
+            log.info(f"[getMissingManhourBomPreview] BOM ID: {first_id}, BOM code: {bom_code}, 路线总数: {total_count}, 工时已配: {configured_count}, 差额: {missing_count}")
             return {"first_id": first_id, "missing_count": max(0, missing_count)}
 
     @classmethod
@@ -215,8 +231,8 @@ class ProduceBomManhourService:
         """
         根据项目ID统计缺失工单数量
         逻辑：
-        1. 统计 produce_bom_manhour 中 project_id = 当前项目ID 的记录总数
-        2. 统计 produce_order 中 project_id = 当前项目ID 的记录总数
+        1. 统计 produce_bom_manhour 中 project_code = 当前项目code 的记录总数
+        2. 统计 produce_order 中 project_code = 当前项目code 的记录总数
         3. 返回 差额 = 工时记录数 - 工单记录数
         """
         from sqlalchemy import text
@@ -224,18 +240,26 @@ class ProduceBomManhourService:
         from app.core.logger import log
 
         async with async_db_session() as session:
-            # 1. 统计工时记录总数
-            manhour_sql = text("SELECT COUNT(*) FROM produce_bom_manhour WHERE project_id = :project_id")
-            manhour_result = await session.execute(manhour_sql, {"project_id": project_id})
+            # 1. 获取项目 code
+            proj_sql = text("SELECT code FROM data_project WHERE id = :project_id")
+            proj_result = await session.execute(proj_sql, {"project_id": project_id})
+            project_row = proj_result.fetchone()
+            if not project_row:
+                return {"project_id": project_id, "missing_count": 0}
+            project_code = project_row[0]
+
+            # 2. 统计工时记录总数
+            manhour_sql = text("SELECT COUNT(*) FROM produce_bom_manhour WHERE project_code = :project_code")
+            manhour_result = await session.execute(manhour_sql, {"project_code": project_code})
             manhour_count = manhour_result.scalar() or 0
 
-            # 2. 统计工单记录总数
-            order_sql = text("SELECT COUNT(*) FROM produce_order WHERE project_id = :project_id")
-            order_result = await session.execute(order_sql, {"project_id": project_id})
+            # 3. 统计工单记录总数
+            order_sql = text("SELECT COUNT(*) FROM produce_order WHERE project_code = :project_code")
+            order_result = await session.execute(order_sql, {"project_code": project_code})
             order_count = order_result.scalar() or 0
 
             missing_count = manhour_count - order_count
-            log.info(f"[getMissingOrderProjectList] 项目ID: {project_id}, 工时总数: {manhour_count}, 工单总数: {order_count}, 差额: {missing_count}")
+            log.info(f"[getMissingOrderProjectList] 项目ID: {project_id}, 项目code: {project_code}, 工时总数: {manhour_count}, 工单总数: {order_count}, 差额: {missing_count}")
             return {"project_id": project_id, "missing_count": max(0, missing_count)}
 
     @classmethod
@@ -243,8 +267,8 @@ class ProduceBomManhourService:
         """
         根据 first_id（点击的 BOM 的 ID）统计缺失工单数量
         逻辑：
-        1. 统计 produce_bom_manhour 中 first_id = 当前ID 的记录总数
-        2. 统计 produce_order 中 first_id = 当前ID 的记录总数
+        1. 统计 produce_bom_manhour 中 first_code = 当前BOM code 的记录总数
+        2. 统计 produce_order 中 first_code = 当前BOM code 的记录总数
         3. 返回 差额 = 工时记录数 - 工单记录数
         """
         from sqlalchemy import text
@@ -252,18 +276,26 @@ class ProduceBomManhourService:
         from app.core.logger import log
 
         async with async_db_session() as session:
-            # 1. 统计工时记录总数
-            manhour_sql = text("SELECT COUNT(*) FROM produce_bom_manhour WHERE first_id = :first_id")
-            manhour_result = await session.execute(manhour_sql, {"first_id": first_id})
+            # 1. 获取 BOM code
+            bom_sql = text("SELECT code FROM data_bom WHERE id = :first_id")
+            bom_result = await session.execute(bom_sql, {"first_id": first_id})
+            bom_row = bom_result.fetchone()
+            if not bom_row:
+                return {"first_id": first_id, "missing_count": 0}
+            bom_code = bom_row[0]
+
+            # 2. 统计工时记录总数
+            manhour_sql = text("SELECT COUNT(*) FROM produce_bom_manhour WHERE first_code = :bom_code")
+            manhour_result = await session.execute(manhour_sql, {"bom_code": bom_code})
             manhour_count = manhour_result.scalar() or 0
 
-            # 2. 统计工单记录总数
-            order_sql = text("SELECT COUNT(*) FROM produce_order WHERE first_id = :first_id")
-            order_result = await session.execute(order_sql, {"first_id": first_id})
+            # 3. 统计工单记录总数
+            order_sql = text("SELECT COUNT(*) FROM produce_order WHERE first_code = :bom_code")
+            order_result = await session.execute(order_sql, {"bom_code": bom_code})
             order_count = order_result.scalar() or 0
 
             missing_count = manhour_count - order_count
-            log.info(f"[getMissingOrderBomPreview] BOM ID: {first_id}, 工时总数: {manhour_count}, 工单总数: {order_count}, 差额: {missing_count}")
+            log.info(f"[getMissingOrderBomPreview] BOM ID: {first_id}, BOM code: {bom_code}, 工时总数: {manhour_count}, 工单总数: {order_count}, 差额: {missing_count}")
             return {"first_id": first_id, "missing_count": max(0, missing_count)}
 
     @classmethod
