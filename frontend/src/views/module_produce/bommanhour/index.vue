@@ -26,7 +26,7 @@
         ref="tableRef"
         v-loading="loading"
         :data="pageTableData"
-        row-key="_tree_id"
+        row-key="id"
         :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
         highlight-current-row
         class="data-table__content"

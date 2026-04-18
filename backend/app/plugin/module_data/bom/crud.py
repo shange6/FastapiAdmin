@@ -53,6 +53,7 @@ class DataBomCRUD(CRUDBase[DataBomModel, DataBomCreateSchema, DataBomUpdateSchem
                 parent_code = search.get("parent_code")
                 code = search.get("code")
                 first_code = search.get("first_code")
+                include_procure = search.get("include_procure", False)
                 
                 # 处理可能存在的元组包装 (例如 ('eq', value))
                 if isinstance(parent_code, (list, tuple)): parent_code = parent_code[1]
@@ -63,12 +64,13 @@ class DataBomCRUD(CRUDBase[DataBomModel, DataBomCreateSchema, DataBomUpdateSchem
                     return await self.list_bom_recursive_crud(
                         code=code, 
                         parent_code=parent_code, 
-                        first_code=first_code
+                        first_code=first_code,
+                        include_procure=include_procure
                     )
             
         return await self.list(search=search, order_by=order_by, preload=preload)
 
-    async def list_bom_recursive_crud(self, code: str | None = None, first_code: str | None = None, parent_code: str | None = None) -> Sequence[DataBomModel]:
+    async def list_bom_recursive_crud(self, code: str | None = None, first_code: str | None = None, parent_code: str | None = None, include_procure: bool = False) -> Sequence[DataBomModel]:
         """
         递归获取所有后代BOM
         
@@ -76,6 +78,7 @@ class DataBomCRUD(CRUDBase[DataBomModel, DataBomCreateSchema, DataBomUpdateSchem
         - code: str | None - 起始BOM代号
         - first_code: str | None - 根BOM代号（可选，用于限定范围）
         - parent_code: str | None - 父级代号（可选，用于从父级开始递归）
+        - include_procure: bool - 是否包含外购件，默认为False
         """
         from sqlalchemy import text
         
@@ -96,16 +99,20 @@ class DataBomCRUD(CRUDBase[DataBomModel, DataBomCreateSchema, DataBomUpdateSchem
             where_clause += " AND first_code = :first_code"
             params["first_code"] = first_code
 
+        # 过滤条件逻辑
+        filter_clause = "" if include_procure else " WHERE procure = 0"
+
         # 使用递归CTE查询所有后代
+        # 增加 b.first_code = d.first_code 约束，防止跨项目/跨根节点抓取重复数据
         sql_str = f"""
             WITH RECURSIVE descendants AS (
                 SELECT * FROM data_bom WHERE {where_clause}
                 UNION
                 SELECT b.* FROM data_bom b
-                JOIN descendants d ON b.parent_code = d.code
+                JOIN descendants d ON b.parent_code = d.code AND b.first_code = d.first_code
                 {"WHERE b.first_code = :first_code" if first_code else ""}
             )
-            SELECT DISTINCT * FROM descendants WHERE procure = 0
+            SELECT DISTINCT * FROM descendants{filter_clause}
         """
             
         sql = text(sql_str)

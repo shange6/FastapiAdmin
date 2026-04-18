@@ -78,7 +78,7 @@
         ref="tableRef"
         v-loading="loading"
         :data="pageTableData"
-        row-key="_tree_id"
+        row-key="id"
         highlight-current-row
         class="data-table__content"
         border
@@ -212,7 +212,7 @@ import {
   Checked,
 } from "@element-plus/icons-vue";
 import FileAPI from "@/api/module_data/file";
-import { convertToTree, getMatchedBomsWithParents } from "../utils";
+import { convertToTree, getMatchedBomsWithParents, convertToTreeForFile } from "../utils";
 import BomSearch from "../BomSearch.vue";
 
 const tableRef = ref();
@@ -303,7 +303,7 @@ async function handleUploadConfirm() {
       const rawBoms = resultData.boms || [];
       allParsedBoms.value = rawBoms; // 保存扁平原始数据，用于本地搜索
 
-      const { tree, errors } = convertToTree(
+      const { tree, errors } = convertToTreeForFile(
         rawBoms,
         resultData.project_code,
         resultData.first_code
@@ -462,7 +462,7 @@ async function loadingData() {
     );
 
     // 转换为树形结构
-    const { tree } = convertToTree(matchedList, tableSourceData.value.project_code);
+    const { tree } = convertToTreeForFile(matchedList, tableSourceData.value.project_code);
     pageTableData.value = tree;
 
     // 搜索时自动展开

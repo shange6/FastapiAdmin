@@ -70,7 +70,7 @@ async def get_bom_list_controller(
     auth: AuthSchema = Depends(AuthPermission(["module_data:bom:query"]))
 ) -> JSONResponse:
     """
-    查询BOM清单列表接口（不分页）
+    查询BOM清单列表接口
     
     参数:
     - search: DataBomQueryParam - 查询参数
@@ -79,12 +79,32 @@ async def get_bom_list_controller(
     返回:
     - JSONResponse - 包含BOM清单列表的JSON响应
     """
-    result_list = await DataBomService.list_bom_service(
-        auth=auth,
-        search=search
-    )
+    result_list = await DataBomService.list_bom_service(auth=auth, search=search)
     log.info("查询BOM清单列表成功")
     return SuccessResponse(data=result_list, msg="查询BOM清单列表成功")
+
+@DataBomRouter.get(
+    "/list/all-with-procure",
+    summary="查询BOM清单全量列表（包含外购件）",
+    description="查询包含外购件在内的全量BOM清单列表"
+)
+async def get_bom_all_with_procure_list_controller(
+    search: DataBomQueryParam = Depends(),
+    auth: AuthSchema = Depends(AuthPermission(["module_data:bom:query"]))
+) -> JSONResponse:
+    """
+    查询BOM清单全量列表接口
+    
+    参数:
+    - search: DataBomQueryParam - 查询参数
+    - auth: AuthSchema - 认证信息
+    
+    返回:
+    - JSONResponse - 包含全量BOM清单列表的JSON响应
+    """
+    result_list = await DataBomService.list_bom_all_with_procure_service(auth=auth, search=search)
+    log.info("查询BOM清单全量列表成功")
+    return SuccessResponse(data=result_list, msg="查询BOM清单全量列表成功")
 
 @DataBomRouter.get(
     "/list/project/{code}",
@@ -133,6 +153,31 @@ async def get_bom_recursive_list_controller(
     result_list = await DataBomService.list_bom_recursive_service(auth=auth, code=code, first_code=first_code)
     log.info(f"按代号递归查询BOM清单列表成功: code={code}, first_code={first_code}")
     return SuccessResponse(data=result_list, msg="递归查询BOM清单列表成功")
+
+@DataBomRouter.get(
+    "/list/recursive/all/{code}",
+    summary="按代号递归查询所有后代BOM列表（包含外购件）",
+    description="按代号递归查询所有子层级BOM列表（包含自身及外购件）"
+)
+async def get_bom_recursive_all_list_controller(
+    code: str = Path(..., description="BOM代号"),
+    first_code: str | None = Query(None, description="根BOM代号"),
+    auth: AuthSchema = Depends(AuthPermission(["module_data:bom:query"]))
+) -> JSONResponse:
+    """
+    按代号递归查询所有后代BOM列表接口（全量）
+    
+    参数:
+    - code: str - BOM代号
+    - first_code: str | None - 根BOM代号（可选）
+    - auth: AuthSchema - 认证信息
+    
+    返回:
+    - JSONResponse - 包含递归BOM清单列表的JSON响应
+    """
+    result_list = await DataBomService.list_bom_recursive_all_service(auth=auth, code=code, first_code=first_code)
+    log.info(f"按代号递归查询全量BOM清单列表成功: code={code}, first_code={first_code}")
+    return SuccessResponse(data=result_list, msg="递归查询全量BOM清单列表成功")
 
 @DataBomRouter.get(
     "/list/no-procure",

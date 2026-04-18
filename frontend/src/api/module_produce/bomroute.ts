@@ -28,6 +28,38 @@ const ProduceBomRouteAPI = {
     });
   },
 
+  // 按项目统计未配置路线的BOM数量
+  summaryMissingRoutesByProject(projectCode: string) {
+    return request<ApiResponse<Record<string, number>>>({
+      url: `${API_PATH}/summary/missing/${projectCode}`,
+      method: "get",
+    });
+  },
+
+  // 统计所有项目缺失路线数量
+  summaryAllProjectsMissingRoutes() {
+    return request<ApiResponse<Record<string, number>>>({
+      url: `${API_PATH}/summary/missing/all`,
+      method: "get",
+    });
+  },
+
+  // 根据项目ID统计缺失路线数量（返回差额）
+  summaryMissingRoutesCountByProjectId(projectId: number) {
+    return request<ApiResponse<{ project_id: number; missing_count: number }>>({
+      url: `${API_PATH}/summary/missing/count/by-project-id/${projectId}`,
+      method: "get",
+    });
+  },
+
+  // 根据first_id统计缺失路线数量（返回差额）
+  summaryMissingRoutesCountByFirstId(firstId: number) {
+    return request<ApiResponse<{ first_id: number; missing_count: number }>>({
+      url: `${API_PATH}/summary/missing/count/by-first-id/${firstId}`,
+      method: "get",
+    });
+  },
+
   // 新增
   createProduceBomRoute(body: ProduceBomRouteForm) {
     return request<ApiResponse>({
@@ -47,7 +79,7 @@ const ProduceBomRouteAPI = {
   },
 
   // 批量插入或更新（合并为单条SQL执行）
-  upsertBatchProduceBomRoute(data: { bom_id: number; route: number }[]) {
+  upsertBatchProduceBomRoute(data: { bom_id: number; route: number; project_id?: number; first_id?: number }[]) {
     return request<ApiResponse>({
       url: `${API_PATH}/upsert/batch`,
       method: "post",

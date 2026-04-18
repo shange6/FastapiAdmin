@@ -219,6 +219,7 @@ class Dxf2List(object):
                     self.file_count += 1
                 case _:
                     self.log_add(f"意外的属性长度 {len(attr_texts)} -> {attr_texts}")
+                    # log.error(f"意外的属性长度 {len(attr_texts)} -> {attr_texts}")
         if self.boms:            
             self.boms.sort(key=lambda x: (x["x"], -x["y"])) # x轴增序，y轴降序
 
@@ -226,7 +227,7 @@ class Dxf2List(object):
         """解析 MTEXT 中的项目元数据并校验一致性"""
         mtexts = msp.query("MTEXT")
         if self.file_count != len(mtexts):
-            self.log_add(f"文件数({self.file_count})与页面数({len(mtexts)})不符")
+            self.log_add(f"文件数[{self.file_count}]与页面数[{len(mtexts)}]不符")
         for mtext in mtexts:
             chunks = self._clean_text(mtext.dxf.text).replace(":", "").replace("：", "").split()
             for chunk in chunks:    # 按空格分割后的字符串

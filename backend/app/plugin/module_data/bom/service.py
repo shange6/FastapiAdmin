@@ -84,6 +84,25 @@ class DataBomService:
         return [cls._to_dict(obj) for obj in obj_list]
 
     @classmethod
+    async def list_bom_all_with_procure_service(cls, auth: AuthSchema, search: DataBomQueryParam | None = None, order_by: list[dict] | None = None) -> list[dict]:
+        """
+        列表查询（包含外购件）
+        
+        参数:
+        - auth: AuthSchema - 认证信息
+        - search: DataBomQueryParam | None - 查询参数
+        - order_by: list[dict] | None - 排序参数
+        
+        返回:
+        - list[dict] - 数据列表
+        """
+        search_dict = search.__dict__ if search else {}
+        # 设置包含外购件标志
+        search_dict["include_procure"] = True
+        obj_list = await DataBomCRUD(auth).list_bom_crud(search=search_dict, order_by=order_by)
+        return [cls._to_dict(obj) for obj in obj_list]
+
+    @classmethod
     async def list_bom_no_procure_service(cls, auth: AuthSchema) -> list[dict]:
         """
         查询不需要采购的BOM清单列表
@@ -129,6 +148,22 @@ class DataBomService:
         - list[dict] - 递归BOM数据列表
         """
         obj_list = await DataBomCRUD(auth).list_bom_recursive_crud(code=code, first_code=first_code)
+        return [cls._to_dict(obj) for obj in obj_list]
+
+    @classmethod
+    async def list_bom_recursive_all_service(cls, auth: AuthSchema, code: str, first_code: str | None = None) -> list[dict]:
+        """
+        按代号递归查询所有后代BOM列表（包含外购件）
+
+        参数:
+        - auth: AuthSchema - 认证信息
+        - code: str - BOM代号
+        - first_code: str | None - 根BOM代号
+
+        返回:
+        - list[dict] - 递归BOM全量数据列表
+        """
+        obj_list = await DataBomCRUD(auth).list_bom_recursive_crud(code=code, first_code=first_code, include_procure=True)
         return [cls._to_dict(obj) for obj in obj_list]
 
     @classmethod

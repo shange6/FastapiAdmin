@@ -25,6 +25,7 @@ class ProjectImportSchema(BaseModel):
 
 class BomImportSchema(BaseModel):
     """零件信息导入模型"""
+    project_code: str = Field(..., description="项目代号")
     parent_code: str = Field(..., description="父代号")
     first_code: str = Field(..., description="根代号")
     code: Optional[str] = Field(None, description="代号")

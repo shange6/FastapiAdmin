@@ -19,7 +19,7 @@
         ref="tableRef"
         v-loading="loading"
         :data="pageTableData"
-        row-key="_tree_id"
+        row-key="id"
         highlight-current-row
         class="data-table__content"
         border
@@ -82,6 +82,15 @@
           label="备注"
           prop="remark"
           min-width="120"
+          header-align="center"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          label="id"
+          prop="id"
+          min-width="60"
+          fixed="right"
+          align="center"
           header-align="center"
           show-overflow-tooltip
         />
@@ -222,10 +231,10 @@ async function handleSelectProject(project: DataProjectTable) {
   currentProjectCode.value = project.code;
   projectDrawerVisible.value = false;
 
-  // 获取该项目下的所有后代BOM (按 parent_code 递归获取)
+  // 获取该项目下的所有后代BOM (按 parent_code 递归获取，包含外购件)
   loading.value = true;
   try {
-    const response = await DataBomAPI.listDataBom({
+    const response = await DataBomAPI.listDataBomAllWithProcure({
       parent_code: project.code,
       recursive: true,
     });
@@ -243,7 +252,7 @@ const pageTableData = ref<DataBomTable[]>([]);
 const allBoms = ref<DataBomTable[]>([]); // 存储全量原始数据，用于树形搜索
 
 // 详情表单
-const detailFormData = ref<DataBomTable>({});
+const detailFormData = ref<DataBomTable>({} as DataBomTable);
 
 // 导入/导出配置
 const curdContentConfig = {

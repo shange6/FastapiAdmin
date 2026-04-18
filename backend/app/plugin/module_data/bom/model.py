@@ -15,6 +15,7 @@ class DataBomModel(ModelMixin, UserMixin):
     __table_args__: dict[str, str] = {'comment': 'BOM清单'}
     __loader_options__: list[str] = ["created_by", "updated_by"]
 
+    project_code: Mapped[str] = mapped_column(String(64), nullable=False, comment='项目代号')
     first_code: Mapped[str] = mapped_column(String(64), nullable=False, comment='根代号')
     parent_code: Mapped[str] = mapped_column(String(64), nullable=False, comment='父代号')
     code: Mapped[str | None] = mapped_column(String(64), nullable=True, comment='代号')

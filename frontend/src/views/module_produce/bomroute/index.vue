@@ -1,7 +1,5 @@
-<!-- BOM路线关联 -->
 <template>
   <div class="app-container">
-    <!-- 内容区域 -->
     <el-card class="data-table">
       <template #header>
         <div class="flex-x-between">
@@ -29,13 +27,11 @@
         </div>
       </template>
 
-
-      <!-- 表格区域：系统配置列表 -->
       <el-table
         ref="tableRef"
         v-loading="loading"
         :data="pageTableData"
-        row-key="_tree_id"
+        row-key="id"
         :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
         highlight-current-row
         class="data-table__content"
@@ -46,82 +42,16 @@
         <template #empty>
           <el-empty :image-size="80" description="暂无数据" />
         </template>
-        <el-table-column
-          type="selection"
-          min-width="40"
-          align="center"
-        />
-        <el-table-column
-          fixed="left"
-          label="代号"
-          prop="code"
-          min-width="260"
-          header-align="center"
-          show-overflow-tooltip
-        />
-        <el-table-column
-          label="名称"
-          prop="spec"
-          min-width="160"
-          header-align="center"
-          show-overflow-tooltip
-        />
-        <el-table-column
-          label="数量"
-          prop="count"
-          min-width="60"
-          align="center"
-          header-align="center"
-          show-overflow-tooltip
-        />
-        <el-table-column
-          label="材质"
-          prop="material"
-          min-width="100"
-          header-align="center"
-          show-overflow-tooltip
-        />
-        <el-table-column
-          label="单重"
-          prop="unit_mass"
-          min-width="70"
-          align="center"
-          header-align="center"
-          show-overflow-tooltip
-        />
-        <el-table-column
-          label="总重"
-          prop="total_mass"
-          min-width="70"
-          align="center"
-          header-align="center"
-          show-overflow-tooltip
-        />
-        <el-table-column
-          label="备注"
-          prop="remark"
-          min-width="100"
-          header-align="center"
-          show-overflow-tooltip
-        />
-        <el-table-column
-          fixed="right"
-          label="ID"
-          prop="id"
-          min-width="70"
-          align="center"
-          header-align="center"
-          show-overflow-tooltip
-        />
-        <el-table-column
-          label="工艺路线"
-          prop="craft_route"
-          min-width="370"
-          align="center"
-          header-align="center"
-          show-overflow-tooltip
-          fixed="right"
-        >
+        <el-table-column type="selection" min-width="40" align="center" />
+        <el-table-column fixed="left" label="代号" prop="code" min-width="260" header-align="center" show-overflow-tooltip />
+        <el-table-column fixed="left" label="名称" prop="spec" min-width="160" header-align="center" show-overflow-tooltip />
+        <el-table-column label="数量" prop="count" min-width="60" align="center" header-align="center" show-overflow-tooltip />
+        <el-table-column label="材质" prop="material" min-width="100" header-align="center" show-overflow-tooltip />
+        <el-table-column label="单重" prop="unit_mass" min-width="70" align="center" header-align="center" show-overflow-tooltip />
+        <el-table-column label="总重" prop="total_mass" min-width="70" align="center" header-align="center" show-overflow-tooltip />
+        <el-table-column label="备注" prop="remark" min-width="100" header-align="center" show-overflow-tooltip />
+        <el-table-column fixed="right" label="ID" prop="id" min-width="70" align="center" header-align="center" show-overflow-tooltip />
+        <el-table-column label="工艺路线" prop="craft_route" min-width="370" align="center" header-align="center" show-overflow-tooltip fixed="right">
           <template #default="scope">
             <el-select
               v-model="scope.row.craft_route"
@@ -144,13 +74,30 @@
       </el-table>
     </el-card>
 
-    <!-- 项目选择抽屉 -->
-    <ProjectSelectDrawer 
+   <ProjectSelectDrawer 
       v-model="projectDrawerVisible" 
       :show-bom-table="true"
       :show-order-column="false"
+      :show_dai="1"
       @select="handleSelectProject" 
-    />
+      logicType="missroute"
+    >
+      <template #dai-project>
+        <el-table-column prop="dai_project" label="待" width="60" align="center">
+          <template #default="{ row }">
+            <b :style="{ color: row.dai_project > 0 ? 'red' : 'green' }">{{ row.dai_project }}</b>
+          </template>
+        </el-table-column>
+      </template>
+
+      <template #dai-bom>
+        <el-table-column prop="dai_bom" label="待" width="60" align="center">
+          <template #default="{ row }">
+            <b :style="{ color: row.dai_bom > 0 ? 'red' : 'green' }">{{ row.dai_bom }}</b>
+          </template>
+        </el-table-column>
+      </template>
+    </ProjectSelectDrawer>
   </div>
 </template>
 
@@ -175,46 +122,37 @@ const selectIds = ref<number[]>([]);
 const selectionRows = ref<any[]>([]);
 const loading = ref(false);
 
-// 扩展 DataBomTable 类型，包含工艺路线字段
+// 1. 在本地扩展接口，确保 ID 明确存在（如果业务保证 ID 一定有）
 interface DataBomWithRoute extends DataBomTable {
+  id: number; // 强制覆盖 ID 为必填，解决 Map 报错
   craft_route?: number;
 }
 
-// 分页表单
 const pageTableData = ref<DataBomWithRoute[]>([]);
-
-// 工艺路线下拉选项
 const craftRouteOptions = ref<CraftRouteView[]>([]);
-
-// 项目选择相关
 const projectDrawerVisible = ref(false);
 
-// 分页查询参数
-type QueryFormData = ProduceBomRoutePageQuery & { 
-  parent_code?: string;
-};
-const queryFormData = reactive<QueryFormData>({
+const allBoms = ref<DataBomWithRoute[]>([]);
+const allBomRoutes = ref<any[]>([]);
+const selectedRootBomCode = ref<string | undefined>(undefined);
+const selectedProjectId = ref<number | undefined>(undefined);
+const selectedFirstBomId = ref<number | undefined>(undefined);
+
+const queryFormData = reactive<ProduceBomRoutePageQuery & { parent_code?: string }>({
   page_no: 1,
   page_size: 10,
 });
 
-// 加载表格数据
-// 全量缓存
-const allBoms = ref<DataBomWithRoute[]>([]);
-const allBomRoutes = ref<any[]>([]);
-const selectedRootBomCode = ref<string | undefined>(undefined);
-
 function syncCraftRouteToFullList() {
   if (!allBoms.value || allBoms.value.length === 0) return;
-  
-  // 建立 route 映射 Map，用于快速查找
   const routeMap = new Map(allBomRoutes.value.map(r => [r.bom_id, r.route]));
 
-  // 直接在扁平列表上同步数据，这样后续生成的树也会带上这些值
   allBoms.value.forEach((node) => {
-    const route = routeMap.get(node.id);
-    if (route !== undefined) {
-      node.craft_route = route;
+    if (node.id) {
+      const route = routeMap.get(node.id);
+      if (route !== undefined) {
+        node.craft_route = route;
+      }
     }
   });
 }
@@ -230,85 +168,61 @@ async function loadingData() {
     pageTableData.value = [];
     return;
   }
-
-  ElMessage.info("正在更新数据... ...请稍后");
+  ElMessage.info("正在更新数据... ...");
   loading.value = true;
   try {
     await ensureAllBomRoutesLoaded();
-    
-    // 1. 同步工艺路线到扁平列表 (源数据同步)
     syncCraftRouteToFullList();
-
-    // 2. 直接转换为树形结构，不再进行过滤
     const { tree } = convertToTree(
       allBoms.value, 
       selectedRootBomCode.value ? undefined : queryFormData.parent_code, 
       selectedRootBomCode.value
     );
-
-    // 3. 渲染页面
-    pageTableData.value = tree;
-  } catch (error: any) {
+    pageTableData.value = tree as DataBomWithRoute[];
+  } catch (error) {
     console.error(error);
   } finally {
     loading.value = false;
   }
 }
 
-// 查询（重置页码后获取数据）
-async function handleQuery() {
-  queryFormData.page_no = 1;
-  loadingData();
-}
-
-// 展开/收起所有行
 function toggleAllExpansion(expanded: boolean) {
   const toggle = (nodes: any[]) => {
     nodes.forEach((node: any) => {
       tableRef.value?.toggleRowExpansion(node, expanded);
-      if (node.children) {
-        toggle(node.children);
-      }
+      if (node.children) toggle(node.children);
     });
   };
   toggle(pageTableData.value);
 }
 
-// 打开项目选择抽屉
-async function handleOpenProjectDrawer() {
+function handleOpenProjectDrawer() {
   projectDrawerVisible.value = true;
 }
 
-// 选择项目
 function handleSelectProject(project: any) {
-  // 仅处理从预览面板选中的逻辑（带有递归数据）
   if (project.recursive_data && project.root_bom_code) {
     queryFormData.parent_code = project.code;
     projectDrawerVisible.value = false;
     selectedRootBomCode.value = project.root_bom_code;
-    // 直接注入数据，不再有全量拉取逻辑
-    allBoms.value = project.recursive_data;
-    handleQuery();
+    selectedProjectId.value = project.id;
+    selectedFirstBomId.value = project.first_id;
+    // 注入数据时进行断言，确保 ID 安全
+    allBoms.value = project.recursive_data as DataBomWithRoute[];
+    loadingData();
   }
 }
 
-// 加载工艺路线下拉选项
 async function loadCraftRouteOptions() {
-  try {
-    const response = await ProduceCraftRouteAPI.getCraftRouteViewList({});
-    craftRouteOptions.value = response.data.data || [];
-  } catch (error: any) {
-    console.error(error);
-  }
+  const response = await ProduceCraftRouteAPI.getCraftRouteViewList({});
+  craftRouteOptions.value = response.data.data || [];
 }
 
-// 工艺路线明细缓存
 const routeCraftsCache = new Map<number, number[]>();
 
 async function getRouteCrafts(routeCode: number): Promise<number[]> {
   if (!routeCode) return [];
   if (routeCraftsCache.has(routeCode)) return routeCraftsCache.get(routeCode)!;
-
   try {
     const res = await ProduceCraftRouteAPI.detailProduceCraftRoute(routeCode);
     const items = res.data?.data?.items || [];
@@ -316,70 +230,35 @@ async function getRouteCrafts(routeCode: number): Promise<number[]> {
     routeCraftsCache.set(routeCode, craftIds);
     return craftIds;
   } catch (error) {
-    console.error(`Failed to fetch crafts for route ${routeCode}:`, error);
     return [];
   }
 }
 
-function isSubset(subset: number[], superset: number[]): boolean {
-  return subset.every((id) => superset.includes(id));
-}
-
-// 递归遍历树并执行回调
 function traverseTree(nodes: any[], callback: (node: any) => void) {
-  if (!nodes || nodes.length === 0) return;
   nodes.forEach((node) => {
     callback(node);
-    if (node.children && node.children.length > 0) {
-      traverseTree(node.children, callback);
-    }
+    if (node.children) traverseTree(node.children, callback);
   });
 }
 
-// 获取树节点 ID 映射 Map
-function getTreeNodesMap(nodes: any[]) {
-  const map = new Map<number, any>();
-  traverseTree(nodes, (node) => {
-    if (node.id) map.set(node.id, node);
-  });
-  return map;
-}
-
-// 工艺路线变更处理（仅更新表格数据，不保存数据库）
-function handleCraftRouteChange(row: any) {
+function handleCraftRouteChange(row: DataBomWithRoute) {
   const craftRoute = row.craft_route;
-  
-  // 1. 建立 ID 映射 Map，用于全量数据和树形数据的快速访问
   const bomMap = new Map(allBoms.value.map(item => [item.id, item]));
-  const treeMap = getTreeNodesMap(pageTableData.value);
-
-  // 2. 更新当前行及其在全量列表中的映射
+  
   const targetFull = bomMap.get(row.id);
   if (targetFull) targetFull.craft_route = craftRoute;
-  
-  const targetTree = treeMap.get(row.id);
-  if (targetTree) targetTree.craft_route = craftRoute;
 
-  // 3. 批量更新勾选项
   if (!row.id || !selectIds.value.includes(row.id)) return;
 
   selectionRows.value.forEach((selectedRow) => {
     if (!selectedRow?.id || selectedRow.id === row.id) return;
-    
-    // 更新全量列表映射
     const bomInFullList = bomMap.get(selectedRow.id);
     if (bomInFullList) bomInFullList.craft_route = craftRoute;
-    
-    // 更新树形数据映射
-    const bomInTree = treeMap.get(selectedRow.id);
-    if (bomInTree) bomInTree.craft_route = craftRoute;
-    
-    // 更新勾选行引用（Vue 响应式）
     selectedRow.craft_route = craftRoute;
   });
 }
 
-// 批量保存工艺路线到数据库
+// 核心修复：批量保存逻辑
 async function handleBatchSaveCraftRoute() {
   try {
     if (!selectedRootBomCode.value) {
@@ -387,109 +266,101 @@ async function handleBatchSaveCraftRoute() {
       return;
     }
 
-    const targetNodes = allBoms.value;
+    // 过滤无效数据，确保所有参与校验的 node 都有明确的 id 和 code
+    const targetNodes = allBoms.value.filter(n => n.id && n.code);
     if (targetNodes.length === 0) {
-      ElMessage.warning("暂无数据可保存");
+      ElMessage.warning("暂无有效数据可保存");
       return;
     }
 
     loading.value = true;
 
-    // 1. 建立索引 Map 以加速访问
-    const bomMapByCode = new Map<string, any>();
-    const childrenMap = new Map<string, any[]>();
-    targetNodes.forEach(node => {
-      if (node.code) {
-        bomMapByCode.set(node.code, node);
-        if (node.parent_code) {
-          if (!childrenMap.has(node.parent_code)) childrenMap.set(node.parent_code, []);
-          childrenMap.get(node.parent_code)!.push(node);
-        }
-      }
-    });
+    // 1. 建立索引 Map (使用类型断言，因为上面已经 filter 过了)
+    const bomMapByCode = new Map<string, DataBomWithRoute>(
+      targetNodes.map(node => [node.code as string, node])
+    );
 
-    // 2. 收集所有涉及到的工艺路线代码
-    const relevantRoutes = new Set<number>();
-    targetNodes.forEach((node: any) => {
-      if (node.craft_route) relevantRoutes.add(Number(node.craft_route));
-    });
+    // 2. 预取工艺路线明细
+    const routeDetailsMap = new Map<number, number[]>();
+    const relevantRouteIds = [...new Set(targetNodes.map(n => Number(n.craft_route)).filter(id => id > 0))];
+    
+    await Promise.all(relevantRouteIds.map(async (routeId) => {
+      const crafts = await getRouteCrafts(routeId);
+      routeDetailsMap.set(routeId, crafts);
+    }));
 
-    // 3. 预取所有涉及到的工艺路线明细
-    await Promise.all(Array.from(relevantRoutes).map((r) => getRouteCrafts(r)));
-
-    // 4. 执行校验逻辑：仅校验父子层级关系，减少冗余计算
+    // 3. 执行校验逻辑
     for (const node of targetNodes) {
-      const nodeRoute = Number(node.craft_route || 0);
-      const nodeCrafts = await getRouteCrafts(nodeRoute);
-
-      // 规则：子节点工艺路线必须是父节点工艺路线的子集
-      if (node.parent_code) {
+      const nodeRouteId = Number(node.craft_route || 0);
+      
+      if (nodeRouteId > 0 && node.parent_code) {
         const parent = bomMapByCode.get(node.parent_code);
         if (parent) {
-          const parentRoute = Number(parent.craft_route || 0);
-          if (parentRoute) {
-            const parentCrafts = await getRouteCrafts(parentRoute);
-            if (!isSubset(nodeCrafts, parentCrafts)) {
-              ElMessage.error(
-                `校验失败：零件 [${node.code}] 的工艺路线未包含在父零件 [${parent.code}] 中`
-              );
-              loading.value = false;
-              return;
-            }
-          } else if (nodeRoute > 0) {
-            // 子节点有工艺但父节点没设（且父节点在本次处理范围内）
-            ElMessage.error(`校验失败：父零件 [${parent.code}] 未设置工艺路线，无法包含子零件 [${node.code}]`);
-            loading.value = false;
-            return;
+          const parentRouteId = Number(parent.craft_route || 0);
+          
+          if (parentRouteId === 0) {
+            throw new Error(`校验失败：父节点 [${parent.id}] 无工艺路线，子节点 [${node.id}]有`);
+          }
+
+          const nodeCrafts = routeDetailsMap.get(nodeRouteId) || [];
+          const parentCrafts = routeDetailsMap.get(parentRouteId) || [];
+          const parentCraftIdSet = new Set(parentCrafts);
+          const isSubset = nodeCrafts.every(id => parentCraftIdSet.has(id));
+
+          if (!isSubset) {
+            throw new Error(`校验失败：父节点 [${parent.id}] 工艺路线不涵盖子节点 [${node.id}]`);
           }
         }
       }
     }
 
-    // 5. 收集发生变化的节点
-    const data: { bom_id: number; route: number }[] = [];
+   // --- 4. 收集差异并提交 ---
     const originalRouteMap = new Map(allBomRoutes.value.map(r => [r.bom_id, r.route]));
 
-    targetNodes.forEach((node: any) => {
-      const currentRoute = node.craft_route;
-      const originalRoute = originalRouteMap.get(node.id);
+    const dataToUpdate = targetNodes
+      .filter(node => {
+        // 必须满足两个条件：1. 数据有变化；2. route 必须有值（不为 undefined 或 null）
+        const isChanged = node.craft_route !== originalRouteMap.get(node.id);
+        const hasRoute = node.craft_route !== undefined && node.craft_route !== null;
+        return isChanged && hasRoute;
+      })
+      .map(node => ({
+        bom_id: node.id as number,
+        route: node.craft_route as number,
+        project_id: selectedProjectId.value,
+        first_id: selectedFirstBomId.value,
+      }));
 
-      if (currentRoute !== originalRoute) {
-        data.push({
-          bom_id: node.id,
-          route: currentRoute,
-        });
-      }
-    });
-    
-    if (data.length === 0) {
-      ElMessage.info("数据未发生变化，无需保存");
-      loading.value = false;
+    if (dataToUpdate.length === 0) {
+      ElMessage.info("数据未发生变化或工艺路线不能为空");
       return;
     }
 
-    const res = await ProduceBomRouteAPI.upsertBatchProduceBomRoute(data);
-    // console.log(res)
+    // 此时 dataToUpdate 的类型就是 { bom_id: number; route: number; }[]
+    const res = await ProduceBomRouteAPI.upsertBatchProduceBomRoute(dataToUpdate);
+    
     if (res.data.code === 0) {
-      // 6. 更新本地缓存
-      data.forEach((item) => {
-        const existing = allBomRoutes.value.find((r: any) => r.bom_id === item.bom_id);
-        if (existing) {
-          existing.route = item.route;
-        } else {
-          allBomRoutes.value.push({ bom_id: item.bom_id, route: item.route });
+      ElMessage.success(res.data.msg || "保存成功");
+      const updateMap = new Map(dataToUpdate.map(d => [d.bom_id, d.route]));
+      
+      allBomRoutes.value.forEach((r: any) => {
+        if (updateMap.has(r.bom_id)) {
+          r.route = updateMap.get(r.bom_id);
+          updateMap.delete(r.bom_id);
         }
       });
-     }
-   } catch (error: any) {
-    console.error(error);
-    ElMessage.error("保存过程中发生错误，请查看控制台");
+      
+      updateMap.forEach((route, bom_id) => {
+        allBomRoutes.value.push({ bom_id, route });
+      });
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || "保存过程中发生错误");
   } finally {
     loading.value = false;
   }
 }
 
-// 行复选框选中项变化
 async function handleSelectionChange(selection: any) {
   selectIds.value = selection.map((item: any) => item.id);
   selectionRows.value = selection;
@@ -497,8 +368,5 @@ async function handleSelectionChange(selection: any) {
 
 onMounted(async () => {
   await loadCraftRouteOptions();
-  pageTableData.value = [];
 });
 </script>
-
-<style lang="scss" scoped></style>

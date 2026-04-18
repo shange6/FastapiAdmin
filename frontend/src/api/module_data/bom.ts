@@ -12,6 +12,15 @@ const DataBomAPI = {
     });
   },
 
+  // 查询包含外购件的全量BOM列表
+  listDataBomAllWithProcure(query: DataBomQuery) {
+    return request<ApiResponse<DataBomTable[]>>({
+      url: `${API_PATH}/list/all-with-procure`,
+      method: "get",
+      params: query,
+    });
+  },
+
   // 查询不需要采购的BOM列表
   listDataBomNoProcure() {
     return request<ApiResponse<DataBomTable[]>>({
@@ -32,6 +41,15 @@ const DataBomAPI = {
   listRecursiveBoms(code: string, first_code?: string) {
     return request<ApiResponse<DataBomTable[]>>({
       url: `${API_PATH}/list/recursive/${code}`,
+      method: "get",
+      params: { first_code },
+    });
+  },
+
+  // 按代号递归查询所有后代BOM列表（全量包含外购件）
+  listRecursiveAllBoms(code: string, first_code?: string) {
+    return request<ApiResponse<DataBomTable[]>>({
+      url: `${API_PATH}/list/recursive/all/${code}`,
       method: "get",
       params: { first_code },
     });
@@ -155,9 +173,10 @@ export interface DataBomPageQuery extends PageQuery {
 
 // 列表展示项
 export interface DataBomTable extends BaseType {
+  id: number;
   parent_code?: string;
   first_code?: string;
-  code?: string;
+  code: string;
   spec?: string;
   count?: number;
   material?: string;

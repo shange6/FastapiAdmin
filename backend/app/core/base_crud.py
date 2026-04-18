@@ -381,7 +381,8 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         """
         conditions = []
         for key, value in kwargs.items():
-            if value is None or value == "":
+            # 增加数据库对空值的处理
+            if value is None:
                 continue
 
             attr = getattr(self.model, key)

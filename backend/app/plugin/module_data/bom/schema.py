@@ -12,6 +12,7 @@ class DataBomCreateSchema(BaseModel):
     BOM清单新增模型
     """
     # model_config = {"str_coerce_numbers": True}
+    project_code: str = Field(..., description='项目代号')
     first_code: str = Field(..., description='根代号')
     parent_code: str = Field(..., description='父代号')
     code: Optional[str] = Field(default=None, description='代号')
@@ -41,6 +42,7 @@ class DataBomUpdateSchema(BaseModel):
     BOM清单更新模型
     """
     # model_config = {"str_coerce_numbers": True}
+    project_code: Optional[str] = Field(default=None, description='项目代号')
     parent_code: Optional[str] = Field(default=None, description='父代号（关联data_project.code）')
     first_code: Optional[str] = Field(default=None, description='根代号')
     code: Optional[str] = Field(default=None, description='代号')
@@ -76,6 +78,7 @@ class DataBomQueryParam:
 
     def __init__(
         self,
+        project_code: Optional[str] = Query(None, description="项目代号"),
         parent_code: Optional[str] = Query(None, description="父代号（关联data_project.code）"),
         first_code: Optional[str] = Query(None, description="根代号"),
         code: Optional[str] = Query(None, description="代号"),
@@ -96,6 +99,7 @@ class DataBomQueryParam:
         updated_time: Optional[list[DateTimeStr]] = Query(None, description="更新时间范围", examples=["2025-01-01 00:00:00", "2025-12-31 23:59:59"]),
         recursive: bool = Query(False, description="是否递归查询后代"),
     ) -> None:
+        self.project_code = project_code
         self.parent_code = parent_code
         self.first_code = first_code
         self.code = code

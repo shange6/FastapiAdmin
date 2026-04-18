@@ -17,6 +17,91 @@ from .schema import ProduceBomRouteCreateSchema, ProduceBomRouteUpdateSchema, Pr
 ProduceBomRouteRouter = APIRouter(prefix='/bomroute', tags=["BOM路线关联模块"]) 
 
 @ProduceBomRouteRouter.get(
+    "/summary/missing/all",
+    summary="统计所有项目缺失路线数量",
+    description="统计所有项目下未配置路线的BOM总数"
+)
+async def summary_all_projects_missing_routes_controller(
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:bomroute:query"]))
+) -> JSONResponse:
+    """
+    统计所有项目缺失路线数量接口
+    
+    返回:
+    - JSONResponse - 统计结果字典
+    """
+    result = await ProduceBomRouteService.summary_all_projects_missing_routes_service(auth=auth)
+    return SuccessResponse(data=result, msg="查询成功")
+
+
+@ProduceBomRouteRouter.get(
+    "/summary/missing/{project_code}",
+    summary="按项目统计未配置路线的BOM数量",
+    description="按项目代号统计未配置路线的BOM数量，按第一层级BOM分组"
+)
+async def summary_missing_routes_by_project_controller(
+    project_code: str = Path(..., description="项目代号"),
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:bomroute:query"]))
+) -> JSONResponse:
+    """
+    按项目统计未配置路线的BOM数量接口
+
+    参数:
+    - project_code: str - 项目代号
+    - auth: AuthSchema - 认证信息
+
+    返回:
+    - JSONResponse - 包含统计结果的JSON响应
+    """
+    result = await ProduceBomRouteService.summary_missing_routes_by_project_service(auth=auth, project_code=project_code)
+    return SuccessResponse(data=result, msg="查询成功")
+
+@ProduceBomRouteRouter.get(
+    "/summary/missing/count/by-project-id/{project_id}",
+    summary="根据项目ID统计缺失路线数量",
+    description="根据项目ID统计缺失路线数量，返回差额"
+)
+async def summary_missing_routes_count_by_project_id_controller(
+    project_id: int = Path(..., description="项目ID"),
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:bomroute:query"]))
+) -> JSONResponse:
+    """
+    根据项目ID统计缺失路线数量接口
+
+    参数:
+    - project_id: int - 项目ID
+    - auth: AuthSchema - 认证信息
+
+    返回:
+    - JSONResponse - 包含统计结果的JSON响应
+    """
+    result = await ProduceBomRouteService.summary_missing_routes_count_by_project_id_service(auth=auth, project_id=project_id)
+    return SuccessResponse(data=result, msg="查询成功")
+
+@ProduceBomRouteRouter.get(
+    "/summary/missing/count/by-first-id/{first_id}",
+    summary="根据first_id统计缺失路线数量",
+    description="根据点击的BOM的ID统计缺失路线数量，返回差额"
+)
+async def summary_missing_routes_count_by_first_id_controller(
+    first_id: int = Path(..., description="BOM ID"),
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:bomroute:query"]))
+) -> JSONResponse:
+    """
+    根据first_id统计缺失路线数量接口
+
+    参数:
+    - first_id: int - BOM ID
+    - auth: AuthSchema - 认证信息
+
+    返回:
+    - JSONResponse - 包含统计结果的JSON响应
+    """
+    result = await ProduceBomRouteService.summary_missing_routes_count_by_first_id_service(auth=auth, first_id=first_id)
+    return SuccessResponse(data=result, msg="查询成功")
+
+
+@ProduceBomRouteRouter.get(
     "/detail/{id}",
     summary="获取BOM路线关联详情",
     description="获取BOM路线关联详情"
@@ -160,7 +245,7 @@ async def upsert_batch_bomroute_controller(
     """
     result = await ProduceBomRouteService.upsert_batch_bomroute_service(auth=auth, data=data)
     log.info(f"批量Upsert BOM路线关联成功: {len(data)} 条")
-    return SuccessResponse(data=result, msg=f"新增：{result['insert']}，更新：{result['update']}，跳过：{result['skip']}")
+    return SuccessResponse(data=result, msg=f"新增：{result['insert']}，更新：{result['update']}")
 
 @ProduceBomRouteRouter.put(
     "/update/{id}",

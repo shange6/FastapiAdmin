@@ -241,7 +241,7 @@ class WTBOMS():
                 t = self.bom["total_mass"]
                 if c and u and t:
                     if abs(t - c * u) > 0.0001:
-                        self.log_add("数量重量关系不正确")
+                        self.log_add(f"数量重量关系不正确 {c} x {u} <> {t}")
 
         class BorrowBOM(MiddleBOM):
             # 借用类
@@ -262,10 +262,10 @@ class WTBOMS():
                 if parent_sub_code:    # 如果标注了借用方代码后半段
                     self.bom["parent_code"] = f"{self.project_code}.{parent_sub_code}"
                 else:    # 如果没标注借用方代码后半段, 去掉最末部分就是父代码                
-                    parent_code = super().get_parent_code(code)
-                    if parent_code:
-                        self.bom["parent_code"] = parent_code
-                    else:
+                    # parent_code = super().get_parent_code(code)
+                    # if parent_code:
+                    #     self.bom["parent_code"] = parent_code
+                    # else:
                         self.log_add("借用件父代码为空")
 
             def check_code(self):

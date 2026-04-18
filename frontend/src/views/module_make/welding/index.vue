@@ -439,7 +439,7 @@ const formData = reactive({
 });
 
 // 详情表单
-const detailFormData = ref<DataBomWithMake>({});
+const detailFormData = ref<DataBomWithMake>({} as DataBomWithMake);
 
 // 验证规则
 const rules = reactive({

@@ -63,50 +63,66 @@ class DataFileService:
             log.error(f"文件上传失败: {e!s}")
             raise CustomException(msg=f"文件上传失败: {e!s}")
 
+    from sqlalchemy.ext.asyncio import AsyncSession
 
     @classmethod
-    async def save_data_service(cls, auth: AuthSchema, payload: SaveDataSchema) -> SaveDataResponseSchema:
+    async def save_data_service(
+        cls, 
+        auth: AuthSchema, 
+        payload: SaveDataSchema
+    ) -> SaveDataResponseSchema:
         """
-        保存解析后的数据：项目信息和BOM清单
+        保存解析后的数据：
+        1. 查重逻辑：先检查 BOM 是否存在重复，如有重复则直接返回。
+        2. 项目逻辑：存在则跳过，不存在则创建。
+        3. BOM 写入：批量创建 BOM 记录。
         """
         result = SaveDataResponseSchema()
         duplicate_logs = []
 
-        # 1. 处理BOM清单：先检查是否存在重复记录
+        project_crud = DataProjectCRUD(auth)
         bom_crud = DataBomCRUD(auth)
+
+        # --- 第一阶段：预检查 BOM 是否存在重复记录 ---
         for item in payload.bom:
-            # 检查数据库中是否存在相同 first_code, parent_code, code 的记录
-            # 使用 CRUDBase 支持的格式处理可能为 None 或空字符串的 code (数据库中存储为 NULL)
-            code_val = item.code if (item.code is not None and item.code != "") else ("None", None)
+            # 处理 NULL code 情况
+            code_val = item.code if (item.code and item.code != "") else ("None", None)
+            
             query_params = {
+                "project_code": item.project_code,
                 "first_code": item.first_code,
                 "parent_code": item.parent_code,
                 "code": code_val
             }
-            existing = await bom_crud.get(**query_params)
-            if existing:
-                msg = f"[重复] <span style='color: orange'>BOM记录已存在：{item.code or '空'}（根代号：{item.first_code}，父代号：{item.parent_code}）</span>"
+            
+            existing_bom = await bom_crud.get(**query_params)
+            if existing_bom:
+                msg = f"[重复] <span style='color: orange'>BOM记录已存在：{item.code or '空'}</span>"
                 duplicate_logs.append(msg)
+            else:
+                # msg = f"[正常] <span style='color: green'>BOM记录不存在：{item or '空'}</span>"
+                # duplicate_logs.append(msg)
+                pass
 
+        # 如果发现重复，直接返回错误信息，不再执行后续写入操作
         if duplicate_logs:
             result.duplicate_count = len(duplicate_logs)
             result.duplicate_logs = duplicate_logs
             return result
 
-        # 2. 如果全都不重复，则添加BOM记录
+        # --- 第二阶段：处理项目信息 (data_project) ---
+        existing_project = await project_crud.get(code=payload.project.code)
+
+        if not existing_project:
+            # 仅在不存在时创建
+            await project_crud.create(data=payload.project)
+            result.project_added = 1
+
+        # --- 第三阶段：执行 BOM 写入 (data_bom) ---
         for item in payload.bom:
             await bom_crud.create(data=item)
             result.bom_added += 1
 
-        # 3. 处理项目信息
-        project_crud = DataProjectCRUD(auth)
-        project = await project_crud.get(code=payload.project.code)
-
-        if not project:
-            await project_crud.create(data=payload.project)
-            result.project_added = 1
-        else:
-            # 如果项目已存在，同步更新项目名称和编号，并记录更新人
-            await project_crud.update(id=project.id, data=payload.project)
-
         return result
+
+
