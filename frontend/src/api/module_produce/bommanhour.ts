@@ -122,6 +122,22 @@ const ProduceBomManhourAPI = {
       headers: { "Content-Type": "multipart/form-data" },
     });
   },
+
+  // 根据项目ID统计缺失工时数量（返回差额）
+  summaryMissingManhourCountByProjectId(projectId: number) {
+    return request<ApiResponse<{ project_id: number; missing_count: number }>>({
+      url: `${API_PATH}/summary/missing/count/by-project-id/${projectId}`,
+      method: "get",
+    });
+  },
+
+  // 根据first_id统计缺失工时数量（返回差额）
+  summaryMissingManhourCountByFirstId(firstId: number) {
+    return request<ApiResponse<{ first_id: number; missing_count: number }>>({
+      url: `${API_PATH}/summary/missing/count/by-first-id/${firstId}`,
+      method: "get",
+    });
+  },
 };
 
 export default ProduceBomManhourAPI;
@@ -165,6 +181,8 @@ export interface ProduceBomManhourForm extends BaseFormType {
 }
 
 export interface ProduceBomManhourUpsertItem {
+  project_id?: number;
+  first_id?: number;
   bom_id: number;
   craft_id: number;
   manhour: number;

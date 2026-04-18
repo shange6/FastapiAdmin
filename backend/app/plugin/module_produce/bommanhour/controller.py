@@ -119,9 +119,33 @@ async def upsert_batch_bommanhour_controller(
     data: ProduceBomManhourUpsertBatchSchema,
     auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:update"]))
 ) -> JSONResponse:
-    result_dict = await ProduceBomManhourService.upsert_batch_bommanhour_service(auth=auth, payload=data)
-    log.info("批量保存BOM工时成功")
-    return SuccessResponse(data=result_dict, msg="批量保存BOM工时成功")
+    result = await ProduceBomManhourService.upsert_batch_bommanhour_service(auth=auth, payload=data)
+    log.info(f"批量Upsert BOM工时关联成功: {len(data.items)} 条")
+    return SuccessResponse(data=result, msg="批量保存工时成功")
+
+@ProduceBomManhourRouter.get(
+    "/summary/missing/count/by-project-id/{project_id}",
+    summary="根据项目ID统计缺失工时数量",
+    description="根据项目ID统计缺失工时数量，返回差额"
+)
+async def summary_missing_manhour_count_by_project_id_controller(
+    project_id: int = Path(..., description="项目ID"),
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:query"]))
+) -> JSONResponse:
+    result = await ProduceBomManhourService.summary_missing_manhour_count_by_project_id_service(auth=auth, project_id=project_id)
+    return SuccessResponse(data=result, msg="查询成功")
+
+@ProduceBomManhourRouter.get(
+    "/summary/missing/count/by-first-id/{first_id}",
+    summary="根据first_id统计缺失工时数量",
+    description="根据点击的BOM的ID统计缺失工时数量，返回差额"
+)
+async def summary_missing_manhour_count_by_first_id_controller(
+    first_id: int = Path(..., description="BOM ID"),
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:query"]))
+) -> JSONResponse:
+    result = await ProduceBomManhourService.summary_missing_manhour_count_by_first_id_service(auth=auth, first_id=first_id)
+    return SuccessResponse(data=result, msg="查询成功")
 
 @ProduceBomManhourRouter.post(
     "/summary/batch",

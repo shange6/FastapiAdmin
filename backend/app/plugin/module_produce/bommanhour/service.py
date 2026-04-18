@@ -132,6 +132,8 @@ class ProduceBomManhourService:
                 await crud.update_bommanhour_crud(
                     id=int(existed.id),  # type: ignore[arg-type]
                     data=ProduceBomManhourUpdateSchema(
+                        project_id=item.project_id,
+                        first_id=item.first_id,
                         bom_id=item.bom_id,
                         craft_id=item.craft_id,
                         manhour=item.manhour,
@@ -141,6 +143,8 @@ class ProduceBomManhourService:
             else:
                 await crud.create_bommanhour_crud(
                     data=ProduceBomManhourCreateSchema(
+                        project_id=item.project_id,
+                        first_id=item.first_id,
                         bom_id=item.bom_id,
                         craft_id=item.craft_id,
                         manhour=item.manhour,
@@ -149,6 +153,62 @@ class ProduceBomManhourService:
                 inserted += 1
 
         return {"inserted": inserted, "updated": updated, "deleted": deleted}
+
+    @classmethod
+    async def summary_missing_manhour_count_by_project_id_service(cls, auth: AuthSchema, project_id: int) -> dict:
+        """
+        根据项目ID统计缺失工时数量
+        逻辑：
+        1. 统计 produce_bom_manhour 中 project_id = 当前项目ID 的不同 BOM ID 记录数 (已配置工时的 BOM 数量)
+        2. 统计 produce_bom_route 中 project_id = 当前项目ID 的不同 BOM ID 记录数 (已配置路线的 BOM 数量)
+        3. 返回 差额 = 路线总数 - 工时已配置数
+        """
+        from sqlalchemy import text
+        from app.core.database import async_db_session
+        from app.core.logger import log
+
+        async with async_db_session() as session:
+            # 1. 统计已配置工时的 BOM 数量 (按 bom_id 去重)
+            configured_sql = text("SELECT COUNT(DISTINCT bom_id) FROM produce_bom_manhour WHERE project_id = :project_id")
+            configured_result = await session.execute(configured_sql, {"project_id": project_id})
+            configured_count = configured_result.scalar() or 0
+
+            # 2. 统计已配置路线的 BOM 数量 (作为工时配置的基数)
+            total_sql = text("SELECT COUNT(DISTINCT bom_id) FROM produce_bom_route WHERE project_id = :project_id")
+            total_result = await session.execute(total_sql, {"project_id": project_id})
+            total_count = total_result.scalar() or 0
+
+            missing_count = total_count - configured_count
+            log.info(f"[getMissingManhourProjectList] 项目ID: {project_id}, 路线总数: {total_count}, 工时已配: {configured_count}, 差额: {missing_count}")
+            return {"project_id": project_id, "missing_count": max(0, missing_count)}
+
+    @classmethod
+    async def summary_missing_manhour_count_by_first_id_service(cls, auth: AuthSchema, first_id: int) -> dict:
+        """
+        根据 first_id（点击的 BOM 的 ID）统计缺失工时数量
+        逻辑：
+        1. 统计 produce_bom_manhour 中 first_id = 当前ID 的不同 BOM ID 记录数
+        2. 统计 produce_bom_route 中 first_id = 当前ID 的不同 BOM ID 记录数
+        3. 返回 差额 = 路线总数 - 工时已配置数
+        """
+        from sqlalchemy import text
+        from app.core.database import async_db_session
+        from app.core.logger import log
+
+        async with async_db_session() as session:
+            # 1. 统计已配置工时的 BOM 数量 (按 bom_id 去重)
+            configured_sql = text("SELECT COUNT(DISTINCT bom_id) FROM produce_bom_manhour WHERE first_id = :first_id")
+            configured_result = await session.execute(configured_sql, {"first_id": first_id})
+            configured_count = configured_result.scalar() or 0
+
+            # 2. 统计已配置路线的 BOM 数量 (作为工时配置的基数)
+            total_sql = text("SELECT COUNT(DISTINCT bom_id) FROM produce_bom_route WHERE first_id = :first_id")
+            total_result = await session.execute(total_sql, {"first_id": first_id})
+            total_count = total_result.scalar() or 0
+
+            missing_count = total_count - configured_count
+            log.info(f"[getMissingManhourBomPreview] BOM ID: {first_id}, 路线总数: {total_count}, 工时已配: {configured_count}, 差额: {missing_count}")
+            return {"first_id": first_id, "missing_count": max(0, missing_count)}
 
     @classmethod
     async def summary_batch_bommanhour_service(cls, auth: AuthSchema, bom_ids: list[int], recursive: bool = True) -> dict[int, list[dict]]:

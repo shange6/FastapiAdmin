@@ -290,6 +290,8 @@ CREATE TABLE `produce_bom_route` (
 -- =============================================
 DROP TABLE IF EXISTS `produce_bom_manhour`;
 CREATE TABLE `produce_bom_manhour` (
+  `project_id` int NOT NULL COMMENT '项目ID',
+  `first_id` int NOT NULL COMMENT '部件ID',
   `bom_id` int NOT NULL COMMENT 'BOMID',
   `craft_id` int NOT NULL COMMENT '子工艺ID',
   `manhour` int NOT NULL DEFAULT 0 COMMENT '工时',
@@ -305,6 +307,8 @@ CREATE TABLE `produce_bom_manhour` (
   
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_manhour_bom_craft` (`bom_id`,`craft_id`),
+  KEY `ix_project_id` (`project_id`),
+  KEY `ix_first_id` (`first_id`),
   KEY `ix_bom_id` (`bom_id`),
   KEY `ix_craft_id` (`craft_id`),
   CONSTRAINT `fk_manhour_bom` FOREIGN KEY (`bom_id`) REFERENCES `data_bom` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,

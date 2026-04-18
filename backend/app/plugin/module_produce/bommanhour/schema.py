@@ -10,6 +10,8 @@ class ProduceBomManhourCreateSchema(BaseModel):
     """
     BOM工时关联新增模型
     """
+    project_id: int = Field(default=..., description='项目ID')
+    first_id: int = Field(default=..., description='部件ID')
     bom_id: int = Field(default=..., description='BOM ID')
     craft_id: int = Field(default=..., description='工序ID')
     manhour: int = Field(default=..., description='工时')
@@ -30,6 +32,8 @@ class ProduceBomManhourOutSchema(ProduceBomManhourCreateSchema, BaseSchema, User
 
 
 class ProduceBomManhourUpsertItemSchema(BaseModel):
+    project_id: int = Field(default=..., description="项目ID")
+    first_id: int = Field(default=..., description="部件ID")
     bom_id: int = Field(default=..., description="BOM ID")
     craft_id: int = Field(default=..., description="工序ID")
     manhour: int = Field(default=..., description="工时")

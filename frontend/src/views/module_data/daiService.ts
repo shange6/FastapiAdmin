@@ -4,6 +4,7 @@ import DataBomAPI from "@/api/module_data/bom";
 import ProduceOrderAPI from "@/api/module_produce/order";
 import ProduceMakeAPI from "@/api/module_make/blanking";
 import ProduceBomRouteAPI from "@/api/module_produce/bomroute";
+import ProduceBomManhourAPI from "@/api/module_produce/bommanhour";
 
 /**
  * 逻辑 A：获取生产待处理的项目列表
@@ -103,6 +104,77 @@ export async function getMissingRouteBomPreview(projectCode: string | undefined)
       try {
         // 调用新的后端接口，根据 first_id（BOM在data_bom表中的id）统计缺失数量
         const res = await ProduceBomRouteAPI.summaryMissingRoutesCountByFirstId(b.id);
+        return {
+          id: b.id,
+          missing_count: res.data?.data?.missing_count || 0
+        };
+      } catch (e) {
+        return { id: b.id, missing_count: 0 };
+      }
+    });
+
+  const bomMissingResults = await Promise.all(bomMissingPromises);
+  const missingCountMap = new Map(bomMissingResults.map(r => [r.id, r.missing_count]));
+
+  // 3. 将汇总数据映射回第一层级 BOM 列表的 dai_bom 字段
+  boms = boms.map((b: any) => ({
+    ...b,
+    dai_bom: b.id ? (missingCountMap.get(b.id) || 0) : 0
+  }));
+
+  return boms;
+}
+
+/**
+ * 逻辑 D：获取工时缺失的项目列表
+ */
+export async function getMissingManhourProjectList(params: any) {
+  // 1. 获取所有项目
+  const response = await DataProjectAPI.getAllDataProject(params);
+  const projects = response.data.data || [];
+
+  // 2. 批量获取每个项目的缺失工时数量差额
+  const projectMissingPromises = projects
+    .filter((item: any) => item.id)
+    .map(async (item: any) => {
+      try {
+        const res = await ProduceBomManhourAPI.summaryMissingManhourCountByProjectId(item.id);
+        return {
+          id: item.id,
+          missing_count: res.data?.data?.missing_count || 0
+        };
+      } catch (e) {
+        return { id: item.id, missing_count: 0 };
+      }
+    });
+
+  const projectMissingResults = await Promise.all(projectMissingPromises);
+  const missingCountMap = new Map(projectMissingResults.map(r => [r.id, r.missing_count]));
+
+  // 3. 映射到 dai_project 字段
+  return projects.map((item: any) => ({
+    ...item,
+    dai_project: item.id ? (missingCountMap.get(item.id) || 0) : 0
+  }));
+}
+
+/**
+ * 逻辑 D：获取工时缺失的 BOM 预览列表
+ */
+export async function getMissingManhourBomPreview(projectCode: string | undefined) {
+  if (!projectCode) return []
+  // 1. 获取第一层级基础 BOM 列表
+  const res = await DataBomAPI.listProjectBoms(projectCode);
+  let boms = (res.data.data || []);
+
+  if (boms.length === 0) return [];
+
+  // 2. 批量获取每个 BOM 的缺失工时数量差额
+  const bomMissingPromises = boms
+    .filter((b: any) => b.id)
+    .map(async (b: any) => {
+      try {
+        const res = await ProduceBomManhourAPI.summaryMissingManhourCountByFirstId(b.id);
         return {
           id: b.id,
           missing_count: res.data?.data?.missing_count || 0
