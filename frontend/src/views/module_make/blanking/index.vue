@@ -118,12 +118,17 @@
 
     <el-dialog v-model="detailVisible" title="工序详情" width="600px">
       <el-descriptions :column="2" border>
-        <el-descriptions-item label="代号">{{ activeRow.code }}</el-descriptions-item>
-        <el-descriptions-item label="名称">{{ activeRow.spec }}</el-descriptions-item>
+        <el-descriptions-item label="项目ID">{{ activeRow.project_id }}</el-descriptions-item>
+        <el-descriptions-item label="项目代号">{{ activeRow.project_code }}</el-descriptions-item>
+        <el-descriptions-item label="工单">{{ activeRow.order_no }}</el-descriptions-item>
+        <el-descriptions-item label="根代号">{{ activeRow.first_id }}</el-descriptions-item>
+        <el-descriptions-item label="BOMID">{{ activeRow.bom_id }}</el-descriptions-item>
+        <el-descriptions-item label="代号">{{ activeRow.code }}</el-descriptions-item>        
+        <el-descriptions-item label="数量">{{ activeRow.count }}</el-descriptions-item>
         <el-descriptions-item label="单重">{{ activeRow.unit_mass }}</el-descriptions-item>
+        <el-descriptions-item label="工序ID">{{ activeRow.make_id }}</el-descriptions-item>
         <el-descriptions-item label="总重">{{ activeRow.total_mass }}</el-descriptions-item>
-        <el-descriptions-item label="工序序号">{{ activeRow.current_sort }}</el-descriptions-item>
-        <el-descriptions-item label="更新时间">{{ activeRow.updated_time }}</el-descriptions-item>
+        <el-descriptions-item label="备注">{{ activeRow.remark }}</el-descriptions-item>
       </el-descriptions>
     </el-dialog>
   </div>

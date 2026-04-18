@@ -14,6 +14,8 @@ class ProduceMakeCreateSchema(BaseModel):
     """
     制造流程主新增模型
     """
+    project_id: int | None = Field(default=None, description='项目ID')
+    first_id: int | None = Field(default=None, description='部件ID')
     bom_id: int = Field(default=..., description='BOMID')
     order_no: str = Field(default=..., description='单号')
     project_code: str = Field(default=..., description='项目代码')
@@ -111,6 +113,8 @@ class ProduceMakeFlowCreateSchema(BaseModel):
     """
     制造流程执行记录新增模型
     """
+    project_id: int | None = Field(default=None, description='项目ID')
+    first_id: int | None = Field(default=None, description='部件ID')
     make_id: int = Field(default=..., description='制造ID')
     bom_id: int = Field(default=..., description='BOMID')
     user_id: int = Field(default=..., description='用户ID')

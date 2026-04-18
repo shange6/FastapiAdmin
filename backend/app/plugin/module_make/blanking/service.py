@@ -357,9 +357,9 @@ class ProduceMakeService:
             # 这里的 project_code 取根节点的 parent_code
             project_code = bom_row[1]
 
-            # 2. 【核心步】获取当前BOM自己的工单号 (用于后续全员赋值)
+            # 2. 【核心步】获取当前BOM自己的工单号及关联信息 (用于后续全员赋值)
             order_result = await session.execute(
-                text("SELECT no FROM produce_order WHERE bom_id = :bom_id LIMIT 1"),
+                text("SELECT no, project_id, first_id FROM produce_order WHERE bom_id = :bom_id LIMIT 1"),
                 {"bom_id": bom_id}
             )
             order_row = order_result.fetchone()
@@ -367,6 +367,8 @@ class ProduceMakeService:
                 raise CustomException(msg=f"当前BOM(ID:{bom_id})尚未生成工单，无法执行同步")
             
             shared_order_no = order_row[0] # 这就是我们要共享给后代的唯一工单号
+            project_id = order_row[1]
+            first_id = order_row[2]
 
             # 3. 递归获取所有后代及自己
             tree_result = await session.execute(
@@ -421,7 +423,9 @@ class ProduceMakeService:
                     await session.execute(
                         text("""
                             UPDATE produce_make
-                            SET project_code = :project_code,
+                            SET project_id = :project_id,
+                                first_id = :first_id,
+                                project_code = :project_code,
                                 current_craft_id = :craft_id,
                                 current_sort = 1,
                                 order_no = :order_no,
@@ -430,6 +434,8 @@ class ProduceMakeService:
                         """),
                         {
                             "bom_id": desc_bom_id,
+                            "project_id": project_id,
+                            "first_id": first_id,
                             "project_code": project_code,
                             "craft_id": craft_id,
                             "order_no": shared_order_no,
@@ -441,10 +447,12 @@ class ProduceMakeService:
                     await session.execute(
                         text("""
                             INSERT INTO produce_make 
-                            (bom_id, project_code, current_craft_id, current_sort, status, order_no, created_id, updated_id)
-                            VALUES (:bom_id, :project_code, :craft_id, 1, '0', :order_no, :user_id, :user_id)
+                            (project_id, first_id, bom_id, project_code, current_craft_id, current_sort, status, order_no, created_id, updated_id)
+                            VALUES (:project_id, :first_id, :bom_id, :project_code, :craft_id, 1, '0', :order_no, :user_id, :user_id)
                         """),
                         {
+                            "project_id": project_id,
+                            "first_id": first_id,
                             "bom_id": desc_bom_id,
                             "project_code": project_code,
                             "craft_id": craft_id,
@@ -499,7 +507,7 @@ class ProduceMakeService:
         # 2. 获取当前工序和工艺路线
         res = await auth.db.execute(
             text("""
-                SELECT m.current_sort, r.route 
+                SELECT m.current_sort, r.route, m.project_id, m.first_id
                 FROM produce_make m 
                 LEFT JOIN produce_bom_route r ON m.bom_id = r.bom_id 
                 WHERE m.id = :id
@@ -509,7 +517,7 @@ class ProduceMakeService:
         if not row:
             raise CustomException(msg="未找到制造记录")
         
-        cur_sort, route_id = row
+        cur_sort, route_id, project_id, first_id = row
         next_sort, next_craft_id = 0, 0 # 默认最后一道工序后置为0
 
         # 3. 寻找下一工序
@@ -523,6 +531,8 @@ class ProduceMakeService:
                 next_sort, next_craft_id = next_row
 
         # 4. 执行更新
+        data.project_id = project_id
+        data.first_id = first_id
         obj = await ProduceMakeFlowCRUD(auth).create_flow_crud(data=data)
         await auth.db.execute(
             text("UPDATE produce_make SET current_sort=:s, current_craft_id=:c, updated_id=:u WHERE id=:id"),

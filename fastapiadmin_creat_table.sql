@@ -275,10 +275,10 @@ CREATE TABLE `produce_bom_route` (
   
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_bom_route` (`bom_id`,`route`),
-  KEY `ix_project_id` (`project_id`),
-  KEY `ix_first_id` (`first_id`),
-  KEY `ix_bom_id` (`bom_id`),
-  KEY `ix_route` (`route`),
+  KEY `ix_bom_route_project_id` (`project_id`),
+  KEY `ix_bom_route_first_id` (`first_id`),
+  KEY `ix_bom_route_bom_id` (`bom_id`),
+  KEY `ix_bom_route_route` (`route`),
   CONSTRAINT `fk_bom_route_bom` FOREIGN KEY (`bom_id`) REFERENCES `data_bom` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_bom_route_route` FOREIGN KEY (`route`) REFERENCES `produce_route_name` (`route`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_bom_route_created_id` FOREIGN KEY (`created_id`) REFERENCES `sys_user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -307,10 +307,10 @@ CREATE TABLE `produce_bom_manhour` (
   
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_manhour_bom_craft` (`bom_id`,`craft_id`),
-  KEY `ix_project_id` (`project_id`),
-  KEY `ix_first_id` (`first_id`),
-  KEY `ix_bom_id` (`bom_id`),
-  KEY `ix_craft_id` (`craft_id`),
+  KEY `ix_manhour_project_id` (`project_id`),
+  KEY `ix_manhour_first_id` (`first_id`),
+  KEY `ix_manhour_bom_id` (`bom_id`),
+  KEY `ix_manhour_craft_id` (`craft_id`),
   CONSTRAINT `fk_manhour_bom` FOREIGN KEY (`bom_id`) REFERENCES `data_bom` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_manhour_craft` FOREIGN KEY (`craft_id`) REFERENCES `produce_craft` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_manhour_bom_created_id` FOREIGN KEY (`created_id`) REFERENCES `sys_user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -347,11 +347,11 @@ CREATE TABLE `produce_order` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_order_uuid` (`uuid`),
   UNIQUE KEY `uk_order_bom_craft` (`bom_id`,`craft_id`),
-  KEY `ix_project_id` (`project_id`),
-  KEY `ix_first_id` (`first_id`),
+  KEY `ix_order_project_id` (`project_id`),
+  KEY `ix_order_first_id` (`first_id`),
+  UNIQUE KEY `ix_order_bom_id` (`bom_id`),
   KEY `ix_order_no` (`no`),
-  KEY `ix_bom_id` (`bom_id`),
-  KEY `ix_craft_id` (`craft_id`),
+  KEY `ix_order_craft_id` (`craft_id`),
   CONSTRAINT `fk_order_bom` FOREIGN KEY (`bom_id`) REFERENCES `data_bom` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_order_craft` FOREIGN KEY (`craft_id`) REFERENCES `produce_craft` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_order_plan_user` FOREIGN KEY (`plan_user`) REFERENCES `sys_user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -366,6 +366,8 @@ CREATE TABLE `produce_order` (
 -- =============================================
 DROP TABLE IF EXISTS `produce_make`;
 CREATE TABLE `produce_make` (
+  `project_id` int NOT NULL COMMENT '项目ID',
+  `first_id` int NOT NULL COMMENT '部件ID',
   `bom_id` int NOT NULL COMMENT 'BOMID',
   `order_no` varchar(32) NOT NULL COMMENT '单号',
   `project_code` varchar(64) NOT NULL COMMENT '项目代码',
@@ -383,6 +385,8 @@ CREATE TABLE `produce_make` (
   
   PRIMARY KEY (`id`),
   UNIQUE KEY `ix_make_bom_id` (`bom_id`),
+  KEY `ix_make_project_id` (`project_id`),
+  KEY `ix_make_first_id` (`first_id`),
   KEY `ix_make_order_no` (`order_no`),
   KEY `ix_make_project_code` (`project_code`),
   KEY `ix_make_current_sort` (`current_sort`),
@@ -398,8 +402,10 @@ CREATE TABLE `produce_make` (
 -- =============================================
 DROP TABLE IF EXISTS `produce_make_flow`;
 CREATE TABLE `produce_make_flow` (
-  `make_id` int NOT NULL COMMENT '制造ID',
+  `project_id` int NOT NULL COMMENT '项目ID',
+  `first_id` int NOT NULL COMMENT '部件ID',
   `bom_id` int NOT NULL COMMENT 'BOMID',
+  `make_id` int NOT NULL COMMENT '制造ID',
   `user_id` int NOT NULL COMMENT '用户ID',
   `sort` int NOT NULL COMMENT '工艺序号',
   `craft_id` int NOT NULL COMMENT '工艺ID',
@@ -416,6 +422,8 @@ CREATE TABLE `produce_make_flow` (
 
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_flow_bom_make_sort_craft` (`bom_id`,`make_id`,`sort`,`craft_id`),
+  KEY `ix_flow_project_id` (`project_id`),
+  KEY `ix_flow_first_id` (`first_id`),
   KEY `ix_flow_bom_id` (`bom_id`),
   KEY `ix_flow_make_id` (`make_id`),
   KEY `ix_flow_user_id` (`user_id`),
