@@ -217,7 +217,9 @@
             </template>
           </el-table-column>
           <el-table-column label="工时" width="110" align="center">
-            <template #default="{ row }"><el-input v-model="row.manhour" disabled /></template>
+            <template #default="{ row }">
+              <el-input :model-value="row.manhour" disabled />
+            </template>
           </el-table-column>
           <el-table-column label="计划日期" width="170" align="center">
             <template #default="{ row }">
@@ -250,7 +252,9 @@
             </template>
           </el-table-column>
           <el-table-column label="工时" width="110" align="center">
-            <template #default="{ row }"><el-input v-model="row.manhour" disabled /></template>
+            <template #default="{ row }">
+              <el-input :model-value="row.manhour" disabled />
+            </template>
           </el-table-column>
           <el-table-column label="计划日期" width="170" align="center">
             <template #default="{ row }">
@@ -712,12 +716,8 @@ async function handleOpenManhourDialog(row: any) {
 
   manhourLoading.value = true;
   try {
-    const subtree = collectSubtree(allBoms.value, row.code);
-    const bomIds = subtree.map((b) => Number(b.id)).filter((id) => id > 0);
-
-    const [routeRes, manhourRes, orderRes] = await Promise.all([
+    const [routeRes, orderRes] = await Promise.all([
       ProduceCraftRouteAPI.detailProduceCraftRoute(Number(routeCode)),
-      ProduceBomManhourAPI.summaryCraftBatchProduceBomManhour({ bom_ids: bomIds }),
       ProduceOrderAPI.listProduceOrder({
         bom_id: String(row.id),
         page_no: 1,
@@ -726,32 +726,34 @@ async function handleOpenManhourDialog(row: any) {
     ]);
 
     const items = routeRes.data?.data?.items || [];
-    const manhourData = manhourRes.data?.data || {};
     const orders = (orderRes.data?.data?.items || []) as any[];
     const orderMap = new Map(orders.map((o) => [Number(o.craft_id), o]));
 
-    const craftTotals: Record<number, number> = {};
-    Object.values(manhourData).forEach((map: any) => {
-      Object.entries(map).forEach(([cid, v]) => {
-        craftTotals[Number(cid)] = (craftTotals[Number(cid)] || 0) + Number(v);
-      });
-    });
-
     await Promise.all([ensureCraftsLoaded(), ensureUsersLoaded()]);
+    
+    // 直接使用主表格已加载的 manhour 数据 (即 tooltip 中显示的数据)
+    const mainTableManhours = row.manhour || [];
+    
     manhourSteps.value = items
       .filter((i: any) => {
         const cid = Number(i.craft_id);
         const craft = craftByIdCache.get(cid);
-        return Number(craft?.parent_id) === 0 || (craftTotals[cid] || 0) > 0;
+        const craftName = (i.craft_name || i.craft_names || String(cid)).trim();
+        const hasManhour = mainTableManhours.some((m: any) => m.craft_name === craftName);
+        // 只有父工艺（parent_id=0）或在主表格中有工时记录的工艺才显示
+        return Number(craft?.parent_id) === 0 || hasManhour;
       })
       .map((i: any) => {
         const cid = Number(i.craft_id);
         const order = orderMap.get(cid);
+        const craftName = (i.craft_name || i.craft_names || String(cid)).trim();
+        const match = mainTableManhours.find((m: any) => m.craft_name === craftName);
+        
         return {
           key: `${i.route ?? routeCode}-${cid}`,
-          label: (i.craft_name || i.craft_names || String(cid)).trim(),
+          label: craftName,
           craft_id: cid,
-          manhour: craftTotals[cid] || null,
+          manhour: match ? match.manhour : null,
           date: order?.plan_date ?? null,
           tag: order?.plan_user ? getUserNameById(order.plan_user) : null,
           staffOptions: [],

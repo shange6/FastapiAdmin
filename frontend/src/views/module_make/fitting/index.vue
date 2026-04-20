@@ -1,5 +1,5 @@
 <template>
-  <ProcessManager targetCraftName="机加" />
+  <ProcessManager targetCraftName="装配" />
 </template>
 
 <script setup lang="ts">
