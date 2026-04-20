@@ -17,8 +17,7 @@
         ref="tableRef"
         v-loading="loading"
         :data="pageTableData"
-        row-key="_tree_id"
-        :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
+        row-key="id"
         highlight-current-row
         class="data-table__content"
         border
@@ -31,6 +30,7 @@
         <el-table-column
           label="代号"
           prop="code"
+          fixed="left"
           min-width="160"
           header-align="center"
           show-overflow-tooltip
@@ -38,6 +38,7 @@
         <el-table-column
           label="名称"
           prop="spec"
+          fixed="left"
           min-width="160"
           header-align="center"
           show-overflow-tooltip
@@ -145,8 +146,8 @@
     <!-- 项目选择抽屉 -->
     <ProjectSelectDrawer 
       v-model="projectDrawerVisible" 
-      :show-bom-table="true"
-      :show-order-column="true"
+      :show-bom-table="false"
+      :show-order-column="false"
       :show_dai="1"
       @select="handleSelectProject" 
       logicType="missorder"
@@ -199,8 +200,8 @@
       </el-table>
 
       <el-divider />
-      <el-skeleton v-if="manhourLoading" :rows="6" animated />
-      <el-empty v-else-if="manhourSteps.length === 0" description="该路线未配置工艺" />
+      <el-skeleton v-if="manhourLoading" :rows="3" animated />
+      <el-empty v-else-if="manhourSteps.length === 0" description="部件无工艺路线或工时" />
 
       <!-- 外层左右分栏容器 -->
       <div style="display: flex; gap: 0px">
@@ -310,6 +311,15 @@ import ProjectSelectDrawer from "@/views/module_data/ProjectSelectDrawer.vue";
 /**
  * 接口与类型定义
  */
+interface DataBomTableWithOrder extends DataBomTable {
+  route_code?: string;
+  route_name?: string;
+  craft_route?: number;
+  manhour?: any[];
+  no?: string;
+  _tree_id?: number | string;
+}
+
 interface ManhourStep {
   key: string;
   label: string;
@@ -332,12 +342,12 @@ interface CraftCacheItem {
 const tableRef = ref();
 const total = ref(0);
 const loading = ref(false);
-const pageTableData = ref<DataBomTable[]>([]);
+const pageTableData = ref<DataBomTableWithOrder[]>([]);
 
 // 排产弹窗相关
 const manhourDialogVisible = ref(false);
 const manhourLoading = ref(false);
-const manhourBom = ref<DataBomTable | null>(null);
+const manhourBom = ref<DataBomTableWithOrder | null>(null);
 const manhourSteps = ref<ManhourStep[]>([]);
 
 const manhourStepsLeft = computed(() => manhourSteps.value.filter((_, idx) => idx % 2 === 0));
@@ -347,11 +357,10 @@ const manhourStepsRight = computed(() => manhourSteps.value.filter((_, idx) => i
 const craftByIdCache = new Map<number, CraftCacheItem>();
 const positionNameToIdCache = new Map<string, number>();
 const usersCache = ref<UserInfo[]>([]);
-const routeCraftIdsCache = new Map<number, number[]>();
 const craftRouteOptions = ref<any[]>([]);
 
 // 全量 BOM 数据
-const allBoms = ref<DataBomTable[]>([]);
+const allBoms = ref<DataBomTableWithOrder[]>([]);
 const allBomRoutes = ref<any[]>([]);
 const selectedRootBomCode = ref<string | undefined>(undefined);
 const selectedProjectCode = ref<string | undefined>(undefined);
@@ -394,31 +403,21 @@ function toggleAllExpansion(expanded: boolean) {
 function handleSelectProject(project: any) {
   if (!project) return;
   
-  // 1. 如果是从预览面板选中的逻辑（带有递归数据）
-  if (project.recursive_data && project.root_bom_code) {
-    queryFormData.parent_code = project.code;
-    selectedProjectCode.value = project.project_code;
-    selectedFirstBomCode.value = project.first_code;
-    projectDrawerVisible.value = false;
-    selectedRootBomCode.value = project.root_bom_code;
-    selectedProjectId.value = project.id;
-    selectedFirstBomId.value = project.first_id;
-    // 直接注入数据，不再有全量拉取逻辑
-    allBoms.value = project.recursive_data;
-    handleQuery();
-  } else {
-    // 2. 如果是直接点击项目选中的逻辑
-    queryFormData.parent_code = project.code;
-    selectedProjectCode.value = project.code;
-    selectedFirstBomCode.value = undefined;
-    selectedRootBomCode.value = undefined;
-    selectedProjectId.value = project.id;
-    selectedFirstBomId.value = undefined;
-    projectDrawerVisible.value = false;
-    // 清空数据，触发后续 fetch
-    allBoms.value = [];
-    handleQuery();
-  }
+  // 统一按项目维度处理，不论是从项目行点击还是从预览面板点击
+  // 用户要求只显示父代号等于项目代号的记录，不需要递归
+  queryFormData.parent_code = project.project_code || project.code;
+  selectedProjectCode.value = project.project_code || project.code;
+  
+  // 清除根节点标记，强制走非递归逻辑
+  selectedRootBomCode.value = undefined;
+  selectedFirstBomCode.value = undefined;
+  selectedProjectId.value = project.id;
+  selectedFirstBomId.value = undefined;
+  
+  projectDrawerVisible.value = false;
+  // 清空数据，触发后续 fetch 获取最新列表
+  allBoms.value = [];
+  handleQuery();
 }
 
 // 检查工时是否完整
@@ -560,7 +559,7 @@ async function ensureAllBomsLoaded() {
 
   try {
     const res = await DataBomAPI.listProjectBoms(projectCode);
-    allBoms.value = res.data.data || [];
+    allBoms.value = res.data.data as DataBomTableWithOrder[] || [];
   } catch (error) {
     console.error("Fetch all boms error:", error);
     allBoms.value = [];
@@ -569,35 +568,38 @@ async function ensureAllBomsLoaded() {
 
 async function ensureRouteCraftIdsLoaded(routeCodes: number[]) {
   const unique = Array.from(new Set(routeCodes.filter((r) => r > 0)));
-  const missing = unique.filter((r) => !routeCraftIdsCache.has(r));
+  const missing = unique.filter((r) => !routeCraftItemsCache.has(r));
   if (missing.length === 0) return;
 
-  await Promise.all(
+  const results = await Promise.all(
     missing.map(async (routeCode) => {
       try {
         const res = await ProduceCraftRouteAPI.detailProduceCraftRoute(routeCode);
         const items = res.data?.data?.items || [];
-        const craftIds = items.map((i: any) => Number(i?.craft_id)).filter((id: number) => id > 0);
-        routeCraftIdsCache.set(routeCode, craftIds);
+        return { routeCode, items };
       } catch {
-        routeCraftIdsCache.set(routeCode, []);
+        return { routeCode, items: [] as any[] };
       }
     })
   );
+
+  results.forEach(({ routeCode, items }) => {
+    routeCraftItemsCache.set(routeCode, items);
+  });
 }
 
 /**
  * 列表加载逻辑
  */
-function collectSubtree(list: DataBomTable[], key: string, isParentCode = false) {
-  const childrenMap: Record<string, DataBomTable[]> = {};
+function collectSubtree(list: DataBomTableWithOrder[], key: string, isParentCode = false) {
+  const childrenMap: Record<string, DataBomTableWithOrder[]> = {};
   list.forEach((item) => {
     const p = item.parent_code || "";
     if (!childrenMap[p]) childrenMap[p] = [];
     childrenMap[p].push(item);
   });
 
-  const results: DataBomTable[] = [];
+  const results: DataBomTableWithOrder[] = [];
   const visited = new Set<string>();
   const roots = isParentCode ? childrenMap[key] || [] : list.filter((i) => i.code === key);
   const queue: DataBomTable[] = [...roots];
@@ -615,7 +617,7 @@ function collectSubtree(list: DataBomTable[], key: string, isParentCode = false)
 }
 
 async function loadingData() {
-  if (!selectedRootBomCode.value && !selectedProjectCode.value) {
+  if (!selectedProjectCode.value) {
     pageTableData.value = [];
     total.value = 0;
     return;
@@ -635,15 +637,8 @@ async function loadingData() {
       }
     });
 
-    let displayList: any[] = [];
-    let manhourScope: any[] = [];
-    if (selectedRootBomCode.value) {
-      displayList = collectSubtree(allBoms.value, selectedRootBomCode.value);
-      manhourScope = displayList;
-    } else if (selectedProjectCode.value) {
-      displayList = allBoms.value.filter((b) => b.parent_code === selectedProjectCode.value);
-      manhourScope = collectSubtree(allBoms.value, selectedProjectCode.value, true);
-    }
+    // 仅筛选父代号等于项目代号的记录，不再需要递归后代
+    const displayList = allBoms.value.filter((b) => b.parent_code === selectedProjectCode.value);
 
     await ensureRouteCraftIdsLoaded(
       displayList.map((b) => Number(b.route_code)).filter((v) => v > 0)
@@ -659,13 +654,6 @@ async function loadingData() {
       const manhourMap = manhourRes.data?.data || {};
       const orderMap = orderRes.data?.data || {};
 
-      const childrenMap: Record<string, DataBomTable[]> = {};
-      allBoms.value.forEach((b) => {
-        const p = b.parent_code || "";
-        if (!childrenMap[p]) childrenMap[p] = [];
-        childrenMap[p].push(b);
-      });
-
       await ensureCraftsLoaded();
 
       displayList.forEach((bom) => {
@@ -675,12 +663,8 @@ async function loadingData() {
       });
     }
 
-    if (selectedRootBomCode.value) {
-      const { tree } = convertToTree(displayList, undefined, selectedRootBomCode.value);
-      pageTableData.value = tree;
-    } else {
-      pageTableData.value = displayList.map((b) => ({ ...b, _tree_id: b.id || b.code }));
-    }
+    // 扁平化展示
+    pageTableData.value = displayList.map((b) => ({ ...b, _tree_id: b.id || b.code }));
     total.value = pageTableData.value.length;
   } catch (error) {
     console.error(error);
@@ -786,6 +770,8 @@ async function handleOpenManhourDialog(row: any) {
 
 async function handleConfirmManhourDialog() {
   const bomId = Number(manhourBom.value?.id);
+  const firstCode = manhourBom.value?.first_code;
+  const projectCode = manhourBom.value?.project_code || selectedProjectCode.value;
   const existingNo = manhourBom.value?.no;
   if (!bomId) return;
 
@@ -801,8 +787,8 @@ async function handleConfirmManhourDialog() {
     .map((s) => {
       const uid = s.tag ? getUserIdByName(s.tag) : undefined;
       return {
-        project_code: selectedProjectCode.value,
-        first_code: selectedFirstBomCode.value,
+        project_code: projectCode,
+        first_code: firstCode,
         no: existingNo,
         bom_id: bomId,
         craft_id: s.craft_id,

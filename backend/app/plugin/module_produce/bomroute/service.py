@@ -315,6 +315,13 @@ class ProduceBomRouteService:
             return {"insert": 0, "update": 0, "skip": 0}
         async with async_db_session() as session:
             bom_ids = [item["bom_id"] for item in data]
+            
+            # 获取所有涉及的 bom_id 的 project_code 和 first_code
+            from ...module_data.bom.model import DataBomModel
+            bom_info_sql = select(DataBomModel.id, DataBomModel.project_code, DataBomModel.first_code).where(DataBomModel.id.in_(bom_ids))
+            bom_info_res = await session.execute(bom_info_sql)
+            bom_info_map = {row.id: (row.project_code, row.first_code) for row in bom_info_res.all()}
+
             placeholders = ",".join([f":id{i}" for i in range(len(bom_ids))])
             params = {f"id{i}": bid for i, bid in enumerate(bom_ids)}
             sql = text(f"SELECT bom_id, `route`, project_code, first_code FROM produce_bom_route WHERE bom_id IN ({placeholders})")
@@ -325,8 +332,12 @@ class ProduceBomRouteService:
             for item in data:
                 bom_id = item["bom_id"]
                 route = item["route"]
-                project_code = item.get("project_code")
-                first_code = item.get("first_code")
+                
+                # 优先从 data_bom 获取编码，确保一致性
+                bom_info = bom_info_map.get(bom_id)
+                project_code = bom_info[0] if bom_info else item.get("project_code")
+                first_code = bom_info[1] if bom_info else item.get("first_code")
+
                 if bom_id not in existing:
                     to_insert.append({"bom_id": bom_id, "route": route, "project_code": project_code, "first_code": first_code})
                 elif existing[bom_id]["route"] != route:

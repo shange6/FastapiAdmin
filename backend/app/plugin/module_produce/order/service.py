@@ -14,6 +14,7 @@ from app.utils.excel_util import ExcelUtil
 
 from .crud import ProduceOrderCRUD
 from .model import ProduceOrderModel
+from ...module_data.bom.model import DataBomModel
 from .schema import (
     ProduceOrderCreateSchema,
     ProduceOrderUpdateSchema,
@@ -210,10 +211,12 @@ class ProduceOrderService:
         items = data.items or []
         crud = ProduceOrderCRUD(auth)
         
-        # 预先查询这些 BOM 是否已有单号
+        # 预先查询这些 BOM 是否已有单号及编码信息
         bom_ids = list(set(item.bom_id for item in items))
         bom_no_map: dict[int, str] = {}
+        bom_info_map: dict[int, tuple[str, str]] = {}
         if bom_ids:
+            # 查询单号
             sql = select(ProduceOrderModel.bom_id, ProduceOrderModel.no).where(
                 ProduceOrderModel.bom_id.in_(bom_ids),
                 ProduceOrderModel.no.is_not(None)
@@ -222,6 +225,11 @@ class ProduceOrderService:
             for bid, no in res.all():
                 if bid is not None and no:
                     bom_no_map[int(bid)] = str(no)
+            
+            # 查询编码信息
+            bom_sql = select(DataBomModel.id, DataBomModel.project_code, DataBomModel.first_code).where(DataBomModel.id.in_(bom_ids))
+            bom_res = await auth.db.execute(bom_sql)
+            bom_info_map = {row.id: (row.project_code, row.first_code) for row in bom_res.all()}
 
         now = datetime.datetime.now()
         yy = now.strftime('%y')
@@ -231,6 +239,11 @@ class ProduceOrderService:
         for item in items:
             exists = await crud.get(bom_id=item.bom_id, craft_id=item.craft_id)
             
+            # 优先从 DataBomModel 获取编码，确保一致性
+            bom_info = bom_info_map.get(item.bom_id)
+            project_code = bom_info[0] if bom_info else item.project_code
+            first_code = bom_info[1] if bom_info else item.first_code
+
             # 确定单号：如果前端没传，则尝试从已有记录获取，否则生成新的
             order_no = item.no
             if not order_no:
@@ -244,8 +257,8 @@ class ProduceOrderService:
 
             payload = {
                 "no": order_no,
-                "project_code": item.project_code,
-                "first_code": item.first_code,
+                "project_code": project_code,
+                "first_code": first_code,
                 "bom_id": item.bom_id,
                 "craft_id": item.craft_id,
                 "man_hour": item.man_hour,

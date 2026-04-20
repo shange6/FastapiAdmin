@@ -624,8 +624,8 @@ async function handleConfirmManhourDialog() {
     const items = manhourSteps.value
       .filter((s) => s.manhour !== null)
       .map((s) => ({
-        project_code: selectedProjectCode.value || "",
-        first_code: selectedFirstBomCode.value || "",
+        project_code: manhourBom.value.project_code || selectedProjectCode.value || "",
+        first_code: manhourBom.value.first_code || selectedFirstBomCode.value || "",
         bom_id: Number(manhourBom.value.id),
         craft_id: s.craft_id,
         manhour: Number(s.manhour),

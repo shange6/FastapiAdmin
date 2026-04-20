@@ -195,7 +195,8 @@ async function loadBomPreviewData(row: any) {
         projectHover.children = await DaiService.getMissingManhourBomPreview(row.code);
         break;
       case 'missorder':
-        projectHover.children = await DaiService.getMissingOrderBomPreview(row.code);
+        // 工单缺失逻辑目前不再需要预览面板的统计数据
+        projectHover.children = [];
         break;
       case 'quality':
         // 预留质量逻辑位置

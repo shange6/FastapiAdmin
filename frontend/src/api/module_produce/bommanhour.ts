@@ -147,11 +147,12 @@ const ProduceBomManhourAPI = {
     });
   },
 
-  // 根据first_id统计缺失工单数量（返回差额：工时数-工单数）
-  summaryMissingOrderCountByFirstId(firstId: number) {
-    return request<ApiResponse<{ first_id: number; missing_count: number }>>({
-      url: `${API_PATH}/summary/missing/order/count/by-first-id/${firstId}`,
-      method: "get",
+  // 批量统计缺失工单数量
+  summaryBatchMissingOrderCount(projectIds: number[]) {
+    return request<ApiResponse<Record<string, number>>>({
+      url: `${API_PATH}/summary/missing/order/count/batch`,
+      method: "post",
+      data: { project_ids: projectIds },
     });
   },
 };

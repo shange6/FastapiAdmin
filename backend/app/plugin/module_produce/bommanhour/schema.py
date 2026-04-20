@@ -48,6 +48,10 @@ class ProduceBomManhourSummaryBatchSchema(BaseModel):
     recursive: bool = Field(default=True, description="是否递归汇总后代节点工时")
 
 
+class ProduceBatchProjectIdSchema(BaseModel):
+    project_ids: list[int] = Field(default_factory=list, description="项目ID列表")
+
+
 class ProduceBomManhourQueryParam:
     """BOM工时关联查询参数"""
 

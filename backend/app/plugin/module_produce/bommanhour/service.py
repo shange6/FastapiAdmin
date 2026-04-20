@@ -14,13 +14,16 @@ from app.utils.excel_util import ExcelUtil
 from .crud import ProduceBomManhourCRUD
 from .model import ProduceBomManhourModel
 from ..craft.model import ProduceCraftModel
+from ..order.model import ProduceOrderModel
 from ...module_data.bom.model import DataBomModel
+from ...module_data.project.model import DataProjectModel
 from .schema import (
     ProduceBomManhourCreateSchema,
     ProduceBomManhourUpdateSchema,
     ProduceBomManhourOutSchema,
     ProduceBomManhourQueryParam,
     ProduceBomManhourUpsertBatchSchema,
+    ProduceBatchProjectIdSchema,
 )
 
 
@@ -115,7 +118,18 @@ class ProduceBomManhourService:
         deleted = 0
         crud = ProduceBomManhourCRUD(auth)
 
+        # 获取所有涉及的 bom_id 的 project_code 和 first_code
+        bom_ids = list(set([item.bom_id for item in items]))
+        bom_sql = select(DataBomModel.id, DataBomModel.project_code, DataBomModel.first_code).where(DataBomModel.id.in_(bom_ids))
+        bom_res = await auth.db.execute(bom_sql)
+        bom_info_map = {row.id: (row.project_code, row.first_code) for row in bom_res.all()}
+
         for item in items:
+            # 优先从 data_bom 获取编码，确保一致性
+            bom_info = bom_info_map.get(item.bom_id)
+            project_code = bom_info[0] if bom_info else item.project_code
+            first_code = bom_info[1] if bom_info else item.first_code
+
             sql = select(ProduceBomManhourModel).where(
                 ProduceBomManhourModel.bom_id == item.bom_id,
                 ProduceBomManhourModel.craft_id == item.craft_id,
@@ -132,8 +146,8 @@ class ProduceBomManhourService:
                 await crud.update_bommanhour_crud(
                     id=int(existed.id),  # type: ignore[arg-type]
                     data=ProduceBomManhourUpdateSchema(
-                        project_code=item.project_code,
-                        first_code=item.first_code,
+                        project_code=project_code,
+                        first_code=first_code,
                         bom_id=item.bom_id,
                         craft_id=item.craft_id,
                         manhour=item.manhour,
@@ -143,8 +157,8 @@ class ProduceBomManhourService:
             else:
                 await crud.create_bommanhour_crud(
                     data=ProduceBomManhourCreateSchema(
-                        project_code=item.project_code,
-                        first_code=item.first_code,
+                        project_code=project_code,
+                        first_code=first_code,
                         bom_id=item.bom_id,
                         craft_id=item.craft_id,
                         manhour=item.manhour,
@@ -187,7 +201,7 @@ class ProduceBomManhourService:
             total_count = total_result.scalar() or 0
 
             missing_count = total_count - configured_count
-            log.info(f"[getMissingManhourProjectList] 项目ID: {project_id}, 项目code: {project_code}, 路线总数: {total_count}, 工时已配: {configured_count}, 差额: {missing_count}")
+            # log.info(f"[getMissingManhourProjectList] 项目ID: {project_id}, 项目code: {project_code}, 路线总数: {total_count}, 工时已配: {configured_count}, 差额: {missing_count}")
             return {"project_id": project_id, "missing_count": max(0, missing_count)}
 
     @classmethod
@@ -223,7 +237,7 @@ class ProduceBomManhourService:
             total_count = total_result.scalar() or 0
 
             missing_count = total_count - configured_count
-            log.info(f"[getMissingManhourBomPreview] BOM ID: {first_id}, BOM code: {bom_code}, 路线总数: {total_count}, 工时已配: {configured_count}, 差额: {missing_count}")
+            # log.info(f"[getMissingManhourBomPreview] BOM ID: {first_id}, BOM code: {bom_code}, 路线总数: {total_count}, 工时已配: {configured_count}, 差额: {missing_count}")
             return {"first_id": first_id, "missing_count": max(0, missing_count)}
 
     @classmethod
@@ -231,72 +245,80 @@ class ProduceBomManhourService:
         """
         根据项目ID统计缺失工单数量
         逻辑：
-        1. 统计 produce_bom_manhour 中 project_code = 当前项目code 的记录总数
-        2. 统计 produce_order 中 project_code = 当前项目code 的记录总数
-        3. 返回 差额 = 工时记录数 - 工单记录数
+        1. 获取项目编码 (project_code)
+        2. 获取 data_bom 表中 parent_code = 项目编码 的记录 ID 列表
+        3. 统计 produce_bom_manhour 表中 bom_id 在 ID 列表中的记录总数
+        4. 统计 produce_order 表中 bom_id 在 ID 列表中的记录总数
+        5. 返回 差额 = 工时记录数 - 工单记录数
         """
-        from sqlalchemy import text
-        from app.core.database import async_db_session
-        from app.core.logger import log
-
-        async with async_db_session() as session:
-            # 1. 获取项目 code
-            proj_sql = text("SELECT code FROM data_project WHERE id = :project_id")
-            proj_result = await session.execute(proj_sql, {"project_id": project_id})
-            project_row = proj_result.fetchone()
-            if not project_row:
-                return {"project_id": project_id, "missing_count": 0}
-            project_code = project_row[0]
-
-            # 2. 统计工时记录总数
-            manhour_sql = text("SELECT COUNT(*) FROM produce_bom_manhour WHERE project_code = :project_code")
-            manhour_result = await session.execute(manhour_sql, {"project_code": project_code})
-            manhour_count = manhour_result.scalar() or 0
-
-            # 3. 统计工单记录总数
-            order_sql = text("SELECT COUNT(*) FROM produce_order WHERE project_code = :project_code")
-            order_result = await session.execute(order_sql, {"project_code": project_code})
-            order_count = order_result.scalar() or 0
-
-            missing_count = manhour_count - order_count
-            log.info(f"[getMissingOrderProjectList] 项目ID: {project_id}, 项目code: {project_code}, 工时总数: {manhour_count}, 工单总数: {order_count}, 差额: {missing_count}")
-            return {"project_id": project_id, "missing_count": max(0, missing_count)}
+        # 复用批量逻辑
+        res = await cls.summary_batch_missing_order_count_service(auth=auth, payload=ProduceBatchProjectIdSchema(project_ids=[project_id]))
+        return {"project_id": project_id, "missing_count": res.get(project_id, 0)}
 
     @classmethod
-    async def summary_missing_order_count_by_first_id_service(cls, auth: AuthSchema, first_id: int) -> dict:
+    async def summary_batch_missing_order_count_service(cls, auth: AuthSchema, payload: ProduceBatchProjectIdSchema) -> dict[int, int]:
         """
-        根据 first_id（点击的 BOM 的 ID）统计缺失工单数量
-        逻辑：
-        1. 统计 produce_bom_manhour 中 first_code = 当前BOM code 的记录总数
-        2. 统计 produce_order 中 first_code = 当前BOM code 的记录总数
-        3. 返回 差额 = 工时记录数 - 工单记录数
+        批量统计缺失工单数量
         """
-        from sqlalchemy import text
-        from app.core.database import async_db_session
-        from app.core.logger import log
+        project_ids = payload.project_ids
+        if not project_ids:
+            return {}
 
-        async with async_db_session() as session:
-            # 1. 获取 BOM code
-            bom_sql = text("SELECT code FROM data_bom WHERE id = :first_id")
-            bom_result = await session.execute(bom_sql, {"first_id": first_id})
-            bom_row = bom_result.fetchone()
-            if not bom_row:
-                return {"first_id": first_id, "missing_count": 0}
-            bom_code = bom_row[0]
+        # 1. 获取项目 ID -> code 映射
+        proj_sql = select(DataProjectModel.id, DataProjectModel.code).where(DataProjectModel.id.in_(project_ids))
+        proj_res = await auth.db.execute(proj_sql)
+        proj_map = {row.id: row.code for row in proj_res.all()}
+        project_codes = list(proj_map.values())
 
-            # 2. 统计工时记录总数
-            manhour_sql = text("SELECT COUNT(*) FROM produce_bom_manhour WHERE first_code = :bom_code")
-            manhour_result = await session.execute(manhour_sql, {"bom_code": bom_code})
-            manhour_count = manhour_result.scalar() or 0
+        if not project_codes:
+            return {pid: 0 for pid in project_ids}
 
-            # 3. 统计工单记录总数
-            order_sql = text("SELECT COUNT(*) FROM produce_order WHERE first_code = :bom_code")
-            order_result = await session.execute(order_sql, {"bom_code": bom_code})
-            order_count = order_result.scalar() or 0
+        # 2. 获取 project_code -> list[bom_id] 映射
+        bom_sql = select(DataBomModel.id, DataBomModel.parent_code).where(DataBomModel.parent_code.in_(project_codes))
+        bom_res = await auth.db.execute(bom_sql)
+        
+        code_to_bom_ids = {}
+        all_bom_ids = []
+        for row in bom_res.all():
+            code_to_bom_ids.setdefault(row.parent_code, []).append(row.id)
+            all_bom_ids.append(row.id)
 
-            missing_count = manhour_count - order_count
-            log.info(f"[getMissingOrderBomPreview] BOM ID: {first_id}, BOM code: {bom_code}, 工时总数: {manhour_count}, 工单总数: {order_count}, 差额: {missing_count}")
-            return {"first_id": first_id, "missing_count": max(0, missing_count)}
+        if not all_bom_ids:
+            return {pid: 0 for pid in project_ids}
+
+        # 3. 统计 produce_bom_manhour 中 bom_id 的记录数
+        manhour_sql = (
+            select(ProduceBomManhourModel.bom_id, func.count(ProduceBomManhourModel.id).label("cnt"))
+            .where(ProduceBomManhourModel.bom_id.in_(all_bom_ids))
+            .group_by(ProduceBomManhourModel.bom_id)
+        )
+        manhour_res = await auth.db.execute(manhour_sql)
+        bom_id_to_manhour_count = {row.bom_id: row.cnt for row in manhour_res.all()}
+
+        # 4. 统计 produce_order 中 bom_id 的记录数
+        order_sql = (
+            select(ProduceOrderModel.bom_id, func.count(ProduceOrderModel.id).label("cnt"))
+            .where(ProduceOrderModel.bom_id.in_(all_bom_ids))
+            .group_by(ProduceOrderModel.bom_id)
+        )
+        order_res = await auth.db.execute(order_sql)
+        bom_id_to_order_count = {row.bom_id: row.cnt for row in order_res.all()}
+
+        # 5. 计算每个项目的差额
+        result = {}
+        for pid in project_ids:
+            code = proj_map.get(pid)
+            if not code:
+                result[pid] = 0
+                continue
+            
+            bom_ids = code_to_bom_ids.get(code, [])
+            total_manhour_cnt = sum(bom_id_to_manhour_count.get(bid, 0) for bid in bom_ids)
+            total_order_cnt = sum(bom_id_to_order_count.get(bid, 0) for bid in bom_ids)
+            
+            result[pid] = max(0, total_manhour_cnt - total_order_cnt)
+
+        return result
 
     @classmethod
     async def summary_batch_bommanhour_service(cls, auth: AuthSchema, bom_ids: list[int], recursive: bool = True) -> dict[int, list[dict]]:

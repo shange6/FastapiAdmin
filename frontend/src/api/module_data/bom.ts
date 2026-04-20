@@ -174,6 +174,7 @@ export interface DataBomPageQuery extends PageQuery {
 // 列表展示项
 export interface DataBomTable extends BaseType {
   id: number;
+  project_code?: string;
   parent_code?: string;
   first_code?: string;
   code: string;

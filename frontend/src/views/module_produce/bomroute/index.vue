@@ -331,8 +331,8 @@ async function handleBatchSaveCraftRoute() {
       .map(node => ({
         bom_id: node.id as number,
         route: node.craft_route as number,
-        project_code: selectedProjectCode.value,
-        first_code: selectedFirstBomCode.value,
+        project_code: node.project_code || selectedProjectCode.value,
+        first_code: node.first_code || selectedFirstBomCode.value,
       }));
 
     if (dataToUpdate.length === 0) {

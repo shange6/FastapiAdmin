@@ -349,7 +349,7 @@ CREATE TABLE `produce_order` (
   UNIQUE KEY `uk_order_bom_craft` (`bom_id`,`craft_id`),
   KEY `ix_order_project_code` (`project_code`),
   KEY `ix_order_first_code` (`first_code`),
-  UNIQUE KEY `ix_order_bom_id` (`bom_id`),
+  KEY `ix_order_bom_id` (`bom_id`),
   KEY `ix_order_no` (`no`),
   KEY `ix_order_craft_id` (`craft_id`),
   CONSTRAINT `fk_order_bom` FOREIGN KEY (`bom_id`) REFERENCES `data_bom` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
