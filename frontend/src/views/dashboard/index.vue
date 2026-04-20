@@ -1,94 +1,7 @@
 <template>
   <div class="dashboard-container">
     <!-- github 角标 -->
-    <GithubCorner class="github-corner" />
 
-    <el-card shadow="hover">
-      <div class="flex flex-wrap">
-        <!-- 左侧问候语区域 -->
-        <div class="flex-1 flex items-start">
-          <div
-            class="w80px h80px rounded-full flex items-center justify-center bg-gray-100 overflow-hidden"
-          >
-            <img
-              v-if="userStore.basicInfo.avatar"
-              class="w-full h-full object-cover"
-              :src="userStore.basicInfo.avatar + '?imageView2/1/w/80/h/80'"
-            />
-            <el-icon v-else :size="40" color="#909399">
-              <UserFilled />
-            </el-icon>
-          </div>
-          <div class="ml-5">
-            <div class="text-20px font-bold mb-5px">
-              {{ timefix }}{{ userStore.basicInfo.name }}，{{ welcome }}
-            </div>
-            <p class="text-sm text-gray">今日天气晴朗，气温在15℃至25℃之间，东南风。</p>
-          </div>
-        </div>
-
-        <!-- 右侧图标区域 - PC端 -->
-        <div class="hidden sm:block">
-          <div class="flex items-end space-x-6">
-            <!-- 文档 -->
-            <div class="flex flex-col items-center">
-              <div class="font-bold color-#4080ff text-sm flex items-center">
-                <el-icon class="mr-2px"><Document /></el-icon>
-                文档
-              </div>
-              <div class="mt-3 whitespace-nowrap">
-                <el-link
-                  href="https://blog.csdn.net/weixin_46768253/article/details/149569141?spm=1001.2014.3001.5502"
-                  target="_blank"
-                >
-                  <div class="i-svg:csdn text-lg" />
-                </el-link>
-              </div>
-            </div>
-            <!-- 仓库 -->
-            <div class="flex flex-col items-center">
-              <div class="font-bold color-#ff9a2e text-sm flex items-center">
-                <el-icon class="mr-2px">
-                  <Folder />
-                </el-icon>
-                仓库
-              </div>
-              <div class="mt-3 whitespace-nowrap">
-                <el-link href="https://gitee.com/fastapiadmin/FastapiAdmin" target="_blank">
-                  <div class="i-svg:gitee text-lg color-#F76560" />
-                </el-link>
-                <el-divider direction="vertical" />
-                <el-link href="https://github.com/fastapiadmin/FastapiAdmin" target="_blank">
-                  <div class="i-svg:github text-lg color-#4080FF" />
-                </el-link>
-                <el-divider direction="vertical" />
-                <el-link href="https://gitcode.com/qq_36002987/FastapiAdmin" target="_blank">
-                  <div class="i-svg:gitcode text-lg color-#FF9A2E" />
-                </el-link>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 移动端图标区域 -->
-        <div class="w-full sm:hidden mt-3">
-          <div class="flex justify-end space-x-4 overflow-x-auto">
-            <!-- 仓库图标 -->
-            <el-link href="https://gitee.com/fastapiadmin/FastapiAdmin" target="_blank">
-              <div class="i-svg:gitee text-lg color-#F76560" />
-            </el-link>
-            <el-divider direction="vertical" />
-            <el-link href="https://github.com/fastapiadmin/FastapiAdmin" target="_blank">
-              <div class="i-svg:github text-lg color-#4080FF" />
-            </el-link>
-            <el-divider direction="vertical" />
-            <el-link href="https://gitcode.com/qq_36002987/FastapiAdmin" target="_blank">
-              <div class="i-svg:gitcode text-lg color-#FF9A2E" />
-            </el-link>
-          </div>
-        </div>
-      </div>
-    </el-card>
 
     <!-- 数据统计 -->
     <el-row :gutter="10" class="mt-4">
@@ -249,83 +162,6 @@
       </el-col>
     </el-row>
 
-    <el-row :gutter="10" class="mt-4">
-      <!-- 访问趋势统计图 -->
-      <el-col :xs="24" :span="16">
-        <el-card>
-          <template #header>
-            <div class="flex-x-between">
-              <span>访问趋势</span>
-              <el-radio-group v-model="visitTrendDateRange" size="small">
-                <el-radio-button :value="7">近7天</el-radio-button>
-                <el-radio-button :value="30">近30天</el-radio-button>
-              </el-radio-group>
-            </div>
-          </template>
-          <ECharts :options="visitTrendChartOptions" height="calc(100vh - 550px)" />
-        </el-card>
-      </el-col>
-      <!-- 最新动态 -->
-      <el-col :xs="24" :span="8">
-        <el-card>
-          <template #header>
-            <div class="flex-x-between">
-              <span class="header-title">最新动态</span>
-              <el-link
-                type="primary"
-                underline="never"
-                href="https://gitee.com/fastapiadmin/FastapiAdmin/releases"
-                target="_blank"
-              >
-                完整记录
-                <el-icon class="link-icon">
-                  <TopRight />
-                </el-icon>
-              </el-link>
-            </div>
-          </template>
-
-          <el-scrollbar height="calc(100vh - 550px)">
-            <el-timeline class="p-3">
-              <el-timeline-item
-                v-for="(item, index) in vesionList"
-                :key="index"
-                :timestamp="item.date"
-                placement="top"
-                :color="index === 0 ? '#67C23A' : '#909399'"
-                :hollow="index !== 0"
-                size="large"
-              >
-                <div class="version-item" :class="{ 'latest-item': index === 0 }">
-                  <div>
-                    <el-text tag="strong">{{ item.title }}</el-text>
-                    <el-tag v-if="item.tag" :type="index === 0 ? 'success' : 'info'" size="small">
-                      {{ item.tag }}
-                    </el-tag>
-                  </div>
-
-                  <el-text class="version-content">{{ item.content }}</el-text>
-
-                  <div v-if="item.link">
-                    <el-link
-                      :type="index === 0 ? 'primary' : 'info'"
-                      :href="item.link"
-                      target="_blank"
-                      underline="never"
-                    >
-                      详情
-                      <el-icon class="link-icon">
-                        <TopRight />
-                      </el-icon>
-                    </el-link>
-                  </div>
-                </div>
-              </el-timeline-item>
-            </el-timeline>
-          </el-scrollbar>
-        </el-card>
-      </el-col>
-    </el-row>
   </div>
 </template>
 
@@ -342,8 +178,6 @@ import { useTransition } from "@vueuse/core";
 import { Connection, Failed, UserFilled } from "@element-plus/icons-vue";
 import { greetings } from "@/utils/common";
 
-const timefix = greetings();
-const welcome = "祝你开心每一天！";
 
 interface VersionItem {
   id: string;
@@ -354,35 +188,6 @@ interface VersionItem {
   tag?: string; // 版本标签（可选）
 }
 
-const userStore = useUserStore();
-
-// 当前通知公告列表
-const vesionList = ref<VersionItem[]>([
-  {
-    id: "1",
-    title: "v3.2.1",
-    date: dayjs().format("YYYY-MM-DD HH:mm:ss"),
-    content: "优化性能，修复若干小bug。",
-    link: "https://gitee.com/fastapiadmin/FastapiAdmin/releases",
-    tag: "更新",
-  },
-  {
-    id: "2",
-    title: "v3.2.0",
-    date: dayjs().subtract(1, "day").format("YYYY-MM-DD HH:mm:ss"),
-    content: "新增用户行为分析功能。",
-    link: "https://gitee.com/fastapiadmin/FastapiAdmin/releases",
-    tag: "新功能",
-  },
-  {
-    id: "3",
-    title: "v3.1.0",
-    date: dayjs().subtract(3, "day").format("YYYY-MM-DD HH:mm:ss"),
-    content: "优化权限管理系统。",
-    link: "https://gitee.com/fastapiadmin/FastapiAdmin/releases",
-    tag: "优化",
-  },
-]);
 
 // 访客统计数据加载状态
 const visitStatsLoading = ref(true);

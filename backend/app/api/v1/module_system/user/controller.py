@@ -151,30 +151,30 @@ async def reset_password_controller(
     return SuccessResponse(data=result_dict, msg="重置密码成功")
 
 
-@UserRouter.post(
-    "/register",
-    summary="注册用户",
-    description="注册用户",
-    response_model=ResponseSchema[UserOutSchema],
-)
-async def register_user_controller(
-    data: UserRegisterSchema,
-    db: Annotated[AsyncSession, Depends(db_getter)],
-) -> JSONResponse:
-    """
-    注册用户
+# @UserRouter.post(
+#     "/register",
+#     summary="注册用户",
+#     description="注册用户",
+#     response_model=ResponseSchema[UserOutSchema],
+# )
+# async def register_user_controller(
+#     data: UserRegisterSchema,
+#     db: Annotated[AsyncSession, Depends(db_getter)],
+# ) -> JSONResponse:
+#     """
+#     注册用户
 
-    参数:
-    - data (UserRegisterSchema): 用户注册模型
-    - db (AsyncSession): 异步数据库会话
+#     参数:
+#     - data (UserRegisterSchema): 用户注册模型
+#     - db (AsyncSession): 异步数据库会话
 
-    返回:
-    - JSONResponse: 注册用户JSON响应
-    """
-    auth = AuthSchema(db=db)
-    user_register_result = await UserService.register_user_service(data=data, auth=auth)
-    log.info(f"{data.username} 注册用户成功: {user_register_result}")
-    return SuccessResponse(data=user_register_result, msg="注册用户成功")
+#     返回:
+#     - JSONResponse: 注册用户JSON响应
+#     """
+#     auth = AuthSchema(db=db)
+#     user_register_result = await UserService.register_user_service(data=data, auth=auth)
+#     log.info(f"{data.username} 注册用户成功: {user_register_result}")
+#     return SuccessResponse(data=user_register_result, msg="注册用户成功")
 
 
 @UserRouter.post(
