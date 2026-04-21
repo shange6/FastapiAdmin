@@ -17,7 +17,8 @@ from .schema import (
     ProduceMakeUpdateSchema, 
     ProduceMakeQueryParam, 
     ProduceMakePaginationQueryParam,
-    ProduceMakeFlowCreateSchema
+    ProduceMakeFlowCreateSchema,
+    ProduceMakeFlowBatchCreateSchema
 )
 
 ProduceMakeRouter = APIRouter(prefix='/blanking', tags=["制造流程主模块"]) 
@@ -313,3 +314,27 @@ async def submit_blanking_flow_controller(
     result = await ProduceMakeService.submit_blanking_flow_service(auth=auth, data=data)
     log.info(f"提交制造流程执行记录成功: {data.make_id}")
     return SuccessResponse(data=result, msg="提交成功")
+
+
+@ProduceMakeRouter.post(
+    "/flow/batch_submit",
+    summary="批量提交制造流程执行记录",
+    description="批量向produce_make_flow表添加记录并更新主表"
+)
+async def submit_blanking_flow_batch_controller(
+    data: ProduceMakeFlowBatchCreateSchema,
+    auth: AuthSchema = Depends(AuthPermission(["module_make:blanking:update"]))
+) -> JSONResponse:
+    """
+    批量提交制造流程执行记录接口
+
+    参数:
+    - data: ProduceMakeFlowBatchCreateSchema - 批量提交数据
+    - auth: AuthSchema - 认证信息
+
+    返回:
+    - JSONResponse - 包含批量提交结果的JSON响应
+    """
+    result = await ProduceMakeService.submit_blanking_flow_batch_service(auth=auth, payload=data)
+    log.info(f"批量提交制造流程执行记录成功，共计: {result.get('count')} 条")
+    return SuccessResponse(data=result, msg="批量提交成功")

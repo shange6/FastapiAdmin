@@ -162,18 +162,20 @@ async function submitProcess(rows: any[]) {
     .then(async () => {
       loading.value = true;
       try {
-        for (const row of validRows) {
-          await ProduceMakeAPI.submitProduceMakeFlow({
-            make_id: row.make_id,
-            bom_id: Number(row.id),
-            user_id: userStore.basicInfo.id!,
-            sort: row.current_sort,
-            craft_id: row.current_craft_id,
-            end_time: new Date().toISOString()
-          });
-        }
+        const items = validRows.map(row => ({
+          make_id: row.make_id,
+          bom_id: Number(row.id),
+          user_id: userStore.basicInfo.id!,
+          sort: row.current_sort,
+          craft_id: row.current_craft_id,
+          end_time: new Date().toISOString()
+        }));
+        
+        await ProduceMakeAPI.batchSubmitProduceMakeFlow({ items });
         ElMessage.success("操作成功");
         refreshData();
+      } catch (e) {
+        ElMessage.error("批量提交失败");
       } finally {
         loading.value = false;
       }

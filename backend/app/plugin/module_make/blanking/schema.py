@@ -126,6 +126,13 @@ class ProduceMakeFlowCreateSchema(BaseModel):
     end_time: datetime = Field(default_factory=datetime.now, description='完工时间')
 
 
+class ProduceMakeFlowBatchCreateSchema(BaseModel):
+    """
+    制造流程执行记录批量新增模型
+    """
+    items: list[ProduceMakeFlowCreateSchema] = Field(..., description='执行记录列表')
+
+
 class ProduceMakeFlowOutSchema(ProduceMakeFlowCreateSchema, BaseSchema, UserBySchema):
     """
     制造流程执行记录响应模型

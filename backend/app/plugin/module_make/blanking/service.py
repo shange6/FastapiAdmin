@@ -17,7 +17,8 @@ from .schema import (
     ProduceMakeOutSchema,
     ProduceMakeQueryParam,
     ProduceMakeFlowCreateSchema,
-    ProduceMakeFlowOutSchema
+    ProduceMakeFlowOutSchema,
+    ProduceMakeFlowBatchCreateSchema
 )
 
 
@@ -539,3 +540,66 @@ class ProduceMakeService:
         logger.info(f"工序流转: make_id={data.make_id}, next_sort={next_sort}, next_craft={next_craft_id}")
         await auth.db.commit()
         return ProduceMakeFlowOutSchema.model_validate(obj).model_dump()
+
+    @classmethod
+    async def submit_blanking_flow_batch_service(cls, auth: AuthSchema, payload: ProduceMakeFlowBatchCreateSchema) -> dict:
+        """
+        批量提交制造流程执行记录，并自动流转 produce_make 表的当前工序
+        """
+        from sqlalchemy import text
+        from loguru import logger
+
+        if not payload.items:
+            return {"count": 0}
+
+        count = 0
+        for data in payload.items:
+            # 1. 检查是否存在重复记录
+            exist = await auth.db.execute(
+                text("SELECT id FROM produce_make_flow WHERE make_id=:m AND bom_id=:b AND sort=:s AND craft_id=:c"),
+                {"m": data.make_id, "b": data.bom_id, "s": data.sort, "c": data.craft_id}
+            )
+            if exist.fetchone():
+                logger.warning(f"跳过重复提交: make_id={data.make_id}, bom_id={data.bom_id}, sort={data.sort}, craft_id={data.craft_id}")
+                continue
+
+            # 2. 获取当前工序和工艺路线
+            res = await auth.db.execute(
+                text("""
+                    SELECT m.current_sort, r.route, m.project_code, m.first_code
+                    FROM produce_make m 
+                    LEFT JOIN produce_bom_route r ON m.bom_id = r.bom_id 
+                    WHERE m.id = :id
+                """), {"id": data.make_id}
+            )
+            row = res.fetchone()
+            if not row:
+                logger.warning(f"未找到制造记录，跳过: make_id={data.make_id}")
+                continue
+            
+            cur_sort, route_id, project_code, first_code = row
+            next_sort, next_craft_id = 0, 0 
+
+            # 3. 寻找下一工序
+            if route_id:
+                next_res = await auth.db.execute(
+                    text("SELECT sort, craft_id FROM produce_craft_route WHERE route=:r AND sort=:s"),
+                    {"r": route_id, "s": cur_sort + 1}
+                )
+                next_row = next_res.fetchone()
+                if next_row:
+                    next_sort, next_craft_id = next_row
+
+            # 4. 执行更新
+            data.project_code = project_code
+            data.first_code = first_code
+            await ProduceMakeFlowCRUD(auth).create_flow_crud(data=data)
+            await auth.db.execute(
+                text("UPDATE produce_make SET current_sort=:s, current_craft_id=:c, updated_id=:u WHERE id=:id"),
+                {"s": next_sort, "c": next_craft_id, "u": auth.user.id, "id": data.make_id}
+            )
+            count += 1
+        
+        await auth.db.commit()
+        logger.info(f"批量提交制造流程执行记录成功，共计: {count} 条")
+        return {"count": count}

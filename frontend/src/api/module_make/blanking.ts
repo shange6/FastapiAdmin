@@ -102,6 +102,15 @@ const ProduceMakeAPI = {
     });
   },
 
+  // 批量提交制造流程执行记录
+  batchSubmitProduceMakeFlow(body: { items: ProduceMakeFlowForm[] }) {
+    return request<ApiResponse<{ count: number }>>({
+      url: `${API_PATH}/flow/batch_submit`,
+      method: "post",
+      data: body,
+    });
+  },
+
   // 按单号和工艺ID统计待办数量
   summaryProduceMakeByOrders(order_nos: string[], craft_id: number) {
     return request<ApiResponse<Record<string, number>>>({
