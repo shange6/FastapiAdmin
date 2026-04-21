@@ -40,7 +40,6 @@
             <!-- 查询、重置、展开/收起按钮 -->
             <el-form-item>
               <el-button
-                v-hasPerm="['module_data:project:query']"
                 icon="refresh"
                 @click="handleResetQuery"
               >
@@ -109,7 +108,6 @@
         >
           <template #default="scope">
             <el-button
-              v-hasPerm="['module_data:project:detail']"
               type="info"
               size="small"
               link

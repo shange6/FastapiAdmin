@@ -102,7 +102,6 @@
         >
           <template #default="scope">
             <el-button
-              v-hasPerm="['module_data:bom:detail']"
               type="info"
               size="small"
               link

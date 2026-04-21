@@ -65,8 +65,24 @@ class RoleCRUD(CRUDBase[RoleModel, RoleCreateSchema, RoleUpdateSchema]):
         返回:
         - None
         """
+        # 获取所有菜单，用于自动补全父级菜单ID
+        all_menus = await MenuCRUD(self.auth).get_list_crud()
+        menu_map = {menu.id: menu for menu in all_menus}
+
+        # 自动补全父级菜单ID，确保树形结构的完整性
+        full_menu_ids = set(menu_ids)
+        for menu_id in menu_ids:
+            curr_id = menu_id
+            while curr_id in menu_map:
+                parent_id = menu_map[curr_id].parent_id
+                if parent_id and parent_id not in full_menu_ids:
+                    full_menu_ids.add(parent_id)
+                    curr_id = parent_id
+                else:
+                    break
+
         roles = await self.list(search={"id": ("in", role_ids)})
-        menus = await MenuCRUD(self.auth).get_list_crud(search={"id": ("in", menu_ids)})
+        menus = [menu_map[m_id] for m_id in full_menu_ids if m_id in menu_map]
 
         for obj in roles:
             relationship = obj.menus

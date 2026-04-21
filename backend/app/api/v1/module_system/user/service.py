@@ -3,6 +3,7 @@ from typing import Any
 
 import pandas as pd
 from fastapi import UploadFile
+from sqlalchemy.orm import selectinload
 
 from app.api.v1.module_system.auth.schema import AuthSchema
 from app.api.v1.module_system.dept.crud import DeptCRUD
@@ -10,6 +11,8 @@ from app.api.v1.module_system.menu.crud import MenuCRUD
 from app.api.v1.module_system.menu.schema import MenuOutSchema
 from app.api.v1.module_system.position.crud import PositionCRUD
 from app.api.v1.module_system.role.crud import RoleCRUD
+from app.api.v1.module_system.role.model import RoleModel
+from app.api.v1.module_system.user.model import UserModel
 from app.core.base_schema import BatchSetAvailable, UploadResponseSchema
 from app.core.exceptions import CustomException
 from app.core.logger import log
@@ -258,7 +261,11 @@ class UserService:
         # 获取用户基本信息
         if not auth.user or not auth.user.id:
             raise CustomException(msg="用户不存在")
-        user = await UserCRUD(auth).get_by_id_crud(id=auth.user.id)
+        # 优化：预加载 roles.menus 确保权限数据完整
+        user = await UserCRUD(auth).get_by_id_crud(
+            id=auth.user.id,
+            preload=[selectinload(UserModel.roles).selectinload(RoleModel.menus)]
+        )
         # 获取部门名称
         if user and user.dept:
             UserOutSchema.dept_name = user.dept.name
@@ -271,30 +278,65 @@ class UserService:
                 search={"type": ("in", [1, 2, 4]), "status": "0"},
                 order_by=[{"order": "asc"}],
             )
-            menus = [MenuOutSchema.model_validate(menu).model_dump() for menu in menu_all]
-
+            # 转换为字典列表
+            flat_menus = [MenuOutSchema.model_validate(menu).model_dump() for menu in menu_all]
         else:
-            # 收集用户所有角色的菜单ID，使用列表推导式优化代码
-            menu_ids = {
+            # 获取所有有效的菜单 ID 列表（包括按钮类型，用于后续递归查找父级）
+            all_assigned_menu_ids = {
                 menu.id
-                for role in auth.user.roles or []
+                for role in user.roles or []
                 for menu in role.menus
-                if menu.status == "0" and menu.type in [1, 2, 4]
+                if menu.status == "0"
             }
 
-            # 使用树形结构查询，预加载children关系
-            menus = (
-                [
-                    MenuOutSchema.model_validate(menu).model_dump()
-                    for menu in await MenuCRUD(auth).get_tree_list_crud(
-                        search={"id": ("in", list(menu_ids))},
-                        order_by=[{"order": "asc"}],
-                    )
-                ]
-                if menu_ids
-                else []
-            )
-        user_dict["menus"] = traversal_to_tree(menus)
+            if not all_assigned_menu_ids:
+                flat_menus = []
+            else:
+                # 获取所有菜单，用于构建父子关系映射
+                all_menus = await MenuCRUD(auth).get_list_crud()
+                menu_map = {m.id: m for m in all_menus}
+
+                # 确保所有父级 ID 都被包含在内
+                final_menu_ids = set()
+                for menu_id in all_assigned_menu_ids:
+                    curr_id = menu_id
+                    while curr_id in menu_map:
+                        menu_obj = menu_map[curr_id]
+                        # 只有类型为 1, 2, 4 的菜单才会被返回给前端显示在菜单栏
+                        if menu_obj.type in [1, 2, 4]:
+                            final_menu_ids.add(curr_id)
+                        
+                        parent_id = menu_obj.parent_id
+                        if parent_id and parent_id not in final_menu_ids:
+                            curr_id = parent_id
+                        else:
+                            break
+
+                # 使用最终确定的 ID 列表构建扁平菜单列表，同时过滤重复路由名
+                flat_menus = []
+                seen_route_names = set()
+                # 预定义保留的路由名称，避免与前端静态路由冲突
+                reserved_route_names = {"Login", "401", "404", "500", "Home", "Profile", "InternalApp", "/"}
+                
+                # 按照 order 排序，确保顺序稳定
+                sorted_ids = sorted(list(final_menu_ids), key=lambda x: (menu_map[x].order, x))
+                
+                for m_id in sorted_ids:
+                    if m_id not in menu_map:
+                        continue
+                    menu_obj = menu_map[m_id]
+                    
+                    # 检查路由名称冲突，避免前端路由重复导致跳转失败
+                    if menu_obj.route_name:
+                        if menu_obj.route_name in reserved_route_names or menu_obj.route_name in seen_route_names:
+                            log.warning(f"跳过重复或保留的路由名称: {menu_obj.route_name} (ID: {m_id})")
+                            continue
+                        seen_route_names.add(menu_obj.route_name)
+                    
+                    flat_menus.append(MenuOutSchema.model_validate(menu_obj).model_dump())
+
+        # 统一处理：过滤掉重复项后构建树形结构
+        user_dict["menus"] = traversal_to_tree(flat_menus)
         return user_dict
 
     @classmethod

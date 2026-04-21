@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, UploadFile, Body, Path, Query
 from fastapi.responses import StreamingResponse, JSONResponse
 
 from app.common.response import SuccessResponse, StreamResponse
-from app.core.dependencies import AuthPermission
+from app.core.dependencies import AuthPermission, get_current_user
 from app.api.v1.module_system.auth.schema import AuthSchema
 from app.core.base_params import PaginationQueryParam
 from app.utils.common_util import bytes2file_response
@@ -23,7 +23,7 @@ ProduceCraftRouter = APIRouter(prefix='/craft', tags=["工艺字典模块"])
 )
 async def get_craft_detail_controller(
     id: int = Path(..., description="ID"),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:craft:query"]))
+    auth: AuthSchema = Depends(get_current_user)
 ) -> JSONResponse:
     """
     获取工艺字典详情接口
@@ -47,7 +47,7 @@ async def get_craft_detail_controller(
 async def get_craft_list_controller(
     page: PaginationQueryParam = Depends(),
     search: ProduceCraftQueryParam = Depends(),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:craft:query"]))
+    auth: AuthSchema = Depends(get_current_user)
 ) -> JSONResponse:
     """
     查询工艺字典列表接口（数据库分页）
@@ -76,7 +76,7 @@ async def get_craft_list_controller(
     description="获取全部工艺字典，不分页，用于下拉选项等场景"
 )
 async def get_craft_all_controller(
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:craft:query"]))
+    auth: AuthSchema = Depends(get_current_user)
 ) -> JSONResponse:
     """
     获取全部工艺字典接口（不分页）

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, UploadFile, Body, Path, Query
 from fastapi.responses import StreamingResponse, JSONResponse
 
 from app.common.response import SuccessResponse, StreamResponse
-from app.core.dependencies import AuthPermission
+from app.core.dependencies import AuthPermission, get_current_user
 from app.api.v1.module_system.auth.schema import AuthSchema
 from app.core.base_params import PaginationQueryParam
 from app.utils.common_util import bytes2file_response
@@ -23,7 +23,7 @@ DataProjectRouter = APIRouter(prefix='/project', tags=["项目信息模块"])
 )
 async def get_project_detail_controller(
     id: int = Path(..., description="ID"),
-    auth: AuthSchema = Depends(AuthPermission(["module_data:project:query"]))
+    auth: AuthSchema = Depends(get_current_user)
 ) -> JSONResponse:
     """
     获取项目信息详情接口
@@ -46,7 +46,7 @@ async def get_project_detail_controller(
 )
 async def get_project_all_list_controller(
     show_dai: int | None = Query(None, description="指定工艺ID，统计该工艺下的待办数量"),
-    auth: AuthSchema = Depends(AuthPermission(["module_data:project:query"]))
+    auth: AuthSchema = Depends(get_current_user)
 ) -> JSONResponse:
     """
     查询所有项目信息列表接口（不分页）
@@ -71,7 +71,7 @@ async def get_project_list_controller(
     page: PaginationQueryParam = Depends(),
     search: DataProjectQueryParam = Depends(),
     show_dai: int | None = Query(None, description="指定工艺ID，统计该工艺下的待办数量"),
-    auth: AuthSchema = Depends(AuthPermission(["module_data:project:query"]))
+    auth: AuthSchema = Depends(get_current_user)
 ) -> JSONResponse:
     """
     查询项目信息列表接口（数据库分页）

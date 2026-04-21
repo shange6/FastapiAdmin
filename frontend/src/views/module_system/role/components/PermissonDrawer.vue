@@ -230,13 +230,24 @@ const init = async () => {
 
     // 回显菜单树选中项
     if (permTreeRef.value) {
-      await permTreeRef.value.setCheckedKeys(permissionState.value.menu_ids);
+      // 关键修复：如果开启了父子联动，回显时只设置叶子节点，由树组件自动计算父节点状态
+      // 否则，如果设置了父节点，会导致所有子节点都被勾选
+      if (parentChildLinked.value) {
+        const leafIds = filterLeafIds(permissionState.value.menu_ids, menuTreeData.value);
+        await permTreeRef.value.setCheckedKeys(leafIds);
+      } else {
+        await permTreeRef.value.setCheckedKeys(permissionState.value.menu_ids);
+      }
     }
 
     // 修改：增加对 deptTreeRef.value 的存在性判断，并添加日志
     if (permissionState.value.data_scope === 5 && deptTreeRef.value) {
-      // await 一定不能丢，否则到导致初始化时候deptTreeRef.value 为 undefined
-      await deptTreeRef.value.setCheckedKeys(permissionState.value.dept_ids);
+      if (parentChildLinked.value) {
+        const leafIds = filterLeafIds(permissionState.value.dept_ids, deptTreeData.value);
+        await deptTreeRef.value.setCheckedKeys(leafIds);
+      } else {
+        await deptTreeRef.value.setCheckedKeys(permissionState.value.dept_ids);
+      }
     }
   } catch (error: any) {
     ElMessage.error("获取权限数据失败: " + error.message);
@@ -263,9 +274,15 @@ async function handleDrawerSave() {
     // 构造提交数据
     const submitData: permissionDataType = {
       role_ids: [props.roleId],
-      menu_ids: (permTreeRef.value?.getCheckedKeys() || []).map((key) => Number(key)),
+      menu_ids: [
+        ...(permTreeRef.value?.getCheckedKeys() || []),
+        ...(permTreeRef.value?.getHalfCheckedKeys() || []),
+      ].map((key) => Number(key)),
       data_scope: permissionState.value.data_scope,
-      dept_ids: (deptTreeRef.value?.getCheckedKeys() || []).map((key) => Number(key)),
+      dept_ids: [
+        ...(deptTreeRef.value?.getCheckedKeys() || []),
+        ...(deptTreeRef.value?.getHalfCheckedKeys() || []),
+      ].map((key) => Number(key)),
     };
 
     await RoleAPI.setPermission(submitData);
@@ -284,13 +301,13 @@ async function handleDrawerSave() {
 }
 
 // 部门树选择回调
-const deptTreeCheck = (checkedIds: number[]) => {
-  permissionState.value.dept_ids = checkedIds;
+const deptTreeCheck = (_data: any, { checkedKeys, halfCheckedKeys }: any) => {
+  permissionState.value.dept_ids = [...checkedKeys, ...halfCheckedKeys];
 };
 
 // 菜单选择变更回调
-const menuTreeCheck = (checkedIds: number[]) => {
-  permissionState.value.menu_ids = checkedIds;
+const menuTreeCheck = (_data: any, { checkedKeys, halfCheckedKeys }: any) => {
+  permissionState.value.menu_ids = [...checkedKeys, ...halfCheckedKeys];
 };
 
 // 展开/收缩 菜单权限树
@@ -321,6 +338,33 @@ watch(permFilterText, (val) => {
 function handleFilter(value: string, data: { [key: string]: any }) {
   if (!value) return true;
   return data.label.includes(value);
+}
+
+/**
+ * 从 ID 列表中过滤出叶子节点的 ID
+ * @param ids 原始 ID 列表
+ * @param treeData 树形结构数据
+ */
+function filterLeafIds(ids: number[], treeData: any[]): number[] {
+  const leafIds: number[] = [];
+  const idSet = new Set(ids);
+
+  const traverse = (nodes: any[]) => {
+    nodes.forEach((node) => {
+      if (!node.children || node.children.length === 0) {
+        // 是叶子节点
+        if (idSet.has(node.value)) {
+          leafIds.push(node.value);
+        }
+      } else {
+        // 递归处理子节点
+        traverse(node.children);
+      }
+    });
+  };
+
+  traverse(treeData);
+  return leafIds;
 }
 
 // 检查权限数据是否遵循父子联动模式

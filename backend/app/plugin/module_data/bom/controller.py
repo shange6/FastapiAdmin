@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, UploadFile, Body, Path, Query
 from fastapi.responses import StreamingResponse, JSONResponse
 
 from app.common.response import SuccessResponse, StreamResponse
-from app.core.dependencies import AuthPermission
+from app.core.dependencies import AuthPermission, get_current_user
 from app.api.v1.module_system.auth.schema import AuthSchema
 from app.core.base_params import PaginationQueryParam
 from app.utils.common_util import bytes2file_response
@@ -23,7 +23,7 @@ DataBomRouter = APIRouter(prefix='/bom', tags=["BOM清单模块"])
 )
 async def get_bom_detail_controller(
     id: int = Path(..., description="ID"),
-    auth: AuthSchema = Depends(AuthPermission(["module_data:bom:query"]))
+    auth: AuthSchema = Depends(get_current_user)
 ) -> JSONResponse:
     """
     获取BOM清单详情接口
@@ -45,7 +45,7 @@ async def get_bom_detail_controller(
     description="查询所有BOM清单列表（不分页）"
 )
 async def get_bom_all_list_controller(
-    auth: AuthSchema = Depends(AuthPermission(["module_data:bom:query"]))
+    auth: AuthSchema = Depends(get_current_user)
 ) -> JSONResponse:
     """
     查询所有BOM清单列表接口（不分页）
@@ -67,7 +67,7 @@ async def get_bom_all_list_controller(
 )
 async def get_bom_list_controller(
     search: DataBomQueryParam = Depends(),
-    auth: AuthSchema = Depends(AuthPermission(["module_data:bom:query"]))
+    auth: AuthSchema = Depends(get_current_user)
 ) -> JSONResponse:
     """
     查询BOM清单列表接口
@@ -90,7 +90,7 @@ async def get_bom_list_controller(
 )
 async def get_bom_all_with_procure_list_controller(
     search: DataBomQueryParam = Depends(),
-    auth: AuthSchema = Depends(AuthPermission(["module_data:bom:query"]))
+    auth: AuthSchema = Depends(get_current_user)
 ) -> JSONResponse:
     """
     查询BOM清单全量列表接口
@@ -113,7 +113,7 @@ async def get_bom_all_with_procure_list_controller(
 )
 async def get_bom_project_list_controller(
     code: str = Path(..., description="项目代号"),
-    auth: AuthSchema = Depends(AuthPermission(["module_data:bom:query"]))
+    auth: AuthSchema = Depends(get_current_user)
 ) -> JSONResponse:
     """
     按项目代号查询第一层级BOM清单列表接口
@@ -137,7 +137,7 @@ async def get_bom_project_list_controller(
 async def get_bom_recursive_list_controller(
     code: str = Path(..., description="BOM代号"),
     first_code: str | None = Query(None, description="根BOM代号"),
-    auth: AuthSchema = Depends(AuthPermission(["module_data:bom:query"]))
+    auth: AuthSchema = Depends(get_current_user)
 ) -> JSONResponse:
     """
     按代号递归查询所有后代BOM列表接口
@@ -162,7 +162,7 @@ async def get_bom_recursive_list_controller(
 async def get_bom_recursive_all_list_controller(
     code: str = Path(..., description="BOM代号"),
     first_code: str | None = Query(None, description="根BOM代号"),
-    auth: AuthSchema = Depends(AuthPermission(["module_data:bom:query"]))
+    auth: AuthSchema = Depends(get_current_user)
 ) -> JSONResponse:
     """
     按代号递归查询所有后代BOM列表接口（全量）
@@ -185,7 +185,7 @@ async def get_bom_recursive_all_list_controller(
     description="查询不需要采购的BOM清单列表"
 )
 async def get_bom_list_no_procure_controller(
-    auth: AuthSchema = Depends(AuthPermission(["module_data:bom:query"]))
+    auth: AuthSchema = Depends(get_current_user)
 ) -> JSONResponse:
     """
     查询不需要采购的BOM清单列表接口

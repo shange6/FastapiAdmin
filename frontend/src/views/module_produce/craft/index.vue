@@ -33,7 +33,6 @@
             <!-- 查询、重置、展开/收起按钮 -->
             <el-form-item>
               <el-button
-                v-hasPerm="['module_produce:craft:query']"
                 type="primary"
                 icon="search"
                 @click="handleQuery"
@@ -41,31 +40,11 @@
                 查询
               </el-button>
               <el-button
-                v-hasPerm="['module_produce:craft:query']"
                 icon="refresh"
                 @click="handleResetQuery"
               >
                 重置
               </el-button>
-              <!-- 展开/收起 -->
-              <!-- <template v-if="isExpandable">
-                <el-link 
-                  class="ml-3"
-                  type="primary"
-                  underline="never"
-                  @click="isExpand = !isExpand"
-                >
-                  {{ isExpand ? "收起" : "展开" }}
-                  <el-icon>
-                    <template v-if="isExpand">
-                      <ArrowUp />
-                    </template>
-                    <template v-else>
-                      <ArrowDown />
-                    </template>
-                  </el-icon>
-                </el-link>
-              </template> -->
             </el-form-item>
           </el-form>
         </div>

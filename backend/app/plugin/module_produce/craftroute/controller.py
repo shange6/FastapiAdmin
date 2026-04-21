@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, UploadFile, Body, Path, Query
 from fastapi.responses import StreamingResponse, JSONResponse
 
 from app.common.response import SuccessResponse, StreamResponse
-from app.core.dependencies import AuthPermission
+from app.core.dependencies import AuthPermission, get_current_user
 from app.api.v1.module_system.auth.schema import AuthSchema
 from app.core.base_params import PaginationQueryParam
 from app.utils.common_util import bytes2file_response
@@ -23,7 +23,7 @@ ProduceCraftRouteRouter = APIRouter(prefix='/craftroute', tags=["工艺路线模
 )
 async def get_craftroute_detail_controller(
     id: int = Path(..., description="ID"),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:craftroute:query"]))
+    auth: AuthSchema = Depends(get_current_user)
 ) -> JSONResponse:
     """
     获取工艺路线详情接口
@@ -46,7 +46,7 @@ async def get_craftroute_detail_controller(
 )
 async def get_craftroute_detail_by_route_controller(
     route: int = Path(..., description="工艺路线(route)"),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:craftroute:query"]))
+    auth: AuthSchema = Depends(get_current_user)
 ) -> JSONResponse:
     result_dict = await ProduceCraftRouteService.detail_craftroute_by_route_service(auth=auth, route=route)
     log.info(f"获取指定路线的工艺列表成功 {route}")
@@ -60,7 +60,7 @@ async def get_craftroute_detail_by_route_controller(
 async def get_craftroute_list_controller(
     page: PaginationQueryParam = Depends(),
     search: ProduceCraftRouteQueryParam = Depends(),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:craftroute:query"]))
+    auth: AuthSchema = Depends(get_current_user)
 ) -> JSONResponse:
     """
     查询工艺路线列表接口（数据库分页）
@@ -89,7 +89,7 @@ async def get_craftroute_list_controller(
     description="获取全部工艺路线，不分页，用于下拉选项等场景"
 )
 async def get_craftroute_all_controller(
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:craftroute:query"]))
+    auth: AuthSchema = Depends(get_current_user)
 ) -> JSONResponse:
     """
     获取全部工艺路线接口（不分页）
@@ -111,7 +111,7 @@ async def get_craftroute_all_controller(
 )
 async def get_craftroute_view_list_controller(
     search: CraftRouteViewQuerySchema = Depends(),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:craftroute:query"]))
+    auth: AuthSchema = Depends(get_current_user)
 ) -> JSONResponse:
     """
     查询工艺路线视图列表接口
