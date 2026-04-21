@@ -273,50 +273,94 @@ class ProduceBomManhourService:
         if not project_codes:
             return {pid: 0 for pid in project_ids}
 
-        # 2. 获取 project_code -> list[bom_id] 映射
-        bom_sql = select(DataBomModel.id, DataBomModel.parent_code).where(DataBomModel.parent_code.in_(project_codes))
+        # 2. 获取 project_code -> list[direct_bom_id] 映射 (查找直接下级 BOM)
+        bom_sql = select(DataBomModel.id, DataBomModel.code, DataBomModel.parent_code).where(DataBomModel.parent_code.in_(project_codes))
         bom_res = await auth.db.execute(bom_sql)
         
-        code_to_bom_ids = {}
-        all_bom_ids = []
-        for row in bom_res.all():
-            code_to_bom_ids.setdefault(row.parent_code, []).append(row.id)
-            all_bom_ids.append(row.id)
+        direct_bom_rows = bom_res.all()
+        # project_code -> list[direct_bom_code]
+        project_to_direct_codes = {}
+        # direct_bom_code -> project_code (用于反查)
+        direct_code_to_project_code = {}
+        for row in direct_bom_rows:
+            if row.code:
+                project_to_direct_codes.setdefault(row.parent_code, []).append(row.code)
+                direct_code_to_project_code[row.code] = row.parent_code
 
-        if not all_bom_ids:
+        direct_codes = list(direct_code_to_project_code.keys())
+        if not direct_codes:
             return {pid: 0 for pid in project_ids}
 
-        # 3. 统计 produce_bom_manhour 中 bom_id 的记录数
+        # 3. 扩展：查找 first_code 等于上述 direct_codes 的所有子代 BOM
+        ext_bom_sql = select(DataBomModel.id, DataBomModel.first_code).where(DataBomModel.first_code.in_(direct_codes))
+        ext_bom_res = await auth.db.execute(ext_bom_sql)
+        ext_bom_rows = ext_bom_res.all()
+
+        # direct_code -> list[all_descendant_bom_ids]
+        direct_code_to_all_ids = {dc: [] for dc in direct_codes}
+        all_involved_bom_ids = []
+        for row in ext_bom_rows:
+            if row.first_code in direct_code_to_all_ids:
+                direct_code_to_all_ids[row.first_code].append(row.id)
+                all_involved_bom_ids.append(row.id)
+
+        if not all_involved_bom_ids:
+            return {pid: 0 for pid in project_ids}
+
+        # 4. 获取涉及 BOM 的所有工时配置中的工艺种类
         manhour_sql = (
-            select(ProduceBomManhourModel.bom_id, func.count(ProduceBomManhourModel.id).label("cnt"))
-            .where(ProduceBomManhourModel.bom_id.in_(all_bom_ids))
-            .group_by(ProduceBomManhourModel.bom_id)
+            select(ProduceBomManhourModel.bom_id, ProduceBomManhourModel.craft_id)
+            .where(ProduceBomManhourModel.bom_id.in_(all_involved_bom_ids))
         )
         manhour_res = await auth.db.execute(manhour_sql)
-        bom_id_to_manhour_count = {row.bom_id: row.cnt for row in manhour_res.all()}
+        bom_id_to_manhour_crafts = {}
+        for row in manhour_res.all():
+            bom_id_to_manhour_crafts.setdefault(row.bom_id, set()).add(row.craft_id)
 
-        # 4. 统计 produce_order 中 bom_id 的记录数
+        # 5. 获取涉及 BOM 的所有已下工单的工艺种类
         order_sql = (
-            select(ProduceOrderModel.bom_id, func.count(ProduceOrderModel.id).label("cnt"))
-            .where(ProduceOrderModel.bom_id.in_(all_bom_ids))
-            .group_by(ProduceOrderModel.bom_id)
+            select(ProduceOrderModel.bom_id, ProduceOrderModel.craft_id)
+            .where(ProduceOrderModel.bom_id.in_(all_involved_bom_ids))
         )
         order_res = await auth.db.execute(order_sql)
-        bom_id_to_order_count = {row.bom_id: row.cnt for row in order_res.all()}
+        bom_id_to_order_crafts = {}
+        for row in order_res.all():
+            bom_id_to_order_crafts.setdefault(row.bom_id, set()).add(row.craft_id)
 
-        # 5. 计算每个项目的差额
+        # 6. 计算每个项目的差异个数 (按直接下级 BOM 维度对比)
         result = {}
         for pid in project_ids:
-            code = proj_map.get(pid)
-            if not code:
+            p_code = proj_map.get(pid)
+            if not p_code:
                 result[pid] = 0
                 continue
             
-            bom_ids = code_to_bom_ids.get(code, [])
-            total_manhour_cnt = sum(bom_id_to_manhour_count.get(bid, 0) for bid in bom_ids)
-            total_order_cnt = sum(bom_id_to_order_count.get(bid, 0) for bid in bom_ids)
+            # 获取该项目的直接下级代号列表
+            d_codes = project_to_direct_codes.get(p_code, [])
+            missing_bom_count = 0
             
-            result[pid] = max(0, total_manhour_cnt - total_order_cnt)
+            for dc in d_codes:
+                # 获取该一级 BOM 及其所有后代的 ID 列表
+                sub_tree_ids = direct_code_to_all_ids.get(dc, [])
+                
+                # 汇总子树的不重复工艺种类 (工时)
+                sub_manhour_kinds = set()
+                for bid in sub_tree_ids:
+                    sub_manhour_kinds.update(bom_id_to_manhour_crafts.get(bid, set()))
+                
+                # 汇总子树的不重复工艺种类 (工单)
+                sub_order_kinds = set()
+                for bid in sub_tree_ids:
+                    sub_order_kinds.update(bom_id_to_order_crafts.get(bid, set()))
+                
+                # 对比：如果工时工艺种类数 != 工单工艺种类数，则计为 1
+                if len(sub_manhour_kinds) != len(sub_order_kinds):
+                    missing_bom_count += 1
+            
+            log.info(f"[BatchMissingOrder] 项目: {p_code}, 直接下级BOM总数: {len(d_codes)}, 存在工艺差异的BOM数: {missing_bom_count}")
+            result[pid] = missing_bom_count
+
+        return result
 
         return result
 
