@@ -106,6 +106,7 @@ export interface ProduceManhourPageQuery extends PageQuery {
   updated_id?: number;
   created_time?: string[];
   updated_time?: string[];
+  order_by?: string;
 }
 
 // 列表展示项

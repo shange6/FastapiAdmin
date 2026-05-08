@@ -233,6 +233,7 @@
         border
         stripe
         @selection-change="handleSelectionChange"
+        @sort-change="handleSortChange"
       >
         <template #empty>
           <el-empty :image-size="80" description="暂无数据" />
@@ -258,7 +259,7 @@
           v-if="tableColumns.find((col) => col.prop === 'name')?.show"
           label="名称"
           prop="name"
-          min-width="160"
+          min-width="180"
           header-align="center"
           show-overflow-tooltip
         />
@@ -299,6 +300,7 @@
           header-align="center"
           min-width="80"
           show-overflow-tooltip
+          sortable="custom"
         >
           <template #default="scope">
             {{ scope.row.unit_hour ? (Number(scope.row.unit_hour) / 3600000).toFixed(3) : 0 }}
@@ -737,7 +739,19 @@ const queryFormData = reactive<ProduceManhourPageQuery>({
   updated_time: undefined,
   created_id: undefined,
   updated_id: undefined,
+  order_by: undefined,
 });
+
+// 排序处理
+function handleSortChange({ prop, order }: { prop: string; order: string | null }) {
+  if (prop && order) {
+    const direction = order === "ascending" ? "asc" : "desc";
+    queryFormData.order_by = JSON.stringify([{ [prop]: direction }]);
+  } else {
+    queryFormData.order_by = undefined;
+  }
+  handleQuery();
+}
 
 // 编辑表单
 const formData = reactive<ProduceManhourForm>({
@@ -834,11 +848,16 @@ function handleConfirm() {
 async function handleResetQuery() {
   queryFormRef.value.resetFields();
   queryFormData.page_no = 1;
+  queryFormData.order_by = undefined;
   // 重置日期范围选择器
   createdDateRange.value = [];
   updatedDateRange.value = [];
   queryFormData.created_time = undefined;
   queryFormData.updated_time = undefined;
+  // 重置表格排序
+  if (tableRef.value) {
+    tableRef.value.clearSort();
+  }
   loadingData();
 }
 
