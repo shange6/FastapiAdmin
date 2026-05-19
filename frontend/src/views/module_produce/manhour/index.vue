@@ -79,7 +79,7 @@
             <!-- 查询、重置、展开/收起按钮 -->
             <el-form-item>
               <el-button
-                v-hasPerm="['module_produce:manhour:query']"
+                v-hasPerm="['module_produce:bommanhour:query']"
                 type="primary"
                 icon="search"
                 @click="handleQuery"
@@ -87,7 +87,7 @@
                 查询
               </el-button>
               <el-button
-                v-hasPerm="['module_produce:manhour:query']"
+                v-hasPerm="['module_produce:bommanhour:query']"
                 icon="refresh"
                 @click="handleResetQuery"
               >
@@ -123,7 +123,7 @@
           <el-row :gutter="10">
             <el-col :span="1.5">
               <el-button
-                v-hasPerm="['module_produce:manhour:create']"
+                v-hasPerm="['module_produce:bommanhour:create']"
                 type="success"
                 icon="plus"
                 @click="handleOpenDialog('create')"
@@ -133,7 +133,7 @@
             </el-col>
             <el-col :span="1.5">
               <el-button
-                v-hasPerm="['module_produce:manhour:delete']"
+                v-hasPerm="['module_produce:bommanhour:delete']"
                 type="danger"
                 icon="delete"
                 :disabled="selectIds.length === 0"
@@ -143,7 +143,7 @@
               </el-button>
             </el-col>
             <el-col :span="1.5">
-              <el-dropdown v-hasPerm="['module_produce:manhour:batch']" trigger="click">
+              <el-dropdown v-hasPerm="['module_produce:bommanhour:batch']" trigger="click">
                 <el-button type="default" :disabled="selectIds.length === 0" icon="ArrowDown">
                   更多
                 </el-button>
@@ -166,7 +166,7 @@
             <el-col :span="1.5">
               <el-tooltip content="导入">
                 <el-button
-                  v-hasPerm="['module_produce:manhour:import']"
+                  v-hasPerm="['module_produce:bommanhour:import']"
                   type="success"
                   icon="upload"
                   circle
@@ -177,7 +177,7 @@
             <el-col :span="1.5">
               <el-tooltip content="导出">
                 <el-button
-                  v-hasPerm="['module_produce:manhour:export']"
+                  v-hasPerm="['module_produce:bommanhour:export']"
                   type="warning"
                   icon="download"
                   circle
@@ -199,7 +199,7 @@
             <el-col :span="1.5">
               <el-tooltip content="刷新">
                 <el-button
-                  v-hasPerm="['module_produce:manhour:query']"
+                  v-hasPerm="['module_produce:bommanhour:query']"
                   type="primary"
                   icon="refresh"
                   circle
@@ -397,7 +397,7 @@
         >
           <template #default="scope">
             <el-button
-              v-hasPerm="['module_produce:manhour:detail']"
+              v-hasPerm="['module_produce:bommanhour:detail']"
               type="info"
               size="small"
               link
@@ -407,7 +407,7 @@
               详情
             </el-button>
             <!-- <el-button
-              v-hasPerm="['module_produce:manhour:update']"
+              v-hasPerm="['module_produce:bommanhour:update']"
               type="primary"
               size="small"
               link
@@ -417,7 +417,7 @@
               编辑
             </el-button> -->
             <!-- <el-button
-              v-hasPerm="['module_produce:manhour:delete']"
+              v-hasPerm="['module_produce:bommanhour:delete']"
               type="danger"
               size="small"
               link
@@ -449,18 +449,21 @@
     >
       <!-- 详情 -->
       <template v-if="dialogVisible.type === 'detail'">
-        <el-descriptions :column="4" border>
-          <el-descriptions-item label="主键ID" :span="2">
+        <el-descriptions :column="6" border>
+          <!-- <el-descriptions-item label="主键ID" :span="2">
             {{ detailFormData.id }}
-          </el-descriptions-item>
+          </el-descriptions-item> -->
           <el-descriptions-item label="零件名称" :span="2">
             {{ detailFormData.name }}
           </el-descriptions-item>
           <el-descriptions-item label="零件型号" :span="2">
             {{ detailFormData.model }}
           </el-descriptions-item>
-          <el-descriptions-item label="材质" :span="2">
-            {{ detailFormData.material }}
+          <el-descriptions-item label="备注/描述" :span="2">
+            {{ detailFormData.description }}
+          </el-descriptions-item>
+          <el-descriptions-item label="单位工时" :span="2">
+            {{ detailFormData.unit_hour ? (Number(detailFormData.unit_hour) / 3600000).toFixed(3) : 0 }}
           </el-descriptions-item>
           <el-descriptions-item label="计算单位" :span="2">
             <el-tag v-if="detailFormData.unit === 'g'" type="success">重量 (g)</el-tag>
@@ -468,8 +471,8 @@
             <el-tag v-else-if="detailFormData.unit === 'p'" type="info">件 (p)</el-tag>
             <span v-else>{{ detailFormData.unit }}</span>
           </el-descriptions-item>
-          <el-descriptions-item label="单位工时 (小时)" :span="2">
-            {{ detailFormData.unit_hour ? (Number(detailFormData.unit_hour) / 3600000).toFixed(3) : 0 }}
+          <el-descriptions-item label="材质" :span="2">
+            {{ detailFormData.material }}
           </el-descriptions-item>
           <el-descriptions-item label="下料工时比率" :span="2">
             {{ detailFormData.blanking_ratio }}
@@ -480,10 +483,16 @@
           <el-descriptions-item label="装配工时比率" :span="2">
             {{ detailFormData.fitting_ratio }}
           </el-descriptions-item>
-          <el-descriptions-item label="备注/描述" :span="2">
-            {{ detailFormData.description }}
+          <el-descriptions-item label="下料工时" :span="2">
+            {{ detailFormData.unit_hour && detailFormData.blanking_ratio && detailFormData.inputNumber ? (Number(detailFormData.unit_hour) / 3600000 * Number(detailFormData.blanking_ratio) * Number(detailFormData.inputNumber) / 1000).toFixed(3) : 0 }}
           </el-descriptions-item>
-          <el-descriptions-item label="创建时间" :span="2">
+          <el-descriptions-item label="铆焊工时" :span="2">
+            {{ detailFormData.unit_hour && detailFormData.welding_ratio && detailFormData.inputNumber ? (Number(detailFormData.unit_hour) / 3600000 * Number(detailFormData.welding_ratio) * Number(detailFormData.inputNumber) / 1000).toFixed(3) : 0 }}
+          </el-descriptions-item>
+          <el-descriptions-item label="装配工时" :span="2">
+            {{ detailFormData.unit_hour && detailFormData.fitting_ratio && detailFormData.inputNumber ? (Number(detailFormData.unit_hour) / 3600000 * Number(detailFormData.fitting_ratio) * Number(detailFormData.inputNumber) / 1000).toFixed(3) : 0 }}
+          </el-descriptions-item>
+          <!-- <el-descriptions-item label="创建时间" :span="2">
             {{ detailFormData.created_time }}
           </el-descriptions-item>
           <el-descriptions-item label="更新时间" :span="2">
@@ -494,6 +503,14 @@
           </el-descriptions-item>
           <el-descriptions-item label="更新人" :span="2">
             {{ detailFormData.updated_by?.name }}
+          </el-descriptions-item> -->
+          <el-descriptions-item label="输入数量" :span="2">
+            <el-input-number
+              v-model="detailFormData.inputNumber"
+              :min="1"
+              :max="99999"
+              label="请输入数字"
+            />
           </el-descriptions-item>
         </el-descriptions>
       </template>
@@ -624,6 +641,7 @@ import ProduceManhourAPI, {
 } from "@/api/module_produce/manhour";
 
 const visible = ref(true);
+const tableRef = ref();
 const queryFormRef = ref();
 const dataFormRef = ref();
 const total = ref(0);
@@ -675,7 +693,7 @@ const exportColumns = [
 
 // 导入/导出配置
 const curdContentConfig = {
-  permPrefix: "module_produce:manhour",
+  permPrefix: "module_produce:bommanhour",
   cols: exportColumns as any,
   importTemplate: () => ProduceManhourAPI.downloadTemplateProduceManhour(),
   exportsAction: async (params: any) => {
@@ -905,6 +923,7 @@ async function handleOpenDialog(type: "create" | "update" | "detail", id?: numbe
     if (type === "detail") {
       dialogVisible.title = "详情";
       Object.assign(detailFormData.value, response.data.data);
+      detailFormData.value.inputNumber = 1;
     } else if (type === "update") {
       dialogVisible.title = "修改";
       Object.assign(formData, response.data.data);

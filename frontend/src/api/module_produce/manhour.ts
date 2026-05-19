@@ -123,6 +123,7 @@ export interface ProduceManhourTable extends BaseType {
   updated_id?: string;
   created_by?: CommonType;
   updated_by?: CommonType;
+  inputNumber?: number;
 }
 
 // 新增/修改/详情表单参数

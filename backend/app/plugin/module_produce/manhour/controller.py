@@ -23,7 +23,7 @@ ProduceManhourRouter = APIRouter(prefix='/manhour', tags=["工时管理模块"])
 )
 async def get_manhour_detail_controller(
     id: int = Path(..., description="ID"),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:manhour:query"]))
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:query"]))
 ) -> JSONResponse:
     """
     获取工时管理详情接口
@@ -44,10 +44,10 @@ async def get_manhour_detail_controller(
     summary="查询工时管理列表",
     description="查询工时管理列表"
 )
-async def get_manhour_list_controller(
+async def get_manhour_list_controller( 
     page: PaginationQueryParam = Depends(),
     search: ProduceManhourQueryParam = Depends(),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:manhour:query"]))
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:query"]))
 ) -> JSONResponse:
     """
     查询工时管理列表接口（数据库分页）
@@ -77,7 +77,7 @@ async def get_manhour_list_controller(
 )
 async def create_manhour_controller(
     data: ProduceManhourCreateSchema,
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:manhour:create"]))
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:create"]))
 ) -> JSONResponse:
     """
     创建工时管理接口
@@ -101,7 +101,7 @@ async def create_manhour_controller(
 async def update_manhour_controller(
     data: ProduceManhourUpdateSchema,
     id: int = Path(..., description="ID"),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:manhour:update"]))
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:update"]))
 ) -> JSONResponse:
     """
     修改工时管理接口
@@ -125,7 +125,7 @@ async def update_manhour_controller(
 )
 async def delete_manhour_controller(
     ids: list[int] = Body(..., description="ID列表"),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:manhour:delete"]))
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:delete"]))
 ) -> JSONResponse:
     """
     删除工时管理接口
@@ -148,7 +148,7 @@ async def delete_manhour_controller(
 )
 async def batch_set_available_manhour_controller(
     data: BatchSetAvailable,
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:manhour:patch"]))
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:patch"]))
 ) -> JSONResponse:
     """
     批量修改工时管理状态接口
@@ -165,13 +165,13 @@ async def batch_set_available_manhour_controller(
     return SuccessResponse(msg="批量修改工时管理状态成功")
 
 @ProduceManhourRouter.post(
-    '/export',
+    '/export', 
     summary="导出工时管理",
     description="导出工时管理"
 )
 async def export_manhour_list_controller(
     search: ProduceManhourQueryParam = Depends(),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:manhour:export"]))
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:export"]))
 ) -> StreamingResponse:
     """
     导出工时管理接口
@@ -199,7 +199,7 @@ async def export_manhour_list_controller(
 )
 async def import_manhour_list_controller(
     file: UploadFile,
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:manhour:import"]))
+    auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:import"]))
 ) -> JSONResponse:
     """
     导入工时管理接口
@@ -219,7 +219,7 @@ async def import_manhour_list_controller(
     '/download/template',
     summary="获取工时管理导入模板",
     description="获取工时管理导入模板",
-    dependencies=[Depends(AuthPermission(["module_produce:manhour:download"]))]
+    dependencies=[Depends(AuthPermission(["module_produce:bommanhour:download"]))]
 )
 async def export_manhour_template_controller() -> StreamingResponse:
     """
