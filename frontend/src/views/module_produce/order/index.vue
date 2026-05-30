@@ -372,7 +372,7 @@ const selectedFirstBomCode = ref<string | undefined>(undefined);
 const selectedProjectId = ref<number | undefined>(undefined);
 const selectedFirstBomId = ref<number | undefined>(undefined);
 
-const queryFormData = reactive({
+let queryFormData = reactive({
   page_no: 1,
   page_size: 20,
   parent_code: undefined as string | undefined,

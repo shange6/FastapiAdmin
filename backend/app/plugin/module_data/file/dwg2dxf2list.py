@@ -129,6 +129,7 @@ class Dxf2List(object):
     _pattern_m5 = re.compile(r"\\[Mm]\+5([0-9A-Fa-f]{4})")       # M5 编码
     _pattern_unicode = re.compile(r"\\U\+([0-9A-Fa-f]{4})", re.I)  # ✅ 固定 \U+xxxx
     _pattern_contorl = re.compile(r"\\[nrtb];|\\c.+?;")          # ✅ 只删真正控制符
+    _pattern_fai = re.compile(r"%%[cC]")                      # ✅ 直径
 
     bom_keys = [
         "seq",          # 序号
@@ -190,6 +191,8 @@ class Dxf2List(object):
         text = self._pattern_format.sub("", text)
         # ========== 【第三步：删控制符】 ==========
         text = self._pattern_contorl.sub("", text)
+        # ========== 【第四步：删直径】 ==========
+        text = self._pattern_fai.sub("∅", text)
         # ========== 【最后：去空格】 ==========
         # text = self._pattern_blank.sub("", text)
         return text
@@ -206,8 +209,7 @@ class Dxf2List(object):
 
     def _parse_table_data(self, msp):
         """解析模型空间中的属性块数据"""
-        for insert in msp.query("INSERT"):
-            # 提取并清洗属性文本
+        for insert in msp.query("INSERT"):  # 提取并清洗属性文本            
             attr_texts = [self._clean_text(attr.dxf.text) for attr in insert.attribs]
             if not any(s.strip() for s in attr_texts): continue    # 过滤全空属性
             match len(attr_texts):
@@ -215,22 +217,20 @@ class Dxf2List(object):
                     pos = insert.dxf.insert
                     attr_texts.extend([round(pos.x), round(pos.y)]) # 注入坐标
                     self.boms.append(dict(zip(self.bom_keys, attr_texts)))    # 映射到字典
-                case 17: # 表格尾部信息页码
+                case 5: # 表格尾部信息页码，旧表是17，新表是5
                     self.file_count += 1
                 case _:
                     self.log_add(f"意外的属性长度 {len(attr_texts)} -> {attr_texts}")
-                    # log.error(f"意外的属性长度 {len(attr_texts)} -> {attr_texts}")
         if self.boms:            
             self.boms.sort(key=lambda x: (x["x"], -x["y"])) # x轴增序，y轴降序
 
     def _parse_project_info(self, msp):
         """解析 MTEXT 中的项目元数据并校验一致性"""
         mtexts = msp.query("MTEXT")
-        if self.file_count != len(mtexts):
-            self.log_add(f"文件数[{self.file_count}]与页面数[{len(mtexts)}]不符")
+        # if self.file_count != len(mtexts):
+        #     self.log_add(f"文件数[{self.file_count}]与页面数[{len(mtexts)}]不符")
         for mtext in mtexts:
             chunks = self._clean_text(mtext.dxf.text).replace(":", "").replace("：", "").split()
-            print(chunks)
             for chunk in chunks:    # 按空格分割后的字符串
                 for label, attr_name in self.project_keys.items():
                     if label in chunk:

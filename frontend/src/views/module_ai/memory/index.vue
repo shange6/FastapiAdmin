@@ -487,7 +487,7 @@ function handleUpdatedDateRangeChange(range: [Date, Date]) {
 }
 
 // 分页查询参数
-const queryFormData = reactive({
+let queryFormData = reactive({
   page_no: 1,
   page_size: 10,
   title: undefined,

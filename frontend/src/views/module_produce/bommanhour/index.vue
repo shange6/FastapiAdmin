@@ -355,7 +355,7 @@ const tableColumns = ref([
 ]);
 
 // 查询参数
-const queryFormData = reactive({
+let queryFormData = reactive({
   parent_code: undefined as string | undefined,
 });
 

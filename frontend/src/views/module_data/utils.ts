@@ -117,13 +117,16 @@ export function convertToTreeForFile(list: any[], projectCode?: string, firstCod
     // 3. 寻找父节点：从当前位置逆序向前查找最近的符合条件的父级
     // 这种方式能解决同代号在不同层级出现的问题
     let foundParentNode: any = null;
+    console.log("11111111111111111111")
     for (let i = index - 1; i >= 0; i--) {
+      console.log(nodes[i])
       if (nodes[i].code === node.parent_code) {
         foundParentNode = nodes[i];
         break;
       }
     }
 
+    console.log("2222222222222222222222222")
     if (foundParentNode) {
       foundParentNode.children.push(node);
     } else {

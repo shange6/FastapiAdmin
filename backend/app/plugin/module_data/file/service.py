@@ -47,7 +47,6 @@ class DataFileService:
             file_path = os.path.join(save_dir, file_name)
 
             Path(file_path).write_bytes(content)
-
             wtboms = WTBOMS(Dxf2List(dwg2dxf(file_path)))
             return UploadResponseSchema(
                 boms=wtboms.boms,
