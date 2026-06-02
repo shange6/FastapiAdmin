@@ -502,14 +502,13 @@ class ProduceMakeService:
         if exist.fetchone():
             raise CustomException(msg="该记录已提交，请勿重复操作")
 
-        # 2. 获取当前工序和工艺路线，使用 FOR UPDATE 加锁以防并发冲突
+        # 2. 获取当前工序和工艺路线
         res = await auth.db.execute(
             text("""
                 SELECT m.current_sort, r.route, m.project_code, m.first_code
                 FROM produce_make m 
                 LEFT JOIN produce_bom_route r ON m.bom_id = r.bom_id 
                 WHERE m.id = :id
-                FOR UPDATE
             """), {"id": data.make_id}
         )
         row = res.fetchone()
@@ -517,11 +516,6 @@ class ProduceMakeService:
             raise CustomException(msg="未找到制造记录")
         
         cur_sort, route_id, project_code, first_code = row
-        
-        # 校验提交的工序是否与当前主表工序一致
-        if data.sort != cur_sort:
-            raise CustomException(msg=f"提交工序({data.sort})与当前待执行工序({cur_sort})不匹配")
-
         next_sort, next_craft_id = 0, 0 # 默认最后一道工序后置为0
 
         # 3. 寻找下一工序
@@ -559,30 +553,23 @@ class ProduceMakeService:
             return {"count": 0}
 
         count = 0
-        processed_keys = set()
         for data in payload.items:
-            # 1. 检查同批次内存缓存及数据库中是否存在重复记录
-            key = (data.make_id, data.bom_id, data.sort, data.craft_id)
-            if key in processed_keys:
-                logger.warning(f"跳过同批次内重复提交: make_id={data.make_id}, bom_id={data.bom_id}, sort={data.sort}, craft_id={data.craft_id}")
-                continue
-
+            # 1. 检查是否存在重复记录
             exist = await auth.db.execute(
                 text("SELECT id FROM produce_make_flow WHERE make_id=:m AND bom_id=:b AND sort=:s AND craft_id=:c"),
                 {"m": data.make_id, "b": data.bom_id, "s": data.sort, "c": data.craft_id}
             )
             if exist.fetchone():
-                logger.warning(f"跳过数据库重复提交: make_id={data.make_id}, bom_id={data.bom_id}, sort={data.sort}, craft_id={data.craft_id}")
+                logger.warning(f"跳过重复提交: make_id={data.make_id}, bom_id={data.bom_id}, sort={data.sort}, craft_id={data.craft_id}")
                 continue
 
-            # 2. 获取当前工序和工艺路线，使用 FOR UPDATE 加锁以防并发冲突
+            # 2. 获取当前工序和工艺路线
             res = await auth.db.execute(
                 text("""
                     SELECT m.current_sort, r.route, m.project_code, m.first_code
                     FROM produce_make m 
                     LEFT JOIN produce_bom_route r ON m.bom_id = r.bom_id 
                     WHERE m.id = :id
-                    FOR UPDATE
                 """), {"id": data.make_id}
             )
             row = res.fetchone()
@@ -591,12 +578,6 @@ class ProduceMakeService:
                 continue
             
             cur_sort, route_id, project_code, first_code = row
-            
-            # 校验提交的工序是否与当前主表工序一致
-            if data.sort != cur_sort:
-                logger.warning(f"提交工序({data.sort})与当前待执行工序({cur_sort})不匹配，跳过: make_id={data.make_id}")
-                continue
-
             next_sort, next_craft_id = 0, 0 
 
             # 3. 寻找下一工序
@@ -617,7 +598,6 @@ class ProduceMakeService:
                 text("UPDATE produce_make SET current_sort=:s, current_craft_id=:c, updated_id=:u WHERE id=:id"),
                 {"s": next_sort, "c": next_craft_id, "u": auth.user.id, "id": data.make_id}
             )
-            processed_keys.add(key)
             count += 1
         
         await auth.db.commit()

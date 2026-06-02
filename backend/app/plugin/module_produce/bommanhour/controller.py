@@ -30,7 +30,7 @@ ProduceBomManhourRouter = APIRouter(prefix='/bommanhour', tags=["BOM工时关联
 )
 async def get_bommanhour_detail_controller(
     id: int = Path(..., description="ID"),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:query"]))
+    auth: AuthSchema = Depends(AuthPermission([]))
 ) -> JSONResponse:
     """
     获取BOM工时关联详情接口
@@ -55,7 +55,7 @@ async def get_bommanhour_list_controller(
     request: Request,
     page: PaginationQueryParam = Depends(),
     search: ProduceBomManhourQueryParam = Depends(),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:query"]))
+    auth: AuthSchema = Depends(AuthPermission([]))
 ) -> JSONResponse:
     """
     查询BOM工时关联列表接口（数据库分页）
@@ -118,7 +118,7 @@ async def create_bommanhour_controller(
 )
 async def upsert_batch_bommanhour_controller(
     data: ProduceBomManhourUpsertBatchSchema,
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:update"]))
+    auth: AuthSchema = Depends(AuthPermission([]))
 ) -> JSONResponse:
     result = await ProduceBomManhourService.upsert_batch_bommanhour_service(auth=auth, payload=data)
     log.info(f"批量Upsert BOM工时关联成功: {len(data.items)} 条")
@@ -131,7 +131,7 @@ async def upsert_batch_bommanhour_controller(
 )
 async def summary_missing_manhour_count_by_project_id_controller(
     project_id: int = Path(..., description="项目ID"),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:query"]))
+    auth: AuthSchema = Depends(AuthPermission([]))
 ) -> JSONResponse:
     result = await ProduceBomManhourService.summary_missing_manhour_count_by_project_id_service(auth=auth, project_id=project_id)
     return SuccessResponse(data=result, msg="查询成功")
@@ -143,7 +143,7 @@ async def summary_missing_manhour_count_by_project_id_controller(
 )
 async def summary_missing_manhour_count_by_first_id_controller(
     first_id: int = Path(..., description="BOM ID"),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:query"]))
+    auth: AuthSchema = Depends(AuthPermission([]))
 ) -> JSONResponse:
     result = await ProduceBomManhourService.summary_missing_manhour_count_by_first_id_service(auth=auth, first_id=first_id)
     return SuccessResponse(data=result, msg="查询成功")
@@ -155,7 +155,7 @@ async def summary_missing_manhour_count_by_first_id_controller(
 )
 async def summary_missing_order_count_by_project_id_controller(
     project_id: int = Path(..., description="项目ID"),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:query"]))
+    auth: AuthSchema = Depends(AuthPermission([]))
 ) -> JSONResponse:
     result = await ProduceBomManhourService.summary_missing_order_count_by_project_id_service(auth=auth, project_id=project_id)
     return SuccessResponse(data=result, msg="查询成功")
@@ -167,7 +167,7 @@ async def summary_missing_order_count_by_project_id_controller(
 )
 async def summary_batch_missing_order_count_controller(
     data: ProduceBatchProjectIdSchema,
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:query"]))
+    auth: AuthSchema = Depends(AuthPermission([]))
 ) -> JSONResponse:
     result = await ProduceBomManhourService.summary_batch_missing_order_count_service(auth=auth, payload=data)
     return SuccessResponse(data=result, msg="查询成功")
@@ -179,7 +179,7 @@ async def summary_batch_missing_order_count_controller(
 )
 async def summary_batch_bommanhour_controller(
     data: ProduceBomManhourSummaryBatchSchema,
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:query"]))
+    auth: AuthSchema = Depends(AuthPermission([]))
 ) -> JSONResponse:
     result_dict = await ProduceBomManhourService.summary_batch_bommanhour_service(
         auth=auth, bom_ids=data.bom_ids, recursive=data.recursive
@@ -193,7 +193,7 @@ async def summary_batch_bommanhour_controller(
 )
 async def summary_craft_batch_bommanhour_controller(
     data: ProduceBomManhourSummaryBatchSchema,
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:query"]))
+    auth: AuthSchema = Depends(AuthPermission([]))
 ) -> JSONResponse:
     result_dict = await ProduceBomManhourService.summary_craft_batch_bommanhour_service(auth=auth, bom_ids=data.bom_ids)
     return SuccessResponse(data=result_dict, msg="查询成功")

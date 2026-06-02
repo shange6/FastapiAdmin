@@ -23,7 +23,7 @@ ProduceManhourRouter = APIRouter(prefix='/manhour', tags=["工时管理模块"])
 )
 async def get_manhour_detail_controller(
     id: int = Path(..., description="ID"),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:query"]))
+    auth: AuthSchema = Depends(AuthPermission([]))
 ) -> JSONResponse:
     """
     获取工时管理详情接口
@@ -47,7 +47,7 @@ async def get_manhour_detail_controller(
 async def get_manhour_list_controller( 
     page: PaginationQueryParam = Depends(),
     search: ProduceManhourQueryParam = Depends(),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:bommanhour:query"]))
+    auth: AuthSchema = Depends(AuthPermission([]))
 ) -> JSONResponse:
     """
     查询工时管理列表接口（数据库分页）

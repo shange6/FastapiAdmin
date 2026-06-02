@@ -112,39 +112,51 @@ class ProduceBomManhourService:
         items = payload.items or []
         if not items:
             return {"inserted": 0, "updated": 0, "deleted": 0}
-
         inserted = 0
         updated = 0
         deleted = 0
         crud = ProduceBomManhourCRUD(auth)
-
+        # 引入权限拦截器
+        from app.core.dependencies import AuthPermission
+        check_create = AuthPermission(["module_produce:bommanhour:create"])
+        check_update = AuthPermission(["module_produce:bommanhour:update"])
+        check_delete = AuthPermission(["module_produce:bommanhour:delete"])
         # 获取所有涉及的 bom_id 的 project_code 和 first_code
         bom_ids = list(set([item.bom_id for item in items]))
         bom_sql = select(DataBomModel.id, DataBomModel.project_code, DataBomModel.first_code).where(DataBomModel.id.in_(bom_ids))
         bom_res = await auth.db.execute(bom_sql)
         bom_info_map = {row.id: (row.project_code, row.first_code) for row in bom_res.all()}
-
         for item in items:
-            # 优先从 data_bom 获取编码，确保一致性
             bom_info = bom_info_map.get(item.bom_id)
             project_code = bom_info[0] if bom_info else item.project_code
             first_code = bom_info[1] if bom_info else item.first_code
-
+            # 查询是否已存在
             sql = select(ProduceBomManhourModel).where(
                 ProduceBomManhourModel.bom_id == item.bom_id,
                 ProduceBomManhourModel.craft_id == item.craft_id,
             )
             result = await auth.db.execute(sql)
             existed = result.scalars().first()
+            # 1. 如果工时 <= 0，代表删除
             if item.manhour <= 0:
                 if existed:
-                    await crud.delete_bommanhour_crud(ids=[int(existed.id)])  # type: ignore[arg-type]
+                    await check_delete(auth)  # 动态校验删除权限
+                    await crud.delete_bommanhour_crud(ids=[int(existed.id)])
                     deleted += 1
                 continue
-
+            # 2. 如果已存在，代表更新
             if existed:
+                # 检查核心字段是否发生变化。如果完全一致，则忽略本次更新，直接跳入下一次循环
+                if (
+                    existed.manhour == item.manhour and 
+                    existed.project_code == project_code and 
+                    existed.first_code == first_code
+                ):
+                    continue
+                
+                await check_update(auth)  # 动态校验更新权限
                 await crud.update_bommanhour_crud(
-                    id=int(existed.id),  # type: ignore[arg-type]
+                    id=int(existed.id),
                     data=ProduceBomManhourUpdateSchema(
                         project_code=project_code,
                         first_code=first_code,
@@ -154,7 +166,9 @@ class ProduceBomManhourService:
                     ),
                 )
                 updated += 1
+            # 3. 如果不存在，代表新建
             else:
+                await check_create(auth)  # 动态校验创建权限
                 await crud.create_bommanhour_crud(
                     data=ProduceBomManhourCreateSchema(
                         project_code=project_code,
@@ -165,7 +179,6 @@ class ProduceBomManhourService:
                     )
                 )
                 inserted += 1
-
         return {"inserted": inserted, "updated": updated, "deleted": deleted}
 
     @classmethod

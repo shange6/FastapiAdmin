@@ -162,7 +162,7 @@
         >
           <template #default="scope">
             <el-button
-              v-hasPerm="['module_produce:bommanhour:update']"
+              
               type="primary"
               link
               @click="handleOpenManhourDialog(scope.row)"
@@ -274,7 +274,12 @@
 
       <template #footer>
         <el-button @click="handleCloseManhourDialog">取消</el-button>
-        <el-button type="primary" @click="handleConfirmManhourDialog">保存工时</el-button>
+        <el-button 
+          type="primary" 
+          v-hasPerm="['module_produce:bommanhour:create']" 
+          @click="handleConfirmManhourDialog">
+            保存工时
+        </el-button>
       </template>
     </el-dialog>
   </div>

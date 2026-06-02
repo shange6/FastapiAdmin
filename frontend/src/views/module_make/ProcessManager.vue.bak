@@ -127,10 +127,7 @@ async function refreshData() {
   if (!selectedProjectCode.value || !currentCraftId.value) return;
   loading.value = true;
   try {
-    const makeRes = await ProduceMakeAPI.listProduceMake({
-      project_code: selectedProjectCode.value,
-      plan_user: String(userStore.basicInfo.id)
-    });
+    const makeRes = await ProduceMakeAPI.listProduceMake({ project_code: selectedProjectCode.value });
     const makeMap = new Map(makeRes.data.data.items.map((m: any) => [Number(m.bom_id), m]));
 
     const processedBoms = allBoms.value.map(bom => {

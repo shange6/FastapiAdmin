@@ -79,7 +79,7 @@
             <!-- 查询、重置、展开/收起按钮 -->
             <el-form-item>
               <el-button
-                v-hasPerm="['module_produce:bommanhour:query']"
+                
                 type="primary"
                 icon="search"
                 @click="handleQuery"
@@ -87,7 +87,7 @@
                 查询
               </el-button>
               <el-button
-                v-hasPerm="['module_produce:bommanhour:query']"
+                
                 icon="refresh"
                 @click="handleResetQuery"
               >
@@ -397,7 +397,7 @@
         >
           <template #default="scope">
             <el-button
-              v-hasPerm="['module_produce:bommanhour:detail']"
+              
               type="info"
               size="small"
               link

@@ -21,7 +21,7 @@ DataFileRouter = APIRouter(prefix='/file', tags=["文件导入模块"])
     "/upload",
     summary="上传文件",
     description="上传文件到指定目录",
-    dependencies=[Depends(AuthPermission(["module_data:file:create"]))],
+    dependencies=[Depends(AuthPermission([]))],
 )
 async def upload_file_controller(
     file: UploadFile,
@@ -55,7 +55,7 @@ async def upload_file_controller(
 )
 async def save_data_controller(
     payload: SaveDataSchema,
-    current_user: Annotated[AuthSchema, Depends(AuthPermission(["module_data:file:create"]))],
+    current_user: Annotated[AuthSchema, Depends(AuthPermission(["module_data:data:create"]))],
 ) -> JSONResponse:
     """
     保存前端数据到数据库

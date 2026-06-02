@@ -177,30 +177,30 @@ async def reset_password_controller(
 #     return SuccessResponse(data=user_register_result, msg="注册用户成功")
 
 
-@UserRouter.post(
-    "/forget/password",
-    summary="忘记密码",
-    description="忘记密码",
-    response_model=ResponseSchema[UserOutSchema],
-)
-async def forget_password_controller(
-    data: UserForgetPasswordSchema,
-    db: Annotated[AsyncSession, Depends(db_getter)],
-) -> JSONResponse:
-    """
-    忘记密码
+# @UserRouter.post(
+#     "/forget/password",
+#     summary="忘记密码",
+#     description="忘记密码",
+#     response_model=ResponseSchema[UserOutSchema],
+# )
+# async def forget_password_controller(
+#     data: UserForgetPasswordSchema,
+#     db: Annotated[AsyncSession, Depends(db_getter)],
+# ) -> JSONResponse:
+#     """
+#     忘记密码
 
-    参数:
-    - data (UserForgetPasswordSchema): 用户忘记密码模型
-    - db (AsyncSession): 异步数据库会话
+#     参数:
+#     - data (UserForgetPasswordSchema): 用户忘记密码模型
+#     - db (AsyncSession): 异步数据库会话
 
-    返回:
-    - JSONResponse: 忘记密码JSON响应
-    """
-    auth = AuthSchema(db=db)
-    user_forget_password_result = await UserService.forget_password_service(data=data, auth=auth)
-    log.info(f"{data.username} 重置密码成功: {user_forget_password_result}")
-    return SuccessResponse(data=user_forget_password_result, msg="重置密码成功")
+#     返回:
+#     - JSONResponse: 忘记密码JSON响应
+#     """
+#     auth = AuthSchema(db=db)
+#     user_forget_password_result = await UserService.forget_password_service(data=data, auth=auth)
+#     log.info(f"{data.username} 重置密码成功: {user_forget_password_result}")
+#     return SuccessResponse(data=user_forget_password_result, msg="重置密码成功")
 
 
 @UserRouter.get(
@@ -368,90 +368,90 @@ async def batch_set_available_obj_controller(
     return SuccessResponse(msg="批量修改用户状态成功")
 
 
-@UserRouter.post(
-    "/import/template",
-    summary="获取用户导入模板",
-    description="获取用户导入模板",
-    response_model=ResponseSchema[None],
-    dependencies=[Depends(AuthPermission(["module_system:user:download"]))],
-)
-async def export_obj_template_controller() -> StreamingResponse:
-    """
-    获取用户导入模板
+# @UserRouter.post(
+#     "/import/template",
+#     summary="获取用户导入模板",
+#     description="获取用户导入模板",
+#     response_model=ResponseSchema[None],
+#     dependencies=[Depends(AuthPermission(["module_system:user:download"]))],
+# )
+# async def export_obj_template_controller() -> StreamingResponse:
+#     """
+#     获取用户导入模板
 
-    返回:
-    - StreamingResponse: 用户导入模板流响应
-    """
-    user_import_template_result = await UserService.get_import_template_user_service()
-    log.info("获取用户导入模板成功")
+#     返回:
+#     - StreamingResponse: 用户导入模板流响应
+#     """
+#     user_import_template_result = await UserService.get_import_template_user_service()
+#     log.info("获取用户导入模板成功")
 
-    return StreamResponse(
-        data=bytes2file_response(user_import_template_result),
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition": f"attachment; filename={urllib.parse.quote('用户导入模板.xlsx')}",
-            "Access-Control-Expose-Headers": "Content-Disposition",
-        },
-    )
-
-
-@UserRouter.post(
-    "/export",
-    summary="导出用户",
-    description="导出用户",
-    response_model=ResponseSchema[None],
-)
-async def export_obj_list_controller(
-    page: Annotated[PaginationQueryParam, Depends()],
-    search: Annotated[UserQueryParam, Depends()],
-    auth: Annotated[AuthSchema, Depends(AuthPermission(["module_system:user:export"]))],
-) -> StreamingResponse:
-    """
-    导出用户
-
-    参数:
-    - page (PaginationQueryParam): 分页查询参数模型
-    - search (UserQueryParam): 查询参数模型
-    - auth (AuthSchema): 认证信息模型
-
-    返回:
-    - StreamingResponse: 用户导出模板流响应
-    """
-    user_list = await UserService.get_user_list_service(
-        auth=auth, search=search, order_by=page.order_by
-    )
-    user_export_result = await UserService.export_user_list_service(user_list)
-    log.info("导出用户成功")
-
-    return StreamResponse(
-        data=bytes2file_response(user_export_result),
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=user.xlsx"},
-    )
+#     return StreamResponse(
+#         data=bytes2file_response(user_import_template_result),
+#         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+#         headers={
+#             "Content-Disposition": f"attachment; filename={urllib.parse.quote('用户导入模板.xlsx')}",
+#             "Access-Control-Expose-Headers": "Content-Disposition",
+#         },
+#     )
 
 
-@UserRouter.post(
-    "/import/data",
-    summary="导入用户",
-    description="导入用户",
-    response_model=ResponseSchema[None],
-)
-async def import_obj_list_controller(
-    file: UploadFile,
-    auth: Annotated[AuthSchema, Depends(AuthPermission(["module_system:user:import"]))],
-) -> JSONResponse:
-    """
-    导入用户
+# @UserRouter.post(
+#     "/export",
+#     summary="导出用户",
+#     description="导出用户",
+#     response_model=ResponseSchema[None],
+# )
+# async def export_obj_list_controller(
+#     page: Annotated[PaginationQueryParam, Depends()],
+#     search: Annotated[UserQueryParam, Depends()],
+#     auth: Annotated[AuthSchema, Depends(AuthPermission(["module_system:user:export"]))],
+# ) -> StreamingResponse:
+#     """
+#     导出用户
 
-    参数:
-    - file (UploadFile): 用户导入文件
-    - auth (AuthSchema): 认证信息模型
+#     参数:
+#     - page (PaginationQueryParam): 分页查询参数模型
+#     - search (UserQueryParam): 查询参数模型
+#     - auth (AuthSchema): 认证信息模型
 
-    返回:
-    - JSONResponse: 导入用户JSON响应
-    """
-    batch_import_result = await UserService.batch_import_user_service(
-        file=file, auth=auth, update_support=True
-    )
-    log.info(f"导入用户成功: {batch_import_result}")
-    return SuccessResponse(data=batch_import_result, msg="导入用户成功")
+#     返回:
+#     - StreamingResponse: 用户导出模板流响应
+#     """
+#     user_list = await UserService.get_user_list_service(
+#         auth=auth, search=search, order_by=page.order_by
+#     )
+#     user_export_result = await UserService.export_user_list_service(user_list)
+#     log.info("导出用户成功")
+
+#     return StreamResponse(
+#         data=bytes2file_response(user_export_result),
+#         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+#         headers={"Content-Disposition": "attachment; filename=user.xlsx"},
+#     )
+
+
+# @UserRouter.post(
+#     "/import/data",
+#     summary="导入用户",
+#     description="导入用户",
+#     response_model=ResponseSchema[None],
+# )
+# async def import_obj_list_controller(
+#     file: UploadFile,
+#     auth: Annotated[AuthSchema, Depends(AuthPermission(["module_system:user:import"]))],
+# ) -> JSONResponse:
+#     """
+#     导入用户
+
+#     参数:
+#     - file (UploadFile): 用户导入文件
+#     - auth (AuthSchema): 认证信息模型
+
+#     返回:
+#     - JSONResponse: 导入用户JSON响应
+#     """
+#     batch_import_result = await UserService.batch_import_user_service(
+#         file=file, auth=auth, update_support=True
+#     )
+#     log.info(f"导入用户成功: {batch_import_result}")
+#     return SuccessResponse(data=batch_import_result, msg="导入用户成功")

@@ -1,5 +1,5 @@
 <template>
-  <ProcessManager targetCraftName="铆焊" />
+  <ProcessManager targetCraftName="铆焊" perm="module_make:blank:update" />
 </template>
 
 <script setup lang="ts">

@@ -29,7 +29,7 @@ ProduceOrderRouter = APIRouter(prefix='/order', tags=["工单模块"])
 )
 async def get_order_detail_controller(
     id: int = Path(..., description="ID"),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:order:query"]))
+    auth: AuthSchema = Depends(AuthPermission([]))
 ) -> JSONResponse:
     """
     获取工单详情接口
@@ -53,7 +53,7 @@ async def get_order_detail_controller(
 async def get_order_list_controller(
     page: PaginationQueryParam = Depends(),
     search: ProduceOrderQueryParam = Depends(),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:order:query"]))
+    auth: AuthSchema = Depends(AuthPermission([]))
 ) -> JSONResponse:
     """
     查询工单列表接口（数据库分页）
@@ -83,7 +83,7 @@ async def get_order_list_controller(
 )
 async def summary_batch_order_controller(
     data: ProduceOrderSummaryBatchSchema,
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:order:query"]))
+    auth: AuthSchema = Depends(AuthPermission([]))
 ) -> JSONResponse:
     result_dict = await ProduceOrderService.summary_batch_order_service(auth=auth, bom_ids=data.bom_ids)
     return SuccessResponse(data=result_dict, msg="查询成功")

@@ -45,7 +45,40 @@ class ProduceMakeCRUD(CRUDBase[ProduceMakeModel, ProduceMakeCreateSchema, Produc
         返回:
         - Sequence[ProduceMakeModel]: 模型实例序列
         """
-        return await self.list(search=search, order_by=order_by, preload=preload)
+        from sqlalchemy import select, and_, collate
+        from app.plugin.module_produce.order.model import ProduceOrderModel
+        
+        plan_user = None
+        search_dict = {}
+        if search:
+            search_dict = dict(search)
+            plan_user = search_dict.pop("plan_user", None)
+            
+        if not plan_user:
+            return await self.list(search=search_dict, order_by=order_by, preload=preload)
+            
+        try:
+            conditions = await self._CRUDBase__build_conditions(**search_dict) if search_dict else []
+            sql = select(self.model).where(*conditions)
+            sql = sql.join(
+                ProduceOrderModel,
+                and_(
+                    collate(ProduceOrderModel.no, 'utf8mb4_general_ci') == collate(self.model.order_no, 'utf8mb4_general_ci'),
+                    ProduceOrderModel.craft_id == self.model.current_craft_id
+                )
+            ).where(ProduceOrderModel.plan_user == plan_user)
+            
+            order = order_by or [{"id": "asc"}]
+            sql = sql.order_by(*self._CRUDBase__order_by(order))
+            for opt in self._CRUDBase__loader_options(preload):
+                sql = sql.options(opt)
+            sql = await self._CRUDBase__filter_permissions(sql)
+            
+            result = await self.auth.db.execute(sql)
+            return result.scalars().all()
+        except Exception as e:
+            from app.core.exceptions import CustomException
+            raise CustomException(msg=f"列表查询失败: {e!s}")
     
     async def create_blanking_crud(self, data: ProduceMakeCreateSchema) -> ProduceMakeModel | None:
         """
@@ -111,16 +144,83 @@ class ProduceMakeCRUD(CRUDBase[ProduceMakeModel, ProduceMakeCreateSchema, Produc
         返回:
         - Dict: 分页数据
         """
-        order_by_list = order_by or [{'id': 'asc'}]
-        search_dict = search or {}
-        return await self.page(
-            offset=offset,
-            limit=limit,
-            order_by=order_by_list,
-            search=search_dict,
-            out_schema=ProduceMakeOutSchema,
-            preload=preload
-        )
+        from sqlalchemy import select, and_, func, collate
+        from sqlalchemy.inspection import inspect as sa_inspect
+        from app.plugin.module_produce.order.model import ProduceOrderModel
+        from app.core.exceptions import CustomException
+        
+        plan_user = None
+        search_dict = {}
+        if search:
+            search_dict = dict(search)
+            plan_user = search_dict.pop("plan_user", None)
+            
+        if not plan_user:
+            order_by_list = order_by or [{'id': 'asc'}]
+            return await self.page(
+                offset=offset,
+                limit=limit,
+                order_by=order_by_list,
+                search=search_dict,
+                out_schema=ProduceMakeOutSchema,
+                preload=preload
+            )
+            
+        try:
+            conditions = await self._CRUDBase__build_conditions(**search_dict) if search_dict else []
+            
+            # Base query
+            sql = select(self.model).where(*conditions)
+            sql = sql.join(
+                ProduceOrderModel,
+                and_(
+                    collate(ProduceOrderModel.no, 'utf8mb4_general_ci') == collate(self.model.order_no, 'utf8mb4_general_ci'),
+                    ProduceOrderModel.craft_id == self.model.current_craft_id
+                )
+            ).where(ProduceOrderModel.plan_user == plan_user)
+            
+            # Count query
+            mapper = sa_inspect(self.model)
+            pk_cols = list(getattr(mapper, "primary_key", []))
+            if pk_cols:
+                count_sql = select(func.count(pk_cols[0])).select_from(self.model)
+            else:
+                count_sql = select(func.count()).select_from(self.model)
+            
+            count_sql = count_sql.join(
+                ProduceOrderModel,
+                and_(
+                    collate(ProduceOrderModel.no, 'utf8mb4_general_ci') == collate(self.model.order_no, 'utf8mb4_general_ci'),
+                    ProduceOrderModel.craft_id == self.model.current_craft_id
+                )
+            ).where(*conditions).where(ProduceOrderModel.plan_user == plan_user)
+            
+            # Filter permissions
+            sql = await self._CRUDBase__filter_permissions(sql)
+            count_sql = await self._CRUDBase__filter_permissions(count_sql)
+            
+            # Execute count
+            count_result = await self.auth.db.execute(count_sql)
+            total = count_result.scalar() or 0
+            
+            # Sorting, pagination, preloads
+            order = order_by or [{"id": "asc"}]
+            sql = sql.order_by(*self._CRUDBase__order_by(order)).offset(offset).limit(limit)
+            for opt in self._CRUDBase__loader_options(preload):
+                sql = sql.options(opt)
+                
+            # Execute data
+            result = await self.auth.db.execute(sql)
+            obj_list = result.scalars().all()
+            
+            # Format items
+            items = [ProduceMakeOutSchema.model_validate(obj).model_dump() for obj in obj_list]
+            return {
+                "items": items,
+                "total": total
+            }
+        except Exception as e:
+            raise CustomException(msg=f"分页查询失败: {e!s}")
 
 
 class ProduceMakeFlowCRUD(CRUDBase[ProduceMakeFlowModel, ProduceMakeFlowCreateSchema, ProduceMakeFlowCreateSchema]):

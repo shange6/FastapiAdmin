@@ -1,5 +1,5 @@
 <template>
-  <ProcessManager targetCraftName="机加" />
+  <ProcessManager targetCraftName="机加" perm="module_make:blank:update"  />
 </template>
 
 <script setup lang="ts">

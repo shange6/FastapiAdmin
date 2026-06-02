@@ -22,7 +22,7 @@ ProduceBomRouteRouter = APIRouter(prefix='/bomroute', tags=["BOM路线关联模�
     description="统计所有项目下未配置路线的BOM总数"
 )
 async def summary_all_projects_missing_routes_controller(
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:bomroute:query"]))
+    auth: AuthSchema = Depends(AuthPermission([]))
 ) -> JSONResponse:
     """
     统计所有项目缺失路线数量接口
@@ -41,7 +41,7 @@ async def summary_all_projects_missing_routes_controller(
 )
 async def summary_missing_routes_by_project_controller(
     project_code: str = Path(..., description="项目代号"),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:bomroute:query"]))
+    auth: AuthSchema = Depends(AuthPermission([]))
 ) -> JSONResponse:
     """
     按项目统计未配置路线的BOM数量接口
@@ -63,7 +63,7 @@ async def summary_missing_routes_by_project_controller(
 )
 async def summary_missing_routes_count_by_project_id_controller(
     project_id: int = Path(..., description="项目ID"),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:bomroute:query"]))
+    auth: AuthSchema = Depends(AuthPermission([]))
 ) -> JSONResponse:
     """
     根据项目ID统计缺失路线数量接口
@@ -85,7 +85,7 @@ async def summary_missing_routes_count_by_project_id_controller(
 )
 async def summary_missing_routes_count_by_first_id_controller(
     first_id: int = Path(..., description="BOM ID"),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:bomroute:query"]))
+    auth: AuthSchema = Depends(AuthPermission([]))
 ) -> JSONResponse:
     """
     根据first_id统计缺失路线数量接口
@@ -108,7 +108,7 @@ async def summary_missing_routes_count_by_first_id_controller(
 )
 async def get_bomroute_detail_controller(
     id: int = Path(..., description="ID"),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:bomroute:query"]))
+    auth: AuthSchema = Depends(AuthPermission([]))
 ) -> JSONResponse:
     """
     获取BOM路线关联详情接口
@@ -132,7 +132,7 @@ async def get_bomroute_detail_controller(
 async def get_bomroute_list_controller(
     page: PaginationQueryParam = Depends(),
     search: ProduceBomRouteQueryParam = Depends(),
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:bomroute:query"]))
+    auth: AuthSchema = Depends(AuthPermission([]))
 ) -> JSONResponse:
     """
     查询BOM路线关联列表接口（数据库分页）
@@ -161,7 +161,7 @@ async def get_bomroute_list_controller(
     description="获取全部BOM路线关联，不分页"
 )
 async def get_bomroute_all_controller(
-    auth: AuthSchema = Depends(AuthPermission(["module_produce:bomroute:query"]))
+    auth: AuthSchema = Depends(AuthPermission([]))
 ) -> JSONResponse:
     """
     获取全部BOM路线关联接口（不分页）

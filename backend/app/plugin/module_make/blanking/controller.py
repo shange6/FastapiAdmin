@@ -30,7 +30,7 @@ ProduceMakeRouter = APIRouter(prefix='/blanking', tags=["制造流程主模块"]
 )
 async def get_blanking_detail_controller(
     id: int = Path(..., description="ID"),
-    auth: AuthSchema = Depends(AuthPermission(["module_make:blanking:query"]))
+    auth: AuthSchema = Depends(AuthPermission(["module_make:blank:query"]))
 ) -> JSONResponse:
     """
     获取制造流程主详情接口
@@ -54,7 +54,7 @@ async def get_blanking_detail_controller(
 async def get_blanking_list_controller(
     page: ProduceMakePaginationQueryParam = Depends(),
     search: ProduceMakeQueryParam = Depends(),
-    auth: AuthSchema = Depends(AuthPermission(["module_make:blanking:query"]))
+    auth: AuthSchema = Depends(AuthPermission([]))
 ) -> JSONResponse:
     """
     查询制造流程主列表接口（支持分页和全量）
@@ -84,7 +84,7 @@ async def get_blanking_list_controller(
 )
 async def create_blanking_controller(
     data: ProduceMakeCreateSchema,
-    auth: AuthSchema = Depends(AuthPermission(["module_make:blanking:create"]))
+    auth: AuthSchema = Depends(AuthPermission(["module_make:blank:create"]))
 ) -> JSONResponse:
     """
     创建制造流程主接口
@@ -108,7 +108,7 @@ async def create_blanking_controller(
 async def update_blanking_controller(
     data: ProduceMakeUpdateSchema,
     id: int = Path(..., description="ID"),
-    auth: AuthSchema = Depends(AuthPermission(["module_make:blanking:update"]))
+    auth: AuthSchema = Depends(AuthPermission(["module_make:blank:update"]))
 ) -> JSONResponse:
     """
     修改制造流程主接口
@@ -132,7 +132,7 @@ async def update_blanking_controller(
 )
 async def delete_blanking_controller(
     ids: list[int] = Body(..., description="ID列表"),
-    auth: AuthSchema = Depends(AuthPermission(["module_make:blanking:delete"]))
+    auth: AuthSchema = Depends(AuthPermission(["module_make:blank:delete"]))
 ) -> JSONResponse:
     """
     删除制造流程主接口
@@ -155,7 +155,7 @@ async def delete_blanking_controller(
 )
 async def batch_set_available_blanking_controller(
     data: BatchSetAvailable,
-    auth: AuthSchema = Depends(AuthPermission(["module_make:blanking:patch"]))
+    auth: AuthSchema = Depends(AuthPermission(["module_make:blank:patch"]))
 ) -> JSONResponse:
     """
     批量修改制造流程主状态接口
@@ -178,7 +178,7 @@ async def batch_set_available_blanking_controller(
 )
 async def export_blanking_list_controller(
     search: ProduceMakeQueryParam = Depends(),
-    auth: AuthSchema = Depends(AuthPermission(["module_make:blanking:export"]))
+    auth: AuthSchema = Depends(AuthPermission(["module_make:blank:export"]))
 ) -> StreamingResponse:
     """
     导出制造流程主接口
@@ -206,7 +206,7 @@ async def export_blanking_list_controller(
 )
 async def import_blanking_list_controller(
     file: UploadFile,
-    auth: AuthSchema = Depends(AuthPermission(["module_make:blanking:import"]))
+    auth: AuthSchema = Depends(AuthPermission(["module_make:blank:import"]))
 ) -> JSONResponse:
     """
     导入制造流程主接口
@@ -226,7 +226,7 @@ async def import_blanking_list_controller(
     '/download/template',
     summary="获取制造流程主导入模板",
     description="获取制造流程主导入模板",
-    dependencies=[Depends(AuthPermission(["module_make:blanking:download"]))]
+    dependencies=[Depends(AuthPermission(["module_make:blank:download"]))]
 )
 async def export_blanking_template_controller() -> StreamingResponse:
     """
@@ -251,7 +251,7 @@ async def export_blanking_template_controller() -> StreamingResponse:
 async def summary_make_by_orders_controller(
     order_nos: list[str] = Body(..., description="单号列表"),
     craft_id: int = Query(..., description="工艺ID"),
-    auth: AuthSchema = Depends(AuthPermission(["module_make:blanking:query"]))
+    auth: AuthSchema = Depends(AuthPermission([]))
 ) -> JSONResponse:
     """
     按单号和工艺ID统计待办数量接口
@@ -275,7 +275,7 @@ async def summary_make_by_orders_controller(
 )
 async def sync_produce_make_by_bom_controller(
     bom_id: int = Path(..., description="BOM ID"),
-    auth: AuthSchema = Depends(AuthPermission(["module_make:blanking:update"]))
+    auth: AuthSchema = Depends(AuthPermission(["module_make:blank:update"]))
 ) -> JSONResponse:
     """
     根据BOM ID同步更新制造流程主接口
@@ -299,7 +299,7 @@ async def sync_produce_make_by_bom_controller(
 )
 async def submit_blanking_flow_controller(
     data: ProduceMakeFlowCreateSchema,
-    auth: AuthSchema = Depends(AuthPermission(["module_make:blanking:update"]))
+    auth: AuthSchema = Depends(AuthPermission(["module_make:blank:update"]))
 ) -> JSONResponse:
     """
     提交制造流程执行记录接口
@@ -323,7 +323,7 @@ async def submit_blanking_flow_controller(
 )
 async def submit_blanking_flow_batch_controller(
     data: ProduceMakeFlowBatchCreateSchema,
-    auth: AuthSchema = Depends(AuthPermission(["module_make:blanking:update"]))
+    auth: AuthSchema = Depends(AuthPermission(["module_make:blank:update"]))
 ) -> JSONResponse:
     """
     批量提交制造流程执行记录接口

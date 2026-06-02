@@ -64,16 +64,16 @@
       </el-form-item>
 
       <!-- 注册按钮 -->
-      <el-form-item>
+      <!-- <el-form-item>
         <el-button :loading="loading" type="success" class="w-full" @click="submit">
           {{ t("login.register") }}
         </el-button>
-      </el-form-item>
+      </el-form-item> -->
     </el-form>
-    <div flex-center gap-10px>
+    <!-- <div flex-center gap-10px>
       <el-text size="default">{{ t("login.haveAccount") }}</el-text>
       <el-link type="primary" underline="never" @click="toLogin">{{ t("login.login") }}</el-link>
-    </div>
+    </div> -->
   </div>
 </template>
 <script setup lang="ts">

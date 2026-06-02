@@ -24,7 +24,7 @@
               保存
             </el-button>
             <el-button
-              v-hasPerm="['module_data:file:create']"
+              
               type="success"
               :icon="Plus"
               @click="handleUploadFile"
@@ -168,6 +168,7 @@
         :auto-upload="false"
         :multiple="true"
         :file-list="uploadFileList"
+        accept=".dwg"
         drag
         @change="handleUploadChange"
       >
@@ -185,7 +186,7 @@
       <template #footer>
         <el-button @click="uploadDialogVisible = false">取消</el-button>
         <el-button
-          v-hasPerm="['module_monitor:resource:upload']"
+          
           type="primary"
           :loading="uploading"
           @click="handleUploadConfirm"

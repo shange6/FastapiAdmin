@@ -32,7 +32,7 @@ RoleRouter = APIRouter(route_class=OperationLogRoute, prefix="/role", tags=["角
     response_model=ResponseSchema[list[RoleOutSchema]],
 )
 async def get_obj_list_controller(
-    page: Annotated[PaginationQueryParam, Depends()],
+    # page: Annotated[PaginationQueryParam, Depends()],
     search: Annotated[RoleQueryParam, Depends()],
     auth: Annotated[AuthSchema, Depends(AuthPermission(["module_system:role:query"]))],
 ) -> JSONResponse:
@@ -48,15 +48,15 @@ async def get_obj_list_controller(
     - JSONResponse: 分页查询结果JSON响应
     """
     order_by = [{"order": "asc"}]
-    if page.order_by:
-        order_by = page.order_by
+    # if page.order_by:
+    #     order_by = page.order_by
     result_dict_list = await RoleService.get_role_list_service(
         search=search, auth=auth, order_by=order_by
     )
     result_dict = await PaginationService.paginate(
         data_list=result_dict_list,
-        page_no=page.page_no,
-        page_size=page.page_size,
+        page_no=1,   # page.page_no,
+        page_size=1000,  # page.page_size,
     )
     log.info("查询角色成功")
     return SuccessResponse(data=result_dict, msg="查询角色成功")

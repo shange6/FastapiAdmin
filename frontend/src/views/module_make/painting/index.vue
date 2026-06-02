@@ -1,5 +1,5 @@
 <template>
-  <ProcessManager targetCraftName="喷漆" />
+  <ProcessManager targetCraftName="喷漆" perm="module_make:blank:update" />
 </template>
 
 <script setup lang="ts">

@@ -139,7 +139,6 @@ export interface ProduceMakePageQuery extends Partial<PageQuery> {
   status?: string;
   created_id?: number;
   updated_id?: number;
-  plan_user?: string;
   created_time?: string[];
   updated_time?: string[];
 }

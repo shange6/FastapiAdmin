@@ -131,7 +131,7 @@
         <el-table-column fixed="right" label="操作" align="center" min-width="60">
           <template #default="{ row }">
             <el-button
-              v-hasPerm="['module_produce:bommanhour:update']"
+              
               type="primary"
               link
               @click="handleOpenManhourDialog(row)"
@@ -278,7 +278,7 @@
 
       <template #footer>
         <el-button @click="manhourDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="manhourLoading" @click="handleConfirmManhourDialog">
+        <el-button type="primary" v-hasPerm="['module_produce:order:create']" :loading="manhourLoading" @click="handleConfirmManhourDialog">
           保存工单
         </el-button>
       </template>
