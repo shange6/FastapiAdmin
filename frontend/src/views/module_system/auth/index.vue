@@ -1,5 +1,5 @@
 <template>
-  <div class="auth-view" :style="{ '--login-background-url': `url(${loginBackgroundUrl})` }">
+  <div class="auth-view" :style="{ '--login-background-url': `url()` }">
     <!-- 右侧切换主题、语言按钮  -->
     <div class="auth-view__toolbar">
       <el-tooltip :content="t('login.themeToggle')" placement="bottom">

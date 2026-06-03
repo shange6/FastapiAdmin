@@ -45,8 +45,9 @@ class ProduceMakeCRUD(CRUDBase[ProduceMakeModel, ProduceMakeCreateSchema, Produc
         返回:
         - Sequence[ProduceMakeModel]: 模型实例序列
         """
-        from sqlalchemy import select, and_, collate
+        from sqlalchemy import select, and_, or_, collate
         from app.plugin.module_produce.order.model import ProduceOrderModel
+        from app.plugin.module_produce.craft.model import ProduceCraftModel
         
         plan_user = None
         search_dict = {}
@@ -62,9 +63,14 @@ class ProduceMakeCRUD(CRUDBase[ProduceMakeModel, ProduceMakeCreateSchema, Produc
             sql = select(self.model).where(*conditions)
             sql = sql.join(
                 ProduceOrderModel,
-                and_(
-                    collate(ProduceOrderModel.no, 'utf8mb4_general_ci') == collate(self.model.order_no, 'utf8mb4_general_ci'),
-                    ProduceOrderModel.craft_id == self.model.current_craft_id
+                collate(ProduceOrderModel.no, 'utf8mb4_general_ci') == collate(self.model.order_no, 'utf8mb4_general_ci')
+            ).join(
+                ProduceCraftModel,
+                ProduceCraftModel.id == ProduceOrderModel.craft_id
+            ).where(
+                or_(
+                    ProduceOrderModel.craft_id == self.model.current_craft_id,
+                    ProduceCraftModel.parent_id == self.model.current_craft_id
                 )
             ).where(ProduceOrderModel.plan_user == plan_user)
             
@@ -144,9 +150,10 @@ class ProduceMakeCRUD(CRUDBase[ProduceMakeModel, ProduceMakeCreateSchema, Produc
         返回:
         - Dict: 分页数据
         """
-        from sqlalchemy import select, and_, func, collate
+        from sqlalchemy import select, and_, or_, func, collate
         from sqlalchemy.inspection import inspect as sa_inspect
         from app.plugin.module_produce.order.model import ProduceOrderModel
+        from app.plugin.module_produce.craft.model import ProduceCraftModel
         from app.core.exceptions import CustomException
         
         plan_user = None
@@ -173,9 +180,14 @@ class ProduceMakeCRUD(CRUDBase[ProduceMakeModel, ProduceMakeCreateSchema, Produc
             sql = select(self.model).where(*conditions)
             sql = sql.join(
                 ProduceOrderModel,
-                and_(
-                    collate(ProduceOrderModel.no, 'utf8mb4_general_ci') == collate(self.model.order_no, 'utf8mb4_general_ci'),
-                    ProduceOrderModel.craft_id == self.model.current_craft_id
+                collate(ProduceOrderModel.no, 'utf8mb4_general_ci') == collate(self.model.order_no, 'utf8mb4_general_ci')
+            ).join(
+                ProduceCraftModel,
+                ProduceCraftModel.id == ProduceOrderModel.craft_id
+            ).where(
+                or_(
+                    ProduceOrderModel.craft_id == self.model.current_craft_id,
+                    ProduceCraftModel.parent_id == self.model.current_craft_id
                 )
             ).where(ProduceOrderModel.plan_user == plan_user)
             
@@ -189,11 +201,16 @@ class ProduceMakeCRUD(CRUDBase[ProduceMakeModel, ProduceMakeCreateSchema, Produc
             
             count_sql = count_sql.join(
                 ProduceOrderModel,
-                and_(
-                    collate(ProduceOrderModel.no, 'utf8mb4_general_ci') == collate(self.model.order_no, 'utf8mb4_general_ci'),
-                    ProduceOrderModel.craft_id == self.model.current_craft_id
+                collate(ProduceOrderModel.no, 'utf8mb4_general_ci') == collate(self.model.order_no, 'utf8mb4_general_ci')
+            ).join(
+                ProduceCraftModel,
+                ProduceCraftModel.id == ProduceOrderModel.craft_id
+            ).where(*conditions).where(
+                or_(
+                    ProduceOrderModel.craft_id == self.model.current_craft_id,
+                    ProduceCraftModel.parent_id == self.model.current_craft_id
                 )
-            ).where(*conditions).where(ProduceOrderModel.plan_user == plan_user)
+            ).where(ProduceOrderModel.plan_user == plan_user)
             
             # Filter permissions
             sql = await self._CRUDBase__filter_permissions(sql)

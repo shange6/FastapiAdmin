@@ -1,7 +1,7 @@
 <!-- github 角标 -->
 <template>
   <a
-    href="https://github.com/fastapiadmin/FastapiAdmin"
+    href="https://www.baidu.com"
     target="_blank"
     class="github-corner"
     aria-label="View source on Github"
